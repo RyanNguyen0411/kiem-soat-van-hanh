@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useDashboard } from '../context/DashboardContext';
-import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2 } from 'lucide-react';
 import { getCurrentDate, getDateRangeContext, formatDateDDMMYYYY } from '../utils/dateEngine';
 import { safeDivide } from '../utils/calculations';
 import { parse, isValid, startOfWeek, endOfWeek, isWithinInterval, compareDesc, format, subDays, startOfMonth } from 'date-fns';
@@ -41,10 +41,10 @@ export default function OperationsTab() {
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
 
-  // Bộ lọc cho Ma trận bưu cục & ngày (Thêm bộ lọc Tháng: chọn tháng 9, tháng 8, tháng 7,...)
-  const [chart3ModeFilter, setChart3ModeFilter] = useState<'day' | 'week' | 'month'>('week');
+  // Bộ lọc cho Ma trận bưu cục & ngày
   const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
   const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
+  const [chart3ModeFilter, setChart3ModeFilter] = useState<'day' | 'week' | 'month'>('week');
   const [selectedChart3Months, setSelectedChart3Months] = useState<Record<string, boolean>>({});
   const [showChart3MonthPicker, setShowChart3MonthPicker] = useState<boolean>(false);
 
@@ -70,9 +70,9 @@ export default function OperationsTab() {
     });
   }, [operationsData]);
 
-  // Lấy danh sách các tháng có sẵn trong data (định dạng MM/yyyy hoặc "Tháng MM/yyyy" sắp xếp giảm dần tháng 9, tháng 8, tháng 7,...)
+  // Lấy danh sách các tháng có sẵn trong data (giảm dần)
   const availableMonths = useMemo(() => {
-    const map = new Map<string, string>(); // Key: 'MM/yyyy', Value label: 'Tháng MM/yyyy'
+    const map = new Map<string, string>();
     operationsData.forEach(r => {
       if (r.date) {
         const p = parseDateString(r.date);
@@ -83,7 +83,6 @@ export default function OperationsTab() {
         }
       }
     });
-    // Sắp xếp tháng giảm dần (ví dụ tháng 09/2026, 08/2026, 07/2026...)
     return Array.from(map.entries()).sort((a, b) => {
       const dateA = parse(a[0], 'MM/yyyy', new Date());
       const dateB = parse(b[0], 'MM/yyyy', new Date());
@@ -286,7 +285,7 @@ export default function OperationsTab() {
       }));
   }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
 
-  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY (Lọc theo tháng được chọn, hoặc theo Ngày/Tuần/Tháng)
+  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY
   const matrixDates = useMemo(() => {
     const currentDate = dateContext.n1;
     const weekAgo = subDays(currentDate, 7);
@@ -472,6 +471,7 @@ export default function OperationsTab() {
     setSelectedChart2Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
   };
 
+  
   const isDateInWeekOfN1 = (dateStr: string) => {
     const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
     if (!isValid(parsedDate)) return false;
@@ -559,174 +559,181 @@ export default function OperationsTab() {
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY (Màu nền #DDDDDD, tiêu đề to, tên bưu cục chữ to màu đỏ, không dùng thanh trượt dọc, làm tròn 1 số sau dấu phẩy) */}
-      <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
-          <div className="flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-blue-700" />
-            <h2 className="font-extrabold text-base uppercase text-neutral-900">Ma trận hiệu suất vận hành theo bưu cục & ngày</h2>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Bộ lọc Loại hàng */}
-            <select 
-              value={chart3CategoryFilter} 
-              onChange={(e) => setChart3CategoryFilter(e.target.value)}
-              className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
-            >
-              <option value="all">Tất cả loại hàng</option>
-              <option value="Hàng mới ca 1">Hàng mới ca 1</option>
-              <option value="Hàng mới ca 2">Hàng mới ca 2</option>
-              <option value="Hàng tồn">Hàng tồn</option>
-            </select>
-
-            {/* Bộ lọc Bưu cục */}
-            <select 
-              value={chart3BranchFilter} 
-              onChange={(e) => setChart3BranchFilter(e.target.value)}
-              className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
-            >
-              <option value="all">Tất cả bưu cục</option>
-              {allBranchesList.map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-
-            {/* Bộ lọc chọn Tháng (Tháng 9, tháng 8, tháng 7,...) */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
-                className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
-              >
-                <Calendar className="w-3.5 h-3.5 text-blue-700" />
-                <span>{currentChart3MonthLabel}</span>
-                <ChevronDown className="w-3 h-3 ml-1" />
-              </button>
-
-              {showChart3MonthPicker && (
-                <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-300 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 text-xs">
-                    <span className="font-semibold text-neutral-800">Chọn tháng (Giảm dần)</span>
-                    <button 
-                      onClick={() => setSelectedChart3Months({})} 
-                      className="text-blue-700 hover:underline text-[11px]"
-                    >
-                      Bỏ chọn tất cả
-                    </button>
-                  </div>
-                  <div className="space-y-1.5">
-                    {availableMonths.map(({ key, label }) => {
-                      const isChecked = !!selectedChart3Months[key];
-                      return (
-                        <div 
-                          key={key} 
-                          onClick={() => toggleMonthSelection(key)}
-                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 cursor-pointer text-neutral-800"
-                        >
-                          {isChecked ? <CheckSquare className="w-4 h-4 text-blue-700" /> : <Square className="w-4 h-4 text-neutral-400" />}
-                          <span>{label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+      {/* MA TRẬN BƯU CỤC & NGÀY (Nền #DDDDDD, tiêu đề nền #FFFF33 chữ to, tên bưu cục màu đỏ #FF0000, có khoảng cách rõ ràng với bảng dưới) */}
+      <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4 space-y-6">
+        <div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-blue-700" />
+              {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
+              <h2 className="font-extrabold text-base uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm">
+                Ma trận hiệu suất vận hành theo bưu cục & ngày
+              </h2>
             </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Bộ lọc Loại hàng */}
+              <select 
+                value={chart3CategoryFilter} 
+                onChange={(e) => setChart3CategoryFilter(e.target.value)}
+                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <option value="all">Tất cả loại hàng</option>
+                <option value="Hàng mới ca 1">Hàng mới ca 1</option>
+                <option value="Hàng mới ca 2">Hàng mới ca 2</option>
+                <option value="Hàng tồn">Hàng tồn</option>
+              </select>
 
-            {/* Bộ lọc dạng bung sổ: Ngày, Tuần, Tháng */}
-            <div className="inline-flex rounded-lg border border-neutral-300 p-0.5 bg-white text-xs shadow-sm">
-              <button 
-                onClick={() => { setChart3ModeFilter('day'); setSelectedChart3Months({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'day' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
+              {/* Bộ lọc Bưu cục */}
+              <select 
+                value={chart3BranchFilter} 
+                onChange={(e) => setChart3BranchFilter(e.target.value)}
+                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
               >
-                Ngày (N-1)
-              </button>
-              <button 
-                onClick={() => { setChart3ModeFilter('week'); setSelectedChart3Months({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'week' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
-              >
-                Tuần
-              </button>
-              <button 
-                onClick={() => { setChart3ModeFilter('month'); setSelectedChart3Months({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'month' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
-              >
-                Tháng
-              </button>
+                <option value="all">Tất cả bưu cục</option>
+                {allBranchesList.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+
+              {/* Bộ lọc chọn Tháng */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
+                  className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-blue-700" />
+                  <span>{currentChart3MonthLabel}</span>
+                  <ChevronDown className="w-3 h-3 ml-1" />
+                </button>
+
+                {showChart3MonthPicker && (
+                  <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-300 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 text-xs">
+                      <span className="font-semibold text-neutral-800">Chọn tháng (Giảm dần)</span>
+                      <button 
+                        onClick={() => setSelectedChart3Months({})} 
+                        className="text-blue-700 hover:underline text-[11px]"
+                      >
+                        Bỏ chọn tất cả
+                      </button>
+                    </div>
+                    <div className="space-y-1.5">
+                      {availableMonths.map(({ key, label }) => {
+                        const isChecked = !!selectedChart3Months[key];
+                        return (
+                          <div 
+                            key={key} 
+                            onClick={() => toggleMonthSelection(key)}
+                            className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 cursor-pointer text-neutral-800"
+                          >
+                            {isChecked ? <CheckSquare className="w-4 h-4 text-blue-700" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bộ lọc dạng bung sổ: Ngày, Tuần, Tháng */}
+              <div className="inline-flex rounded-lg border border-neutral-300 p-0.5 bg-white text-xs shadow-sm">
+                <button 
+                  onClick={() => { setChart3ModeFilter('day'); setSelectedChart3Months({}); }} 
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'day' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
+                >
+                  Ngày (N-1)
+                </button>
+                <button 
+                  onClick={() => { setChart3ModeFilter('week'); setSelectedChart3Months({}); }} 
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'week' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
+                >
+                  Tuần
+                </button>
+                <button 
+                  onClick={() => { setChart3ModeFilter('month'); setSelectedChart3Months({}); }} 
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'month' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
+                >
+                  Tháng
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, mở rộng chiều cao trọn vẹn 5 bưu cục không cần thanh trượt dọc */}
-        <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
-          <table className="w-full border-collapse text-xs text-left">
-            <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
-              <tr>
-                <th className="p-3 sticky left-0 z-30 bg-neutral-200 border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
-                {matrixDates.map(dStr => {
-                  const parsed = parseDateString(dStr);
-                  const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
-                  return (
-                    <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
-                      {headerTitle}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200 font-medium">
-              {matrixBranches.length === 0 ? (
+          {/* Khung cuộn ngang (Scroll X) không dùng thanh trượt dọc */}
+          <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
+            <table className="w-full border-collapse text-xs text-left">
+              <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
                 <tr>
-                  <td colSpan={matrixDates.length + 1} className="p-6 text-center text-neutral-500">Không có dữ liệu bưu cục.</td>
+                  <th className="p-3 sticky left-0 z-30 bg-neutral-200 border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
+                  {matrixDates.map(dStr => {
+                    const parsed = parseDateString(dStr);
+                    const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
+                    return (
+                      <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
+                        {headerTitle}
+                      </th>
+                    );
+                  })}
                 </tr>
-              ) : (
-                matrixBranches.map((branch, bIdx) => (
-                  <tr key={branch} className="hover:bg-neutral-50">
-                    {/* Tên các Bưu cục chữ to, màu đỏ #FF0000 */}
-                    <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-sm border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
-                      {bIdx + 1}. {branch}
-                    </td>
-                    {matrixDates.map(dStr => {
-                      const cell = matrixDataMap[branch]?.[dStr];
-                      const vol = cell?.volume || 0;
-                      const ca1 = cell?.ca1 || 0;
-                      const ca2 = cell?.ca2 || 0;
-                      const backlog = cell?.backlog || 0;
-                      const gtc = cell?.gtcRate || 0;
-                      const isLow = gtc < 60;
-
-                      return (
-                        <td key={dStr} className="p-2.5 text-center border-r border-neutral-200 align-middle">
-                          {vol > 0 ? (
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'}`}>
-                                {gtc.toFixed(1)}%
-                              </span>
-                              <div className="text-[11px] text-neutral-800 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-100 px-1.5 py-1 rounded w-full font-semibold">
-                                <span><strong className="text-neutral-500">Vol:</strong> {vol.toFixed(1)}</span>
-                                <span><strong className="text-amber-600">Ca 1:</strong> {ca1.toFixed(1)}</span>
-                                <span><strong className="text-cyan-600">Ca 2:</strong> {ca2.toFixed(1)}</span>
-                                <span><strong className="text-rose-600">Tồn:</strong> {backlog.toFixed(1)}</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-neutral-400">—</span>
-                          )}
-                        </td>
-                      );
-                    })}
+              </thead>
+              <tbody className="divide-y divide-neutral-200 font-medium">
+                {matrixBranches.length === 0 ? (
+                  <tr>
+                    <td colSpan={matrixDates.length + 1} className="p-6 text-center text-neutral-500">Không có dữ liệu bưu cục.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  matrixBranches.map((branch, bIdx) => (
+                    <tr key={branch} className="hover:bg-neutral-50">
+                      {/* Tên các Bưu cục chữ to, màu đỏ #FF0000 */}
+                      <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-sm border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
+                        {bIdx + 1}. {branch}
+                      </td>
+                      {matrixDates.map(dStr => {
+                        const cell = matrixDataMap[branch]?.[dStr];
+                        const vol = cell?.volume || 0;
+                        const ca1 = cell?.ca1 || 0;
+                        const ca2 = cell?.ca2 || 0;
+                        const backlog = cell?.backlog || 0;
+                        const gtc = cell?.gtcRate || 0;
+                        const isLow = gtc < 60;
+
+                        return (
+                          <td key={dStr} className="p-2.5 text-center border-r border-neutral-200 align-middle">
+                            {vol > 0 ? (
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'}`}>
+                                  {gtc.toFixed(1)}%
+                                </span>
+                                <div className="text-[11px] text-neutral-800 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-100 px-1.5 py-1 rounded w-full font-semibold">
+                                  <span><strong className="text-neutral-500">Vol:</strong> {vol.toFixed(1)}</span>
+                                  <span><strong className="text-amber-600">Ca 1:</strong> {ca1.toFixed(1)}</span>
+                                  <span><strong className="text-cyan-600">Ca 2:</strong> {ca2.toFixed(1)}</span>
+                                  <span><strong className="text-rose-600">Tồn:</strong> {backlog.toFixed(1)}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-neutral-400">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ TRÊN NỀN #DDDDDD */}
-        <div className="mt-6 pt-4 border-t border-neutral-300">
-          <h3 className="font-extrabold text-sm uppercase text-neutral-900 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-700" /> Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
-          </h3>
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ (Có khoảng cách phân biệt rõ ràng và tô màu nền tiêu đề #FFFF33) */}
+        <div className="pt-6 border-t border-neutral-300">
+          <div className="mb-3">
+            <h3 className="font-extrabold text-sm uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm inline-block">
+              Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
+            </h3>
+          </div>
           <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
             <table className="w-full text-center border-collapse text-xs">
               <thead className="bg-neutral-200 text-neutral-900 uppercase font-bold text-sm">
