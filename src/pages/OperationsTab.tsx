@@ -30,14 +30,20 @@ export default function OperationsTab() {
   const [showN1DatePicker, setShowN1DatePicker] = useState<boolean>(false);
 
   // Bộ lọc cho Biểu đồ 1 (Theo bưu cục)
-  const [chart1TimeFilter, setChart1TimeFilter] = useState<'week' | 'month' | 'all'>('week');
+  const [chart1ModeFilter, setChart1ModeFilter] = useState<'day' | 'week' | 'month'>('week');
   const [chart1BranchFilter, setChart1BranchFilter] = useState<string>('all');
+  const [chart1CategoryFilter, setChart1CategoryFilter] = useState<string>('all');
 
   // Bộ lọc cho Biểu đồ 2 (Theo ngày)
   const [chart2TimeFilter, setChart2TimeFilter] = useState<'week' | 'month' | 'all'>('week');
   const [chart2BranchFilter, setChart2BranchFilter] = useState<string>('all');
+  const [chart2CategoryFilter, setChart2CategoryFilter] = useState<string>('all');
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
+
+  // Bộ lọc cho Biểu đồ ma trận dạng bảng / chart ngang theo đúng ảnh mô tả (Trục Y: Bưu cục, Trục X: Ngày giảm dần có thanh trượt ngang)
+  const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
+  const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
 
   // Bộ lọc cho Bảng Chi tiết bưu cục
   const [timeFilter, setTimeFilter] = useState<'all' | 'day' | 'week' | 'month'>('all');
@@ -57,7 +63,7 @@ export default function OperationsTab() {
     return Array.from(set).sort((a, b) => {
       const dateA = parseDateString(a);
       const dateB = parseDateString(b);
-      return compareDesc(dateA, dateB);
+      return compareDesc(dateA, dateB); // Ngày mới nhất trước (giảm dần)
     });
   }, [operationsData]);
 
@@ -155,12 +161,16 @@ export default function OperationsTab() {
 
     const filtered = operationsData.filter(row => {
       if (chart1BranchFilter !== 'all' && row.branch !== chart1BranchFilter) return false;
+      if (chart1CategoryFilter !== 'all' && row.category.toLowerCase() !== chart1CategoryFilter.toLowerCase()) return false;
+      
       const rowDate = parseDateString(row.date);
       if (!isValid(rowDate)) return false;
 
-      if (chart1TimeFilter === 'week') {
+      if (chart1ModeFilter === 'day') {
+        return row.date === n1Str;
+      } else if (chart1ModeFilter === 'week') {
         return rowDate >= weekAgo && rowDate <= currentDate;
-      } else if (chart1TimeFilter === 'month') {
+      } else if (chart1ModeFilter === 'month') {
         return rowDate >= monthStart && rowDate <= currentDate;
       }
       return true;
@@ -184,7 +194,7 @@ export default function OperationsTab() {
       ...item,
       '%GTC': Number((safeDivide(item.totalGtc, item.totalVol) * 100).toFixed(1)),
     }));
-  }, [operationsData, chart1TimeFilter, chart1BranchFilter, dateContext.n1]);
+  }, [operationsData, chart1ModeFilter, chart1BranchFilter, chart1CategoryFilter, dateContext.n1, n1Str]);
 
   const allBranchesList = useMemo(() => {
     const set = new Set<string>();
@@ -201,6 +211,8 @@ export default function OperationsTab() {
 
     const filtered = operationsData.filter(row => {
       if (chart2BranchFilter !== 'all' && row.branch !== chart2BranchFilter) return false;
+      if (chart2CategoryFilter !== 'all' && row.category.toLowerCase() !== chart2CategoryFilter.toLowerCase()) return false;
+
       const rowDate = parseDateString(row.date);
 
       if (hasSelected) {
@@ -241,7 +253,65 @@ export default function OperationsTab() {
         ...item,
         '%GTC': Number((safeDivide(item.totalGtc, item.totalVol) * 100).toFixed(1)),
       }));
-  }, [operationsData, chart2TimeFilter, chart2BranchFilter, selectedChart2Dates, dateContext.n1]);
+  }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
+
+  // 5. DỮ LIỆU MA TRẬN THEO HÌNH ẢNH MÔ TẢ (Trục Y cố định: Bưu cục, Trục X phía trên cố định: Ngày tháng giảm dần có thanh trượt ngang)
+  const matrixDates = useMemo(() => {
+    return availableDates; // đã sort giảm dần N-1, N-2, N-3,...
+  }, [availableDates]);
+
+  // Lấy danh sách bưu cục duy nhất
+  const matrixBranches = useMemo(() => {
+    const set = new Set<string>();
+    operationsData.forEach(r => { if (r.branch) set.add(r.branch); });
+    let list = Array.from(set);
+    if (chart3BranchFilter !== 'all') {
+      list = list.filter(b => b === chart3BranchFilter);
+    }
+    return list;
+  }, [operationsData, chart3BranchFilter]);
+
+  // Map dữ liệu theo [bưu cục][ngày] để render bảng ma trận dạng cuộn ngang
+  const matrixDataMap = useMemo(() => {
+    const map: Record<string, Record<string, { volume: number; ca1: number; ca2: number; backlog: number; gtcRate: number }>> = {};
+    
+    operationsData.forEach(row => {
+      if (chart3CategoryFilter !== 'all' && row.category.toLowerCase() !== chart3CategoryFilter.toLowerCase()) return;
+      const b = row.branch || 'Khác';
+      const d = row.date || '';
+      if (!map[b]) map[b] = {};
+      if (!map[b][d]) {
+        map[b][d] = { volume: 0, ca1: 0, ca2: 0, backlog: 0, gtcRate: 0 };
+      }
+      
+      map[b][d].volume += row.volume;
+      map[b][d].backlog += row.backlog;
+      
+      const cat = row.category.toLowerCase();
+      if (cat.includes('ca 1')) map[b][d].ca1 += row.volume;
+      else if (cat.includes('ca 2')) map[b][d].ca2 += row.volume;
+      else if (cat.includes('tồn')) map[b][d].backlog += row.volume;
+    });
+
+    // Tính %GTC cho từng ô (SLĐ GTC / Volume)
+    operationsData.forEach(row => {
+      if (chart3CategoryFilter !== 'all' && row.category.toLowerCase() !== chart3CategoryFilter.toLowerCase()) return;
+      const b = row.branch || 'Khác';
+      const d = row.date || '';
+      if (map[b] && map[b][d]) {
+        const rowsForCell = operationsData.filter(r => {
+          if (r.branch !== b || r.date !== d) return false;
+          if (chart3CategoryFilter !== 'all' && r.category.toLowerCase() !== chart3CategoryFilter.toLowerCase()) return false;
+          return true;
+        });
+        const totalV = rowsForCell.reduce((s, r) => s + r.volume, 0);
+        const totalG = rowsForCell.reduce((s, r) => s + r.gtcVolume, 0);
+        map[b][d].gtcRate = safeDivide(totalG, totalV) * 100;
+      }
+    });
+
+    return map;
+  }, [operationsData, chart3CategoryFilter]);
 
   // 4. DỮ LIỆU CHI TIẾT BƯU CỤC
   const toggleDateSelection = (dateStr: string) => {
@@ -339,6 +409,96 @@ export default function OperationsTab() {
         </div>
       </div>
 
+      {/* BIỂU ĐỒ MA TRẬN CUỘN NGANG THEO ẢNH MÔ TẢ (Trục Y: Bưu cục cố định, Trục X trên: Ngày giảm dần có thanh trượt ngang) */}
+      <div className="bg-neutral-900 text-white rounded-xl shadow-lg border border-neutral-800 p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-800">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold text-sm uppercase text-neutral-200">Ma trận hiệu suất vận hành theo bưu cục & ngày (Cuộn ngang)</h2>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <select 
+              value={chart3CategoryFilter} 
+              onChange={(e) => setChart3CategoryFilter(e.target.value)}
+              className="bg-neutral-800 text-white border border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả phân loại</option>
+              <option value="Hàng mới ca 1">Hàng mới ca 1</option>
+              <option value="Hàng mới ca 2">Hàng mới ca 2</option>
+              <option value="Hàng tồn">Hàng tồn</option>
+            </select>
+
+            <select 
+              value={chart3BranchFilter} 
+              onChange={(e) => setChart3BranchFilter(e.target.value)}
+              className="bg-neutral-800 text-white border border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả bưu cục</option>
+              {allBranchesList.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái */}
+        <div className="overflow-x-auto max-h-[500px] rounded-lg border border-neutral-800">
+          <table className="w-full border-collapse text-xs text-left">
+            <thead className="bg-neutral-950 sticky top-0 z-20 text-neutral-400 uppercase">
+              <tr>
+                <th className="p-3 sticky left-0 z-30 bg-neutral-950 border-r border-neutral-800 w-44 shadow-md">Bưu Cục</th>
+                {matrixDates.map(dStr => {
+                  const parsed = parseDateString(dStr);
+                  const headerTitle = isValid(parsed) ? `${format(parsed, 'dd.MM.yy')} (${format(parsed, 'EEE')})` : dStr;
+                  return (
+                    <th key={dStr} className="p-3 text-center border-r border-neutral-800 min-w-[120px] bg-neutral-950">
+                      {headerTitle}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800 font-medium">
+              {matrixBranches.length === 0 ? (
+                <tr>
+                  <td colSpan={matrixDates.length + 1} className="p-6 text-center text-neutral-500">Không có dữ liệu bưu cục.</td>
+                </tr>
+              ) : (
+                matrixBranches.map((branch, bIdx) => (
+                  <tr key={branch} className="hover:bg-neutral-800/40">
+                    <td className="p-3 sticky left-0 z-10 bg-neutral-900 font-bold border-r border-neutral-800 shadow-md text-primary">
+                      {bIdx + 1}. {branch}
+                    </td>
+                    {matrixDates.map(dStr => {
+                      const cell = matrixDataMap[branch]?.[dStr];
+                      const vol = cell?.volume || 0;
+                      const gtc = cell?.gtcRate || 0;
+                      const isLow = gtc < 60;
+
+                      return (
+                        <td key={dStr} className="p-2 text-center border-r border-neutral-800/60 align-middle">
+                          {vol > 0 ? (
+                            <div className="flex flex-col items-center justify-center gap-0.5">
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
+                                {gtc.toFixed(2)}%
+                              </span>
+                              <span className="text-[10px] text-neutral-400">Vol: {vol.toLocaleString()}</span>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-600">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* BIỂU ĐỒ 1: HIỆU SUẤT THEO BƯU CỤC */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
@@ -348,6 +508,17 @@ export default function OperationsTab() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            <select 
+              value={chart1CategoryFilter} 
+              onChange={(e) => setChart1CategoryFilter(e.target.value)}
+              className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả phân loại</option>
+              <option value="Hàng mới ca 1">Hàng mới ca 1</option>
+              <option value="Hàng mới ca 2">Hàng mới ca 2</option>
+              <option value="Hàng tồn">Hàng tồn</option>
+            </select>
+
             <select 
               value={chart1BranchFilter} 
               onChange={(e) => setChart1BranchFilter(e.target.value)}
@@ -361,22 +532,22 @@ export default function OperationsTab() {
 
             <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
               <button 
-                onClick={() => setChart1TimeFilter('week')} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'week' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => setChart1ModeFilter('day')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1ModeFilter === 'day' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
               >
-                7 Ngày gần nhất
+                Ngày (N-1)
               </button>
               <button 
-                onClick={() => setChart1TimeFilter('month')} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => setChart1ModeFilter('week')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1ModeFilter === 'week' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
               >
-                Tháng này
+                Tuần
               </button>
               <button 
-                onClick={() => setChart1TimeFilter('all')} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'all' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => setChart1ModeFilter('month')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1ModeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
               >
-                Tất cả
+                Tháng
               </button>
             </div>
           </div>
@@ -392,8 +563,8 @@ export default function OperationsTab() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
                 formatter={(value: any, name: any) => [
-                  name === '%GTC' ? `${value}%` : Number(value || 0).toLocaleString(), 
-                  String(name || '')
+                  name === '%GTC' ? `${value}%` : Number(value).toLocaleString(), 
+                  name
                 ]}
               />
               <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
@@ -415,7 +586,17 @@ export default function OperationsTab() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            {/* Lọc Bưu cục */}
+            <select 
+              value={chart2CategoryFilter} 
+              onChange={(e) => setChart2CategoryFilter(e.target.value)}
+              className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả phân loại</option>
+              <option value="Hàng mới ca 1">Hàng mới ca 1</option>
+              <option value="Hàng mới ca 2">Hàng mới ca 2</option>
+              <option value="Hàng tồn">Hàng tồn</option>
+            </select>
+
             <select 
               value={chart2BranchFilter} 
               onChange={(e) => setChart2BranchFilter(e.target.value)}
@@ -427,7 +608,6 @@ export default function OperationsTab() {
               ))}
             </select>
 
-            {/* Bộ lọc tick chọn ngày */}
             <div className="relative">
               <button 
                 onClick={() => setShowChart2DatePicker(!showChart2DatePicker)}
@@ -468,7 +648,6 @@ export default function OperationsTab() {
               )}
             </div>
 
-            {/* Lọc theo tuần / tháng */}
             <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
               <button 
                 onClick={() => { setChart2TimeFilter('week'); setSelectedChart2Dates({}); }} 
@@ -478,15 +657,9 @@ export default function OperationsTab() {
               </button>
               <button 
                 onClick={() => { setChart2TimeFilter('month'); setSelectedChart2Dates({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'month' && Object.values(selectedChart2Dates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
               >
                 Tháng này
-              </button>
-              <button 
-                onClick={() => { setChart2TimeFilter('all'); setSelectedChart2Dates({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'all' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
-              >
-                Tất cả
               </button>
             </div>
           </div>
@@ -502,8 +675,8 @@ export default function OperationsTab() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
                 formatter={(value: any, name: any) => [
-                  name === '%GTC' ? `${value}%` : Number(value || 0).toLocaleString(), 
-                  String(name || '')
+                  name === '%GTC' ? `${value}%` : Number(value).toLocaleString(), 
+                  name
                 ]}
               />
               <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
@@ -574,7 +747,7 @@ export default function OperationsTab() {
                 <th className="p-2 border-r border-blue-400">% GTC</th>
                 <th className="p-2 border-r border-blue-400">SLĐ GTC</th>
                 <th className="p-2 border-r border-blue-400">Tồn đọng</th>
-                <th className="p-2 w-28">Tổng %GTC & Ghi chú</th>
+                <th className="p-2 w-36 text-base font-extrabold">Tổng %GTC & Ghi chú</th>
               </tr>
             </thead>
             <tbody className="font-bold">
@@ -623,7 +796,7 @@ export default function OperationsTab() {
                         
                         {idx === 0 ? (
                           <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={3}>
-                            <div className={`font-bold text-sm ${isLowGtc ? 'text-[#FF0000]' : ''}`}>
+                            <div className={`font-black text-lg ${isLowGtc ? 'text-[#FF0000]' : ''}`}>
                               {(bMeta.branchGtcRate * 100).toFixed(1)}%
                             </div>
                             {isLowGtc && <div className="text-xs text-[#FF0000] font-bold leading-tight">Cảnh báo</div>}
@@ -746,7 +919,7 @@ export default function OperationsTab() {
                   >
                     <div className="flex items-center gap-2 font-semibold">
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-primary" /> : <ChevronRight className="w-4 h-4 text-neutral-400" />}
-                      <span>{branch}</span>
+                      <span className="text-base font-extrabold text-[#FF0000]">{branch}</span>
                       <span className="font-normal px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
                         {rows.length} dòng
                       </span>
@@ -762,18 +935,18 @@ export default function OperationsTab() {
                   {isExpanded && (
                     <div className="p-3 bg-white dark:bg-neutral-900">
                       <div className="overflow-x-auto max-h-[350px] border border-neutral-200 dark:border-neutral-800 rounded-lg">
-                        <table className="w-full text-left border-collapse text-xs">
+                        <table className="w-full text-center border-collapse text-xs">
                           <thead className="bg-[#0000FF] text-white sticky top-0 z-10 uppercase font-bold text-sm">
                             <tr>
                               <th className="p-2 border-r border-blue-400">Ngày</th>
                               <th className="p-2 border-r border-blue-400">Loại hàng</th>
-                              <th className="p-2 text-right border-r border-blue-400">Volume</th>
-                              <th className="p-2 text-right border-r border-blue-400">% Gán</th>
-                              <th className="p-2 text-right border-r border-blue-400">SLĐ Gán</th>
-                              <th className="p-2 text-right border-r border-blue-400">% GTC</th>
-                              <th className="p-2 text-right border-r border-blue-400">SLĐ GTC</th>
-                              <th className="p-2 text-right border-r border-blue-400">Tồn đọng</th>
-                              <th className="p-2 text-center">Trạng thái</th>
+                              <th className="p-2 border-r border-blue-400">Volume</th>
+                              <th className="p-2 border-r border-blue-400">% Gán</th>
+                              <th className="p-2 border-r border-blue-400">SLĐ Gán</th>
+                              <th className="p-2 border-r border-blue-400">% GTC</th>
+                              <th className="p-2 border-r border-blue-400">SLĐ GTC</th>
+                              <th className="p-2 border-r border-blue-400">Tồn đọng</th>
+                              <th className="p-2">Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-bold">
@@ -783,14 +956,14 @@ export default function OperationsTab() {
                                 <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 font-bold">
                                   <td className="p-2 font-bold">{item.date}</td>
                                   <td className="p-2 font-bold">{item.category}</td>
-                                  <td className="p-2 text-right font-bold">{item.volume.toLocaleString()}</td>
-                                  <td className="p-2 text-right font-bold">{(item.assignedRate * 100).toFixed(1)}%</td>
-                                  <td className="p-2 text-right font-bold">{item.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                                  <td className="p-2 text-right font-bold">{(item.gtcRate * 100).toFixed(1)}%</td>
-                                  <td className="p-2 text-right font-bold">{item.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                                  <td className="p-2 text-right font-bold text-red-600">{item.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                                  <td className="p-2 text-center font-bold">
-                                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
+                                  <td className="p-2 font-bold">{item.volume.toLocaleString()}</td>
+                                  <td className="p-2 font-bold">{(item.assignedRate * 100).toFixed(1)}%</td>
+                                  <td className="p-2 font-bold">{item.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 font-bold">{(item.gtcRate * 100).toFixed(1)}%</td>
+                                  <td className="p-2 font-bold">{item.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 font-bold text-red-600">{item.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 font-bold">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
                                       item.status === 'Critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                       item.status === 'Warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                                       'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
