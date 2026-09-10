@@ -41,8 +41,12 @@ export default function OperationsTab() {
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
 
-  // Bộ lọc cho Ma trận bưu cục & ngày
+  // Bộ lọc cho Ma trận bưu cục & ngày (Theo yêu cầu: Lọc loại hàng, lọc bưu cục, tick chọn ngày, dạng bung sổ Ngày/Tuần/Tháng)
+  const [chart3ModeFilter, setChart3ModeFilter] = useState<'day' | 'week' | 'month'>('week');
   const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
+  const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
+  const [selectedChart3Dates, setSelectedChart3Dates] = useState<Record<string, boolean>>({});
+  const [showChart3DatePicker, setShowChart3DatePicker] = useState<boolean>(false);
 
   // Bộ lọc cho Bảng Chi tiết bưu cục
   const [timeFilter, setTimeFilter] = useState<'all' | 'day' | 'week' | 'month'>('all');
@@ -83,7 +87,7 @@ export default function OperationsTab() {
 
     filteredN1DataRaw.forEach(row => {
       const b = row.branch || 'Khác';
-      if (b.toLowerCase() === 'khác') return; // Loại bỏ nội dung "Khác"
+      if (b.toLowerCase() === 'khác') return;
       if (!map[b]) {
         map[b] = {};
         categories.forEach(c => {
@@ -160,7 +164,7 @@ export default function OperationsTab() {
     const monthStart = startOfMonth(currentDate);
 
     const filtered = operationsData.filter(row => {
-      if (row.branch.toLowerCase() === 'khác') return false; // Loại bỏ "Khác"
+      if (row.branch.toLowerCase() === 'khác') return false;
       if (chart1BranchFilter !== 'all' && row.branch !== chart1BranchFilter) return false;
       if (chart1CategoryFilter !== 'all' && row.category.toLowerCase() !== chart1CategoryFilter.toLowerCase()) return false;
       
@@ -211,7 +215,7 @@ export default function OperationsTab() {
     const hasSelected = Object.values(selectedChart2Dates).some(v => v);
 
     const filtered = operationsData.filter(row => {
-      if (row.branch.toLowerCase() === 'khác') return false; // Loại bỏ "Khác"
+      if (row.branch.toLowerCase() === 'khác') return false;
       if (chart2BranchFilter !== 'all' && row.branch !== chart2BranchFilter) return false;
       if (chart2CategoryFilter !== 'all' && row.category.toLowerCase() !== chart2CategoryFilter.toLowerCase()) return false;
 
@@ -257,10 +261,30 @@ export default function OperationsTab() {
       }));
   }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
 
-  // 5. DỮ LIỆU MA TRẬN BƯU CỤC & NGÀY (Loại bỏ "Khác")
+  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY (Có đầy đủ bộ lọc, hiển thị tròn 1 số sau dấu phẩy)
   const matrixDates = useMemo(() => {
-    return availableDates;
-  }, [availableDates]);
+    const currentDate = dateContext.n1;
+    const weekAgo = subDays(currentDate, 7);
+    const monthStart = startOfMonth(currentDate);
+    const hasSelected = Object.values(selectedChart3Dates).some(v => v);
+
+    return availableDates.filter(dStr => {
+      const rowDate = parseDateString(dStr);
+      if (hasSelected) {
+        return !!selectedChart3Dates[dStr];
+      } else {
+        if (!isValid(rowDate)) return false;
+        if (chart3ModeFilter === 'day') {
+          return dStr === n1Str;
+        } else if (chart3ModeFilter === 'week') {
+          return rowDate >= weekAgo && rowDate <= currentDate;
+        } else if (chart3ModeFilter === 'month') {
+          return rowDate >= monthStart && rowDate <= currentDate;
+        }
+      }
+      return true;
+    });
+  }, [availableDates, chart3ModeFilter, selectedChart3Dates, dateContext.n1, n1Str]);
 
   const matrixBranches = useMemo(() => {
     const set = new Set<string>();
@@ -269,7 +293,7 @@ export default function OperationsTab() {
     if (chart3BranchFilter !== 'all') {
       list = list.filter(b => b === chart3BranchFilter);
     }
-    return list;
+    return list; // Đảm bảo trả về đúng số lượng bưu cục (5 bưu cục) để hiển thị trọn vẹn không cần scroll dọc
   }, [operationsData, chart3BranchFilter]);
 
   const matrixDataMap = useMemo(() => {
@@ -278,6 +302,8 @@ export default function OperationsTab() {
     operationsData.forEach(row => {
       const b = row.branch || 'Khác';
       if (b.toLowerCase() === 'khác') return;
+      if (chart3CategoryFilter !== 'all' && row.category.toLowerCase() !== chart3CategoryFilter.toLowerCase()) return;
+
       const d = row.date || '';
       if (!map[b]) map[b] = {};
       if (!map[b][d]) {
@@ -295,23 +321,24 @@ export default function OperationsTab() {
     operationsData.forEach(row => {
       const b = row.branch || 'Khác';
       if (b.toLowerCase() === 'khác') return;
+      if (chart3CategoryFilter !== 'all' && row.category.toLowerCase() !== chart3CategoryFilter.toLowerCase()) return;
+
       const d = row.date || '';
       if (map[b] && map[b][d]) {
-        const rowsForCell = operationsData.filter(r => r.branch === b && r.date === d);
+        const rowsForCell = operationsData.filter(r => r.branch === b && r.date === d && (chart3CategoryFilter === 'all' || r.category.toLowerCase() === chart3CategoryFilter.toLowerCase()));
         const totalV = rowsForCell.reduce((s, r) => s + r.volume, 0);
         const totalG = rowsForCell.reduce((s, r) => s + r.gtcVolume, 0);
         map[b][d].gtcRate = safeDivide(totalG, totalV) * 100;
         
-        // Cập nhật lại tồn đọng chuẩn nếu có từ dữ liệu row
         const totalB = rowsForCell.reduce((s, r) => s + r.backlog, 0);
         map[b][d].backlog = totalB;
       }
     });
 
     return map;
-  }, [operationsData]);
+  }, [operationsData, chart3CategoryFilter]);
 
-  // BẢNG ĐÁNH GIÁ CHI TIẾT TỶ TRỌNG GTC, HÀNG HÓA, TỒN ĐỌNG CHO MA TRẬN
+  // BẢNG ĐÁNH GIÁ CHI TIẾT DỰA TRÊN 2 TIÊU CHÍ: %GTC VÀ HÀNG TỒN
   const matrixEvaluationList = useMemo(() => {
     const evaluation = matrixBranches.map(branch => {
       let totalVolBranch = 0;
@@ -336,14 +363,27 @@ export default function OperationsTab() {
       const ca2Ratio = safeDivide(totalCa2Branch, totalVolBranch) * 100;
       const backlogRatio = safeDivide(totalBacklogBranch, totalVolBranch) * 100;
 
-      let status = 'Ổn định';
+      // Đánh giá dựa trên 2 tiêu chí: %GTC và Hàng tồn
+      let status = 'Vận hành tối ưu';
       let statusColor = 'text-emerald-500 bg-emerald-950/40 border-emerald-800';
-      if (avgGtcRate < 70 || backlogRatio > 15) {
-        status = 'Nguy động / Tồn cao';
+      let recommendation = 'Duy trì phong độ, tỷ trọng GTC tốt và kiểm soát tồn đọng hiệu quả.';
+
+      if (avgGtcRate < 70 && backlogRatio > 10) {
+        status = 'Nguy động cấp độ 1';
         statusColor = 'text-red-400 bg-red-950/40 border-red-800';
+        recommendation = '%GTC thấp (<70%) và tồn đọng cao (>10%). Cần đẩy mạnh xử lý tồn đọng và coaching nhân sự gấp.';
+      } else if (avgGtcRate < 70) {
+        status = '%GTC thấp';
+        statusColor = 'text-red-400 bg-red-950/40 border-red-800';
+        recommendation = 'Tỷ lệ %GTC dưới 70%. Cần kiểm tra năng suất giao nhận và nguyên nhân giao hàng không thành công.';
+      } else if (backlogRatio > 10) {
+        status = 'Tồn đọng cao';
+        statusColor = 'text-amber-400 bg-amber-950/40 border-amber-800';
+        recommendation = 'Hàng tồn đọng chiếm tỷ trọng cao (>10%). Cần bổ sung nhân sự tăng ca giải quyết backlog.';
       } else if (avgGtcRate < 85) {
         status = 'Cần cải thiện';
         statusColor = 'text-amber-400 bg-amber-950/40 border-amber-800';
+        recommendation = '%GTC ở mức trung bình (70% - 85%). Đôn đốc nhân viên bám sát tiến độ giao hàng.';
       }
 
       return {
@@ -358,6 +398,7 @@ export default function OperationsTab() {
         avgGtcRate,
         status,
         statusColor,
+        recommendation,
       };
     });
 
@@ -377,6 +418,10 @@ export default function OperationsTab() {
     setSelectedChart2Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
   };
 
+  const toggleChart3DateSelection = (dateStr: string) => {
+    setSelectedChart3Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
+  };
+
   const isDateInWeekOfN1 = (dateStr: string) => {
     const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
     if (!isValid(parsedDate)) return false;
@@ -389,7 +434,7 @@ export default function OperationsTab() {
     const hasSelectedDates = Object.values(selectedDates).some(v => v);
 
     return operationsData.filter(row => {
-      if (row.branch.toLowerCase() === 'khác') return false; // Loại bỏ "Khác"
+      if (row.branch.toLowerCase() === 'khác') return false;
       if (filters.branch !== 'all' && row.branch !== filters.branch) return false;
       if (filters.category !== 'all' && row.category !== filters.category) return false;
 
@@ -450,6 +495,9 @@ export default function OperationsTab() {
   const activeChart2Count = Object.values(selectedChart2Dates).filter(Boolean).length;
   const currentChart2Label = activeChart2Count > 0 ? `Đã chọn (${activeChart2Count} ngày)` : 'Chọn ngày tùy ý';
 
+  const activeChart3Count = Object.values(selectedChart3Dates).filter(Boolean).length;
+  const currentChart3Label = activeChart3Count > 0 ? `Đã chọn (${activeChart3Count} ngày)` : 'Chọn ngày tùy ý';
+
   const branchKeys = Object.keys(n1ByBranchAndCategory);
 
   return (
@@ -461,7 +509,7 @@ export default function OperationsTab() {
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY */}
+      {/* MA TRẬN BƯU CỤC & NGÀY (Cố định cột Bưu cục bên trái, cố định hàng Ngày ở trên, tách 2 hàng cho %GTC và các chỉ số Vol, Ca 1, Ca 2, Tồn, làm tròn 1 số sau dấu phẩy, cân đối vừa vặn không cần thanh trượt dọc) */}
       <div className="bg-neutral-900 text-white rounded-xl shadow-lg border border-neutral-800 p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
@@ -470,6 +518,19 @@ export default function OperationsTab() {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            {/* Bộ lọc Loại hàng */}
+            <select 
+              value={chart3CategoryFilter} 
+              onChange={(e) => setChart3CategoryFilter(e.target.value)}
+              className="bg-neutral-800 text-white border border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả loại hàng</option>
+              <option value="Hàng mới ca 1">Hàng mới ca 1</option>
+              <option value="Hàng mới ca 2">Hàng mới ca 2</option>
+              <option value="Hàng tồn">Hàng tồn</option>
+            </select>
+
+            {/* Bộ lọc Bưu cục */}
             <select 
               value={chart3BranchFilter} 
               onChange={(e) => setChart3BranchFilter(e.target.value)}
@@ -480,11 +541,74 @@ export default function OperationsTab() {
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
+
+            {/* Bộ lọc tick chọn ngày */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowChart3DatePicker(!showChart3DatePicker)}
+                className="flex items-center gap-1.5 bg-neutral-800 text-white border border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{currentChart3Label}</span>
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+
+              {showChart3DatePicker && (
+                <div className="absolute right-0 mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-800 text-xs">
+                    <span className="font-semibold">Tick chọn ngày</span>
+                    <button 
+                      onClick={() => setSelectedChart3Dates({})} 
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {availableDates.map(d => {
+                      const isChecked = !!selectedChart3Dates[d];
+                      return (
+                        <div 
+                          key={d} 
+                          onClick={() => toggleChart3DateSelection(d)}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-800 cursor-pointer"
+                        >
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{d}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bộ lọc dạng bung sổ: Ngày, Tuần, Tháng */}
+            <div className="inline-flex rounded-lg border border-neutral-700 p-0.5 bg-neutral-800 text-xs">
+              <button 
+                onClick={() => { setChart3ModeFilter('day'); setSelectedChart3Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'day' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-neutral-900 shadow-sm text-primary' : 'text-neutral-400'}`}
+              >
+                Ngày (N-1)
+              </button>
+              <button 
+                onClick={() => { setChart3ModeFilter('week'); setSelectedChart3Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'week' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-neutral-900 shadow-sm text-primary' : 'text-neutral-400'}`}
+              >
+                Tuần
+              </button>
+              <button 
+                onClick={() => { setChart3ModeFilter('month'); setSelectedChart3Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'month' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-neutral-900 shadow-sm text-primary' : 'text-neutral-400'}`}
+              >
+                Tháng
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái */}
-        <div className="overflow-x-auto max-h-[500px] rounded-lg border border-neutral-800">
+        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, chiều cao cân đối đủ chứa 5 bưu cục không cần scroll dọc */}
+        <div className="overflow-x-auto max-h-[380px] rounded-lg border border-neutral-800">
           <table className="w-full border-collapse text-xs text-left">
             <thead className="bg-neutral-950 sticky top-0 z-20 text-neutral-400 uppercase">
               <tr>
@@ -524,16 +648,16 @@ export default function OperationsTab() {
                         <td key={dStr} className="p-2 text-center border-r border-neutral-800/60 align-middle">
                           {vol > 0 ? (
                             <div className="flex flex-col items-center justify-center gap-1">
-                              {/* Hàng 1: %GTC */}
+                              {/* Hàng 1: %GTC làm tròn 1 số sau dấu phẩy */}
                               <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
-                                {gtc.toFixed(2)}%
+                                {gtc.toFixed(1)}%
                               </span>
                               {/* Hàng 2: Vol, Ca 1, Ca 2, Tồn tách riêng rõ ràng */}
                               <div className="text-[10px] text-neutral-300 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-950/60 px-1.5 py-1 rounded w-full">
-                                <span><strong className="text-neutral-400">Vol:</strong> {vol}</span>
-                                <span><strong className="text-amber-400">Ca 1:</strong> {ca1}</span>
-                                <span><strong className="text-cyan-400">Ca 2:</strong> {ca2}</span>
-                                <span><strong className="text-rose-400">Tồn:</strong> {backlog}</span>
+                                <span><strong className="text-neutral-400">Vol:</strong> {vol.toFixed(1)}</span>
+                                <span><strong className="text-amber-400">Ca 1:</strong> {ca1.toFixed(1)}</span>
+                                <span><strong className="text-cyan-400">Ca 2:</strong> {ca2.toFixed(1)}</span>
+                                <span><strong className="text-rose-400">Tồn:</strong> {backlog.toFixed(1)}</span>
                               </div>
                             </div>
                           ) : (
@@ -549,10 +673,10 @@ export default function OperationsTab() {
           </table>
         </div>
 
-        {/* BẢNG ĐÁNH GIÁ CHI TIẾT TỶ TRỌNG GTC, HÀNG HÓA, TỒN ĐỌNG (Dưới ma trận) */}
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ CHI TIẾT DỰA TRÊN 2 TIÊU CHÍ (%GTC VÀ HÀNG TỒN) */}
         <div className="mt-6 pt-4 border-t border-neutral-800">
           <h3 className="font-semibold text-xs uppercase text-neutral-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> Bảng đánh giá chi tiết tỷ trọng GTC, cơ cấu hàng hóa & tồn đọng theo bưu cục
+            <TrendingUp className="w-4 h-4 text-primary" /> Bảng đánh giá & Khuyến nghị chi tiết dựa trên %GTC & Hàng tồn đọng
           </h3>
           <div className="overflow-x-auto rounded-lg border border-neutral-800">
             <table className="w-full text-center border-collapse text-xs">
@@ -564,22 +688,25 @@ export default function OperationsTab() {
                   <th className="p-2.5 border-r border-neutral-800">Tỷ trọng Ca 2</th>
                   <th className="p-2.5 border-r border-neutral-800">Tỷ trọng Tồn</th>
                   <th className="p-2.5 border-r border-neutral-800">%GTC Trung bình</th>
-                  <th className="p-2.5">Đánh giá & Khuyến nghị</th>
+                  <th className="p-2.5">Đánh giá & Khuyến nghị chi tiết</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
                 {matrixEvaluationList.map((item, idx) => (
                   <tr key={idx} className="hover:bg-neutral-800/40">
                     <td className="p-2.5 font-bold text-primary border-r border-neutral-800">{item.branch}</td>
-                    <td className="p-2.5 font-semibold border-r border-neutral-800">{item.totalVol.toLocaleString()}</td>
-                    <td className="p-2.5 border-r border-neutral-800">{item.ca1.toLocaleString()} ({item.ca1Ratio.toFixed(1)}%)</td>
-                    <td className="p-2.5 border-r border-neutral-800">{item.ca2.toLocaleString()} ({item.ca2Ratio.toFixed(1)}%)</td>
-                    <td className="p-2.5 text-red-400 font-semibold border-r border-neutral-800">{item.backlog.toLocaleString()} ({item.backlogRatio.toFixed(1)}%)</td>
-                    <td className="p-2.5 font-bold text-emerald-400 border-r border-neutral-800">{item.avgGtcRate.toFixed(2)}%</td>
-                    <td className="p-2.5">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.statusColor}`}>
-                        {item.status}
-                      </span>
+                    <td className="p-2.5 font-semibold border-r border-neutral-800">{item.totalVol.toFixed(1)}</td>
+                    <td className="p-2.5 border-r border-neutral-800">{item.ca1.toFixed(1)} ({item.ca1Ratio.toFixed(1)}%)</td>
+                    <td className="p-2.5 border-r border-neutral-800">{item.ca2.toFixed(1)} ({item.ca2Ratio.toFixed(1)}%)</td>
+                    <td className="p-2.5 text-red-400 font-semibold border-r border-neutral-800">{item.backlog.toFixed(1)} ({item.backlogRatio.toFixed(1)}%)</td>
+                    <td className="p-2.5 font-bold text-emerald-400 border-r border-neutral-800">{item.avgGtcRate.toFixed(1)}%</td>
+                    <td className="p-2.5 text-left">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border w-fit ${item.statusColor}`}>
+                          {item.status}
+                        </span>
+                        <span className="text-[11px] text-neutral-300">{item.recommendation}</span>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -653,7 +780,7 @@ export default function OperationsTab() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
                 formatter={(value: any, name: any) => [
-                  name === '%GTC' ? `${value}%` : Number(value).toLocaleString(), 
+                  name === '%GTC' ? `${Number(value).toFixed(1)}%` : Number(value).toFixed(1), 
                   name
                 ]}
               />
@@ -710,7 +837,7 @@ export default function OperationsTab() {
 
               {showChart2DatePicker && (
                 <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
                     <span className="font-semibold">Tick chọn ngày</span>
                     <button 
                       onClick={() => setSelectedChart2Dates({})} 
@@ -765,7 +892,7 @@ export default function OperationsTab() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
                 formatter={(value: any, name: any) => [
-                  name === '%GTC' ? `${value}%` : Number(value).toLocaleString(), 
+                  name === '%GTC' ? `${Number(value).toFixed(1)}%` : Number(value).toFixed(1), 
                   name
                 ]}
               />
@@ -875,14 +1002,14 @@ export default function OperationsTab() {
                           </td>
                         ) : null}
                         <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.category}</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toLocaleString()}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toFixed(1)}</td>
                         <td className={`p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 ${isCa1LowAssigned ? 'text-[#FF0000]' : ''}`}>
                           {(row.assignedRate * 100).toFixed(1)}%
                         </td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toFixed(1)}</td>
                         <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{(row.gtcRate * 100).toFixed(1)}%</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toFixed(1)}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toFixed(1)}</td>
                         
                         {idx === 0 ? (
                           <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={3}>
@@ -902,12 +1029,12 @@ export default function OperationsTab() {
               <tfoot className="bg-neutral-100 dark:bg-neutral-800 font-bold sticky bottom-0 z-10 text-sm border-t-2 border-neutral-400">
                 <tr>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center" colSpan={2}>TỔNG CỘNG TOÀN HỆ THỐNG</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toLocaleString()}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toFixed(1)}</td>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.assignedRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toFixed(1)}</td>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.gtcRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 text-red-600 font-bold text-center">{n1GlobalSummary.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 text-red-600 font-bold text-center">{n1GlobalSummary.backlog.toFixed(1)}</td>
                   <td className="p-2.5"></td>
                 </tr>
               </tfoot>
@@ -1015,10 +1142,10 @@ export default function OperationsTab() {
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div>Vol: <span className="font-semibold">{summary.volume.toLocaleString()}</span></div>
+                      <div>Vol: <span className="font-semibold">{summary.volume.toFixed(1)}</span></div>
                       <div>% Gán: <span className="font-semibold">{(summary.assignedRate * 100).toFixed(1)}%</span></div>
                       <div>% GTC: <span className="font-semibold text-emerald-600">{(summary.gtcRate * 100).toFixed(1)}%</span></div>
-                      <div>Tồn: <span className="font-semibold text-red-600">{summary.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</span></div>
+                      <div>Tồn: <span className="font-semibold text-red-600">{summary.backlog.toFixed(1)}</span></div>
                     </div>
                   </div>
 
@@ -1046,12 +1173,12 @@ export default function OperationsTab() {
                                 <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 font-bold">
                                   <td className="p-2 font-bold">{item.date}</td>
                                   <td className="p-2 font-bold">{item.category}</td>
-                                  <td className="p-2 font-bold">{item.volume.toLocaleString()}</td>
+                                  <td className="p-2 font-bold">{item.volume.toFixed(1)}</td>
                                   <td className="p-2 font-bold">{(item.assignedRate * 100).toFixed(1)}%</td>
-                                  <td className="p-2 font-bold">{item.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 font-bold">{item.assignedVolume.toFixed(1)}</td>
                                   <td className="p-2 font-bold">{(item.gtcRate * 100).toFixed(1)}%</td>
-                                  <td className="p-2 font-bold">{item.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
-                                  <td className="p-2 font-bold text-red-600">{item.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 font-bold">{item.gtcVolume.toFixed(1)}</td>
+                                  <td className="p-2 font-bold text-red-600">{item.backlog.toFixed(1)}</td>
                                   <td className="p-2 font-bold">
                                     <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
                                       item.status === 'Critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
