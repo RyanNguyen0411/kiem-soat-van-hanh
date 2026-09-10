@@ -41,12 +41,12 @@ export default function OperationsTab() {
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
 
-  // Bộ lọc cho Ma trận bưu cục & ngày
+  // Bộ lọc cho Ma trận bưu cục & ngày (Thêm bộ lọc Tháng: chọn tháng 9, tháng 8, tháng 7,...)
   const [chart3ModeFilter, setChart3ModeFilter] = useState<'day' | 'week' | 'month'>('week');
   const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
   const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
-  const [selectedChart3Dates, setSelectedChart3Dates] = useState<Record<string, boolean>>({});
-  const [showChart3DatePicker, setShowChart3DatePicker] = useState<boolean>(false);
+  const [selectedChart3Months, setSelectedChart3Months] = useState<Record<string, boolean>>({});
+  const [showChart3MonthPicker, setShowChart3MonthPicker] = useState<boolean>(false);
 
   // Bộ lọc cho Bảng Chi tiết bưu cục
   const [timeFilter, setTimeFilter] = useState<'all' | 'day' | 'week' | 'month'>('all');
@@ -69,6 +69,31 @@ export default function OperationsTab() {
       return compareDesc(dateA, dateB);
     });
   }, [operationsData]);
+
+  // Lấy danh sách các tháng có sẵn trong data (định dạng MM/yyyy hoặc "Tháng MM/yyyy" sắp xếp giảm dần tháng 9, tháng 8, tháng 7,...)
+  const availableMonths = useMemo(() => {
+    const map = new Map<string, string>(); // Key: 'MM/yyyy', Value label: 'Tháng MM/yyyy'
+    operationsData.forEach(r => {
+      if (r.date) {
+        const p = parseDateString(r.date);
+        if (isValid(p)) {
+          const mKey = format(p, 'MM/yyyy');
+          const mLabel = `Tháng ${format(p, 'MM/yyyy')}`;
+          map.set(mKey, mLabel);
+        }
+      }
+    });
+    // Sắp xếp tháng giảm dần (ví dụ tháng 09/2026, 08/2026, 07/2026...)
+    return Array.from(map.entries()).sort((a, b) => {
+      const dateA = parse(a[0], 'MM/yyyy', new Date());
+      const dateB = parse(b[0], 'MM/yyyy', new Date());
+      return compareDesc(dateA, dateB);
+    }).map(([key, label]) => ({ key, label }));
+  }, [operationsData]);
+
+  const toggleMonthSelection = (monthKey: string) => {
+    setSelectedChart3Months(prev => ({ ...prev, [monthKey]: !prev[monthKey] }));
+  };
 
   // 1. DỮ LIỆU BẢNG TỔNG HỢP THEO BƯU CỤC
   const filteredN1DataRaw = useMemo(() => {
@@ -261,19 +286,21 @@ export default function OperationsTab() {
       }));
   }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
 
-  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY
+  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY (Lọc theo tháng được chọn, hoặc theo Ngày/Tuần/Tháng)
   const matrixDates = useMemo(() => {
     const currentDate = dateContext.n1;
     const weekAgo = subDays(currentDate, 7);
     const monthStart = startOfMonth(currentDate);
-    const hasSelected = Object.values(selectedChart3Dates).some(v => v);
+    const hasSelectedMonths = Object.values(selectedChart3Months).some(v => v);
 
     return availableDates.filter(dStr => {
       const rowDate = parseDateString(dStr);
-      if (hasSelected) {
-        return !!selectedChart3Dates[dStr];
+      if (!isValid(rowDate)) return false;
+
+      if (hasSelectedMonths) {
+        const mKey = format(rowDate, 'MM/yyyy');
+        return !!selectedChart3Months[mKey];
       } else {
-        if (!isValid(rowDate)) return false;
         if (chart3ModeFilter === 'day') {
           return dStr === n1Str;
         } else if (chart3ModeFilter === 'week') {
@@ -284,7 +311,7 @@ export default function OperationsTab() {
       }
       return true;
     });
-  }, [availableDates, chart3ModeFilter, selectedChart3Dates, dateContext.n1, n1Str]);
+  }, [availableDates, chart3ModeFilter, selectedChart3Months, dateContext.n1, n1Str]);
 
   const matrixBranches = useMemo(() => {
     const set = new Set<string>();
@@ -445,10 +472,6 @@ export default function OperationsTab() {
     setSelectedChart2Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
   };
 
-  const toggleChart3DateSelection = (dateStr: string) => {
-    setSelectedChart3Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
-  };
-
   const isDateInWeekOfN1 = (dateStr: string) => {
     const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
     if (!isValid(parsedDate)) return false;
@@ -522,8 +545,8 @@ export default function OperationsTab() {
   const activeChart2Count = Object.values(selectedChart2Dates).filter(Boolean).length;
   const currentChart2Label = activeChart2Count > 0 ? `Đã chọn (${activeChart2Count} ngày)` : 'Chọn ngày tùy ý';
 
-  const activeChart3Count = Object.values(selectedChart3Dates).filter(Boolean).length;
-  const currentChart3Label = activeChart3Count > 0 ? `Đã chọn (${activeChart3Count} ngày)` : 'Chọn ngày tùy ý';
+  const activeChart3MonthCount = Object.values(selectedChart3Months).filter(Boolean).length;
+  const currentChart3MonthLabel = activeChart3MonthCount > 0 ? `Đã chọn (${activeChart3MonthCount} tháng)` : 'Chọn tháng tùy ý';
 
   const branchKeys = Object.keys(n1ByBranchAndCategory);
 
@@ -536,12 +559,12 @@ export default function OperationsTab() {
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY (Màu nền sáng, mở rộng dung lượng hiển thị trọn vẹn 5 bưu cục, KHÔNG DÙNG THANH TRƯỢT DỌC, làm tròn 1 số sau dấu phẩy) */}
-      <div className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white rounded-xl shadow-md border border-neutral-200 dark:border-neutral-800 p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
+      {/* MA TRẬN BƯU CỤC & NGÀY (Màu nền #DDDDDD, tiêu đề to, tên bưu cục chữ to màu đỏ, không dùng thanh trượt dọc, làm tròn 1 số sau dấu phẩy) */}
+      <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
           <div className="flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-sm uppercase text-neutral-800 dark:text-neutral-200">Ma trận hiệu suất vận hành theo bưu cục & ngày</h2>
+            <BarChart2 className="w-5 h-5 text-blue-700" />
+            <h2 className="font-extrabold text-base uppercase text-neutral-900">Ma trận hiệu suất vận hành theo bưu cục & ngày</h2>
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
@@ -549,7 +572,7 @@ export default function OperationsTab() {
             <select 
               value={chart3CategoryFilter} 
               onChange={(e) => setChart3CategoryFilter(e.target.value)}
-              className="bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+              className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
             >
               <option value="all">Tất cả loại hàng</option>
               <option value="Hàng mới ca 1">Hàng mới ca 1</option>
@@ -561,7 +584,7 @@ export default function OperationsTab() {
             <select 
               value={chart3BranchFilter} 
               onChange={(e) => setChart3BranchFilter(e.target.value)}
-              className="bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+              className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
             >
               <option value="all">Tất cả bưu cục</option>
               {allBranchesList.map(b => (
@@ -569,39 +592,39 @@ export default function OperationsTab() {
               ))}
             </select>
 
-            {/* Bộ lọc tick chọn ngày */}
+            {/* Bộ lọc chọn Tháng (Tháng 9, tháng 8, tháng 7,...) */}
             <div className="relative">
               <button 
-                onClick={() => setShowChart3DatePicker(!showChart3DatePicker)}
-                className="flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
+                className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
               >
-                <Calendar className="w-3.5 h-3.5 text-primary" />
-                <span>{currentChart3Label}</span>
+                <Calendar className="w-3.5 h-3.5 text-blue-700" />
+                <span>{currentChart3MonthLabel}</span>
                 <ChevronDown className="w-3 h-3 ml-1" />
               </button>
 
-              {showChart3DatePicker && (
-                <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
-                    <span className="font-semibold">Tick chọn ngày</span>
+              {showChart3MonthPicker && (
+                <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-300 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 text-xs">
+                    <span className="font-semibold text-neutral-800">Chọn tháng (Giảm dần)</span>
                     <button 
-                      onClick={() => setSelectedChart3Dates({})} 
-                      className="text-primary hover:underline text-[11px]"
+                      onClick={() => setSelectedChart3Months({})} 
+                      className="text-blue-700 hover:underline text-[11px]"
                     >
                       Bỏ chọn tất cả
                     </button>
                   </div>
                   <div className="space-y-1.5">
-                    {availableDates.map(d => {
-                      const isChecked = !!selectedChart3Dates[d];
+                    {availableMonths.map(({ key, label }) => {
+                      const isChecked = !!selectedChart3Months[key];
                       return (
                         <div 
-                          key={d} 
-                          onClick={() => toggleChart3DateSelection(d)}
-                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                          key={key} 
+                          onClick={() => toggleMonthSelection(key)}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 cursor-pointer text-neutral-800"
                         >
-                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
-                          <span>{d}</span>
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-blue-700" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{label}</span>
                         </div>
                       );
                     })}
@@ -611,22 +634,22 @@ export default function OperationsTab() {
             </div>
 
             {/* Bộ lọc dạng bung sổ: Ngày, Tuần, Tháng */}
-            <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
+            <div className="inline-flex rounded-lg border border-neutral-300 p-0.5 bg-white text-xs shadow-sm">
               <button 
-                onClick={() => { setChart3ModeFilter('day'); setSelectedChart3Dates({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'day' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => { setChart3ModeFilter('day'); setSelectedChart3Months({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'day' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
               >
                 Ngày (N-1)
               </button>
               <button 
-                onClick={() => { setChart3ModeFilter('week'); setSelectedChart3Dates({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'week' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => { setChart3ModeFilter('week'); setSelectedChart3Months({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'week' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
               >
                 Tuần
               </button>
               <button 
-                onClick={() => { setChart3ModeFilter('month'); setSelectedChart3Dates({}); }} 
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'month' && Object.values(selectedChart3Dates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+                onClick={() => { setChart3ModeFilter('month'); setSelectedChart3Months({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart3ModeFilter === 'month' && Object.values(selectedChart3Months).every(v => !v) ? 'bg-blue-700 text-white shadow-sm' : 'text-neutral-700'}`}
               >
                 Tháng
               </button>
@@ -634,32 +657,33 @@ export default function OperationsTab() {
           </div>
         </div>
 
-        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, mở rộng chiều cao tự do KHÔNG DÙNG THANH TRƯỢT DỌC */}
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, mở rộng chiều cao trọn vẹn 5 bưu cục không cần thanh trượt dọc */}
+        <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
           <table className="w-full border-collapse text-xs text-left">
-            <thead className="bg-neutral-100 dark:bg-neutral-950 sticky top-0 z-20 text-neutral-700 dark:text-neutral-300 uppercase">
+            <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
               <tr>
-                <th className="p-3 sticky left-0 z-30 bg-neutral-100 dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 w-44 shadow-md text-center">Bưu Cục</th>
+                <th className="p-3 sticky left-0 z-30 bg-neutral-200 border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
                 {matrixDates.map(dStr => {
                   const parsed = parseDateString(dStr);
                   const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
                   return (
-                    <th key={dStr} className="p-2 text-center border-r border-neutral-200 dark:border-neutral-800 min-w-[130px] bg-neutral-100 dark:bg-neutral-950">
+                    <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
                       {headerTitle}
                     </th>
                   );
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800 font-medium">
+            <tbody className="divide-y divide-neutral-200 font-medium">
               {matrixBranches.length === 0 ? (
                 <tr>
                   <td colSpan={matrixDates.length + 1} className="p-6 text-center text-neutral-500">Không có dữ liệu bưu cục.</td>
                 </tr>
               ) : (
                 matrixBranches.map((branch, bIdx) => (
-                  <tr key={branch} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
-                    <td className="p-3 sticky left-0 z-10 bg-white dark:bg-neutral-900 font-bold border-r border-neutral-200 dark:border-neutral-800 shadow-md text-primary text-center">
+                  <tr key={branch} className="hover:bg-neutral-50">
+                    {/* Tên các Bưu cục chữ to, màu đỏ #FF0000 */}
+                    <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-sm border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
                       {bIdx + 1}. {branch}
                     </td>
                     {matrixDates.map(dStr => {
@@ -672,17 +696,17 @@ export default function OperationsTab() {
                       const isLow = gtc < 60;
 
                       return (
-                        <td key={dStr} className="p-2 text-center border-r border-neutral-200 dark:border-neutral-800 align-middle">
+                        <td key={dStr} className="p-2.5 text-center border-r border-neutral-200 align-middle">
                           {vol > 0 ? (
                             <div className="flex flex-col items-center justify-center gap-1">
                               <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'}`}>
                                 {gtc.toFixed(1)}%
                               </span>
-                              <div className="text-[10px] text-neutral-700 dark:text-neutral-300 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-100 dark:bg-neutral-950/60 px-1.5 py-1 rounded w-full">
-                                <span><strong className="text-neutral-500 dark:text-neutral-400">Vol:</strong> {vol.toFixed(1)}</span>
-                                <span><strong className="text-amber-600 dark:text-amber-400">Ca 1:</strong> {ca1.toFixed(1)}</span>
-                                <span><strong className="text-cyan-600 dark:text-cyan-400">Ca 2:</strong> {ca2.toFixed(1)}</span>
-                                <span><strong className="text-rose-600 dark:text-rose-400">Tồn:</strong> {backlog.toFixed(1)}</span>
+                              <div className="text-[11px] text-neutral-800 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-100 px-1.5 py-1 rounded w-full font-semibold">
+                                <span><strong className="text-neutral-500">Vol:</strong> {vol.toFixed(1)}</span>
+                                <span><strong className="text-amber-600">Ca 1:</strong> {ca1.toFixed(1)}</span>
+                                <span><strong className="text-cyan-600">Ca 2:</strong> {ca2.toFixed(1)}</span>
+                                <span><strong className="text-rose-600">Tồn:</strong> {backlog.toFixed(1)}</span>
                               </div>
                             </div>
                           ) : (
@@ -698,41 +722,41 @@ export default function OperationsTab() {
           </table>
         </div>
 
-        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ THEO TIÊU CHÍ %GTC VÀ HÀNG TỒN MỚI (Nền sáng) */}
-        <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-          <h3 className="font-semibold text-xs uppercase text-neutral-700 dark:text-neutral-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ TRÊN NỀN #DDDDDD */}
+        <div className="mt-6 pt-4 border-t border-neutral-300">
+          <h3 className="font-extrabold text-sm uppercase text-neutral-900 mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-blue-700" /> Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
           </h3>
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
             <table className="w-full text-center border-collapse text-xs">
-              <thead className="bg-neutral-100 dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300 uppercase">
+              <thead className="bg-neutral-200 text-neutral-900 uppercase font-bold text-sm">
                 <tr>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Bưu cục</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Tổng Volume</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Tỷ trọng Ca 1</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Tỷ trọng Ca 2</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Tỷ trọng Tồn</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">%GTC Trung bình</th>
-                  <th className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">Trạng thái %GTC</th>
+                  <th className="p-2.5 border-r border-neutral-300">Bưu cục</th>
+                  <th className="p-2.5 border-r border-neutral-300">Tổng Volume</th>
+                  <th className="p-2.5 border-r border-neutral-300">Tỷ trọng Ca 1</th>
+                  <th className="p-2.5 border-r border-neutral-300">Tỷ trọng Ca 2</th>
+                  <th className="p-2.5 border-r border-neutral-300">Tỷ trọng Tồn</th>
+                  <th className="p-2.5 border-r border-neutral-300">%GTC Trung bình</th>
+                  <th className="p-2.5 border-r border-neutral-300">Trạng thái %GTC</th>
                   <th className="p-2.5">Trạng thái Hàng Tồn</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tbody className="divide-y divide-neutral-200 font-medium">
                 {matrixEvaluationList.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
-                    <td className="p-2.5 font-bold text-primary border-r border-neutral-200 dark:border-neutral-800">{item.branch}</td>
-                    <td className="p-2.5 font-semibold border-r border-neutral-200 dark:border-neutral-800">{item.totalVol.toFixed(1)}</td>
-                    <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">{item.ca1.toFixed(1)} ({item.ca1Ratio.toFixed(1)}%)</td>
-                    <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">{item.ca2.toFixed(1)} ({item.ca2Ratio.toFixed(1)}%)</td>
-                    <td className="p-2.5 text-red-600 dark:text-red-400 font-semibold border-r border-neutral-200 dark:border-neutral-800">{item.backlog.toFixed(1)} ({item.backlogRatio.toFixed(1)}%)</td>
-                    <td className="p-2.5 font-bold text-emerald-600 dark:text-emerald-400 border-r border-neutral-200 dark:border-neutral-800">{item.avgGtcRate.toFixed(1)}%</td>
-                    <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-800">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.gtcColor}`}>
+                  <tr key={idx} className="hover:bg-neutral-50">
+                    <td className="p-2.5 font-extrabold text-sm text-[#FF0000] border-r border-neutral-200">{item.branch}</td>
+                    <td className="p-2.5 font-bold border-r border-neutral-200">{item.totalVol.toFixed(1)}</td>
+                    <td className="p-2.5 border-r border-neutral-200">{item.ca1.toFixed(1)} ({item.ca1Ratio.toFixed(1)}%)</td>
+                    <td className="p-2.5 border-r border-neutral-200">{item.ca2.toFixed(1)} ({item.ca2Ratio.toFixed(1)}%)</td>
+                    <td className="p-2.5 text-red-600 font-bold border-r border-neutral-200">{item.backlog.toFixed(1)} ({item.backlogRatio.toFixed(1)}%)</td>
+                    <td className="p-2.5 font-bold text-emerald-600 border-r border-neutral-200">{item.avgGtcRate.toFixed(1)}%</td>
+                    <td className="p-2.5 border-r border-neutral-200">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${item.gtcColor}`}>
                         {item.gtcStatus}
                       </span>
                     </td>
                     <td className="p-2.5">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.backlogColor}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${item.backlogColor}`}>
                         {item.backlogStatus}
                       </span>
                     </td>
@@ -950,7 +974,7 @@ export default function OperationsTab() {
             </button>
 
             {showN1DatePicker && (
-              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
                 <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
                   <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
                   <button 
