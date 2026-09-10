@@ -1,0 +1,817 @@
+import { useState, useMemo } from 'react';
+import { useDashboard } from '../context/DashboardContext';
+import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2 } from 'lucide-react';
+import { getCurrentDate, getDateRangeContext, formatDateDDMMYYYY } from '../utils/dateEngine';
+import { safeDivide } from '../utils/calculations';
+import { parse, isValid, startOfWeek, endOfWeek, isWithinInterval, compareDesc, format, subDays, startOfMonth } from 'date-fns';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const translateStatus = (status: string): string => {
+  switch (status) {
+    case 'Critical': return 'Nguy động';
+    case 'Warning': return 'Cảnh báo';
+    case 'Good': return 'Tốt';
+    case 'Excellent': return 'Xuất sắc';
+    default: return 'Ổn định';
+  }
+};
+
+const parseDateString = (dateStr: string): Date => {
+  const parsed = parse(dateStr, 'dd/MM/yyyy', new Date());
+  return isValid(parsed) ? parsed : new Date(0);
+};
+
+export default function OperationsTab() {
+  const { operationsData, filters } = useDashboard();
+  const [expandedBranches, setExpandedBranches] = useState<Record<string, boolean>>({});
+  
+  // Bộ lọc cho Bảng Tổng hợp theo Bưu cục
+  const [selectedN1Dates, setSelectedN1Dates] = useState<Record<string, boolean>>({});
+  const [showN1DatePicker, setShowN1DatePicker] = useState<boolean>(false);
+
+  // Bộ lọc cho Biểu đồ 1 (Theo bưu cục)
+  const [chart1TimeFilter, setChart1TimeFilter] = useState<'week' | 'month' | 'all'>('week');
+  const [chart1BranchFilter, setChart1BranchFilter] = useState<string>('all');
+
+  // Bộ lọc cho Biểu đồ 2 (Theo ngày)
+  const [chart2TimeFilter, setChart2TimeFilter] = useState<'week' | 'month' | 'all'>('week');
+  const [chart2BranchFilter, setChart2BranchFilter] = useState<string>('all');
+  const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
+  const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
+
+  // Bộ lọc cho Bảng Chi tiết bưu cục
+  const [timeFilter, setTimeFilter] = useState<'all' | 'day' | 'week' | 'month'>('all');
+  const [selectedDates, setSelectedDates] = useState<Record<string, boolean>>({});
+  const [showDatePickerDropdown, setShowDatePickerDropdown] = useState<boolean>(false);
+
+  const toggleBranch = (branch: string) => {
+    setExpandedBranches(prev => ({ ...prev, [branch]: !prev[branch] }));
+  };
+
+  const dateContext = getDateRangeContext(getCurrentDate());
+  const n1Str = formatDateDDMMYYYY(dateContext.n1);
+
+  const availableDates = useMemo(() => {
+    const set = new Set<string>();
+    operationsData.forEach(r => { if (r.date) set.add(r.date); });
+    return Array.from(set).sort((a, b) => {
+      const dateA = parseDateString(a);
+      const dateB = parseDateString(b);
+      return compareDesc(dateA, dateB);
+    });
+  }, [operationsData]);
+
+  // 1. DỮ LIỆU BẢNG TỔNG HỢP THEO BƯU CỤC
+  const filteredN1DataRaw = useMemo(() => {
+    const hasSelected = Object.values(selectedN1Dates).some(v => v);
+    return operationsData.filter(row => {
+      if (hasSelected) {
+        return !!selectedN1Dates[row.date];
+      }
+      return row.date === n1Str;
+    });
+  }, [operationsData, selectedN1Dates, n1Str]);
+
+  const n1ByBranchAndCategory = useMemo(() => {
+    const map: Record<string, Record<string, typeof operationsData[0]>> = {};
+    const categories = ['Hàng mới ca 1', 'Hàng mới ca 2', 'Hàng tồn'];
+
+    filteredN1DataRaw.forEach(row => {
+      const b = row.branch || 'Khác';
+      if (!map[b]) {
+        map[b] = {};
+        categories.forEach(c => {
+          map[b][c] = {
+            date: n1Str,
+            branch: b,
+            category: c,
+            volume: 0,
+            assignedRate: 0,
+            gtcRate: 0,
+            assignedVolume: 0,
+            gtcVolume: 0,
+            backlog: 0,
+            status: 'Good'
+          };
+        });
+      }
+      const matchedCat = categories.find(c => c.toLowerCase() === row.category.toLowerCase()) || row.category;
+      if (!map[b][matchedCat]) {
+        map[b][matchedCat] = { ...row };
+      } else {
+        const item = map[b][matchedCat];
+        item.volume += row.volume;
+        item.assignedVolume += row.assignedVolume;
+        item.gtcVolume += row.gtcVolume;
+      }
+    });
+
+    Object.keys(map).forEach(b => {
+      Object.keys(map[b]).forEach(c => {
+        const item = map[b][c];
+        item.assignedRate = safeDivide(item.assignedVolume, item.volume);
+        item.gtcRate = safeDivide(item.gtcVolume, item.volume);
+        item.backlog = Math.max(0, item.volume - item.gtcVolume);
+      });
+    });
+
+    return map;
+  }, [filteredN1DataRaw, n1Str]);
+
+  const branchSummaryMap = useMemo(() => {
+    const summary: Record<string, { totalVol: number; totalGtcVol: number; branchGtcRate: number }> = {};
+    Object.entries(n1ByBranchAndCategory).forEach(([branch, categories]) => {
+      let totalVol = 0;
+      let totalGtcVol = 0;
+      Object.values(categories).forEach(item => {
+        totalVol += item.volume;
+        totalGtcVol += item.gtcVolume;
+      });
+      const branchGtcRate = safeDivide(totalGtcVol, totalVol);
+      summary[branch] = { totalVol, totalGtcVol, branchGtcRate };
+    });
+    return summary;
+  }, [n1ByBranchAndCategory]);
+
+  const n1GlobalSummary = useMemo(() => {
+    const volume = filteredN1DataRaw.reduce((sum, r) => sum + r.volume, 0);
+    const assignedVol = filteredN1DataRaw.reduce((sum, r) => sum + r.assignedVolume, 0);
+    const gtcVol = filteredN1DataRaw.reduce((sum, r) => sum + r.gtcVolume, 0);
+    return {
+      volume,
+      assignedRate: safeDivide(assignedVol, volume),
+      assignedVolume: assignedVol,
+      gtcRate: safeDivide(gtcVol, volume),
+      gtcVolume: gtcVol,
+      backlog: volume - gtcVol,
+    };
+  }, [filteredN1DataRaw]);
+
+  // 2. DỮ LIỆU CHO BIỂU ĐỒ 1 (Theo bưu cục)
+  const chart1Data = useMemo(() => {
+    const currentDate = dateContext.n1;
+    const weekAgo = subDays(currentDate, 7);
+    const monthStart = startOfMonth(currentDate);
+
+    const filtered = operationsData.filter(row => {
+      if (chart1BranchFilter !== 'all' && row.branch !== chart1BranchFilter) return false;
+      const rowDate = parseDateString(row.date);
+      if (!isValid(rowDate)) return false;
+
+      if (chart1TimeFilter === 'week') {
+        return rowDate >= weekAgo && rowDate <= currentDate;
+      } else if (chart1TimeFilter === 'month') {
+        return rowDate >= monthStart && rowDate <= currentDate;
+      }
+      return true;
+    });
+
+    const map: Record<string, { branch: string; Volume: number; 'SLĐ Gán': number; 'SLĐ GTC': number; totalVol: number; totalGtc: number }> = {};
+
+    filtered.forEach(row => {
+      const b = row.branch || 'Khác';
+      if (!map[b]) {
+        map[b] = { branch: b, Volume: 0, 'SLĐ Gán': 0, 'SLĐ GTC': 0, totalVol: 0, totalGtc: 0 };
+      }
+      map[b].Volume += row.volume;
+      map[b]['SLĐ Gán'] += row.assignedVolume;
+      map[b]['SLĐ GTC'] += row.gtcVolume;
+      map[b].totalVol += row.volume;
+      map[b].totalGtc += row.gtcVolume;
+    });
+
+    return Object.values(map).map(item => ({
+      ...item,
+      '%GTC': Number((safeDivide(item.totalGtc, item.totalVol) * 100).toFixed(1)),
+    }));
+  }, [operationsData, chart1TimeFilter, chart1BranchFilter, dateContext.n1]);
+
+  const allBranchesList = useMemo(() => {
+    const set = new Set<string>();
+    operationsData.forEach(r => { if (r.branch) set.add(r.branch); });
+    return Array.from(set);
+  }, [operationsData]);
+
+  // 3. DỮ LIỆU CHO BIỂU ĐỒ 2 (Theo ngày)
+  const chart2Data = useMemo(() => {
+    const currentDate = dateContext.n1;
+    const weekAgo = subDays(currentDate, 7);
+    const monthStart = startOfMonth(currentDate);
+    const hasSelected = Object.values(selectedChart2Dates).some(v => v);
+
+    const filtered = operationsData.filter(row => {
+      if (chart2BranchFilter !== 'all' && row.branch !== chart2BranchFilter) return false;
+      const rowDate = parseDateString(row.date);
+
+      if (hasSelected) {
+        return !!selectedChart2Dates[row.date];
+      } else {
+        if (!isValid(rowDate)) return false;
+        if (chart2TimeFilter === 'week') {
+          return rowDate >= weekAgo && rowDate <= currentDate;
+        } else if (chart2TimeFilter === 'month') {
+          return rowDate >= monthStart && rowDate <= currentDate;
+        }
+      }
+      return true;
+    });
+
+    const map: Record<string, { rawDate: string; displayDate: string; Volume: number; 'SLĐ Gán': number; 'SLĐ GTC': number; totalVol: number; totalGtc: number }> = {};
+
+    filtered.forEach(row => {
+      const dStr = row.date;
+      if (!dStr) return;
+      
+      const parsed = parseDateString(dStr);
+      const displayDate = isValid(parsed) ? format(parsed, 'dd/MM') : dStr;
+
+      if (!map[dStr]) {
+        map[dStr] = { rawDate: dStr, displayDate, Volume: 0, 'SLĐ Gán': 0, 'SLĐ GTC': 0, totalVol: 0, totalGtc: 0 };
+      }
+      map[dStr].Volume += row.volume;
+      map[dStr]['SLĐ Gán'] += row.assignedVolume;
+      map[dStr]['SLĐ GTC'] += row.gtcVolume;
+      map[dStr].totalVol += row.volume;
+      map[dStr].totalGtc += row.gtcVolume;
+    });
+
+    return Object.values(map)
+      .sort((a, b) => parseDateString(a.rawDate).getTime() - parseDateString(b.rawDate).getTime())
+      .map(item => ({
+        ...item,
+        '%GTC': Number((safeDivide(item.totalGtc, item.totalVol) * 100).toFixed(1)),
+      }));
+  }, [operationsData, chart2TimeFilter, chart2BranchFilter, selectedChart2Dates, dateContext.n1]);
+
+  // 4. DỮ LIỆU CHI TIẾT BƯU CỤC
+  const toggleDateSelection = (dateStr: string) => {
+    setSelectedDates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
+  };
+
+  const toggleN1DateSelection = (dateStr: string) => {
+    setSelectedN1Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
+  };
+
+  const toggleChart2DateSelection = (dateStr: string) => {
+    setSelectedChart2Dates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
+  };
+
+  const isDateInWeekOfN1 = (dateStr: string) => {
+    const parsedDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+    if (!isValid(parsedDate)) return false;
+    const weekStart = startOfWeek(dateContext.n1, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(dateContext.n1, { weekStartsOn: 1 });
+    return isWithinInterval(parsedDate, { start: weekStart, end: weekEnd });
+  };
+
+  const filteredBranchData = useMemo(() => {
+    const hasSelectedDates = Object.values(selectedDates).some(v => v);
+
+    return operationsData.filter(row => {
+      if (filters.branch !== 'all' && row.branch !== filters.branch) return false;
+      if (filters.category !== 'all' && row.category !== filters.category) return false;
+
+      if (hasSelectedDates) {
+        if (!selectedDates[row.date]) return false;
+      } else {
+        if (timeFilter === 'day') {
+          if (row.date !== n1Str) return false;
+        } else if (timeFilter === 'week') {
+          if (!isDateInWeekOfN1(row.date)) return false;
+        } else if (timeFilter === 'month') {
+          const p = parse(row.date, 'dd/MM/yyyy', new Date());
+          if (isValid(p)) {
+            if (p.getMonth() !== dateContext.n1.getMonth() || p.getFullYear() !== dateContext.n1.getFullYear()) return false;
+          }
+        }
+      }
+      return true;
+    });
+  }, [operationsData, filters, timeFilter, selectedDates, n1Str, dateContext.n1]);
+
+  const computeSummary = (dataList: typeof operationsData) => {
+    const totalVolume = dataList.reduce((sum, r) => sum + r.volume, 0);
+    const totalAssignedVol = dataList.reduce((sum, r) => sum + r.assignedVolume, 0);
+    const totalGTCVol = dataList.reduce((sum, r) => sum + r.gtcVolume, 0);
+    const totalBacklog = totalVolume - totalGTCVol;
+
+    return {
+      volume: totalVolume,
+      assignedRate: safeDivide(totalAssignedVol, totalVolume),
+      assignedVolume: totalAssignedVol,
+      gtcRate: safeDivide(totalGTCVol, totalVolume),
+      gtcVolume: totalGTCVol,
+      backlog: totalBacklog,
+    };
+  };
+
+  const branchGrouped = useMemo(() => {
+    const map: Record<string, typeof operationsData> = {};
+    filteredBranchData.forEach(row => {
+      const branchName = row.branch || 'Chưa phân bổ';
+      if (!map[branchName]) map[branchName] = [];
+      map[branchName].push(row);
+    });
+
+    return Object.entries(map).map(([branch, rows]) => {
+      const summary = computeSummary(rows);
+      const sortedRows = rows.sort((a, b) => {
+        return compareDesc(parseDateString(a.date), parseDateString(b.date));
+      });
+      return { branch, rows: sortedRows, summary };
+    });
+  }, [filteredBranchData]);
+
+  const activeN1Count = Object.values(selectedN1Dates).filter(Boolean).length;
+  const currentN1Label = activeN1Count > 0 ? `Đã chọn (${activeN1Count} ngày)` : `Ngày N-1 (${n1Str})`;
+
+  const activeChart2Count = Object.values(selectedChart2Dates).filter(Boolean).length;
+  const currentChart2Label = activeChart2Count > 0 ? `Đã chọn (${activeChart2Count} ngày)` : 'Chọn ngày tùy ý';
+
+  const branchKeys = Object.keys(n1ByBranchAndCategory);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">TỔNG HỢP VẬN HÀNH</h1>
+        <div className="text-sm text-neutral-500">
+          Ngày hiện tại: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{n1Str}</span>
+        </div>
+      </div>
+
+      {/* BIỂU ĐỒ 1: HIỆU SUẤT THEO BƯU CỤC */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold text-sm uppercase">Biểu đồ hiệu suất vận hành theo bưu cục</h2>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <select 
+              value={chart1BranchFilter} 
+              onChange={(e) => setChart1BranchFilter(e.target.value)}
+              className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả bưu cục</option>
+              {allBranchesList.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+
+            <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
+              <button 
+                onClick={() => setChart1TimeFilter('week')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'week' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                7 Ngày gần nhất
+              </button>
+              <button 
+                onClick={() => setChart1TimeFilter('month')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tháng này
+              </button>
+              <button 
+                onClick={() => setChart1TimeFilter('all')} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart1TimeFilter === 'all' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tất cả
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chart1Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+              <XAxis dataKey="branch" stroke="#888888" fontSize={12} tickLine={false} />
+              <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#888888" fontSize={12} tickLine={false} unit="%" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
+                formatter={(value: any, name: any) => [
+                  name === '%GTC' ? `${value}%` : Number(value || 0).toLocaleString(), 
+                  String(name || '')
+                ]}
+              />
+              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+              <Bar yAxisId="left" dataKey="Volume" fill="#3b82f6" name="Volume" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="SLĐ Gán" fill="#10b981" name="SLĐ Gán" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="SLĐ GTC" fill="#f59e0b" name="SLĐ GTC" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="%GTC" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} name="%GTC" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* BIỂU ĐỒ 2: HIỆU SUẤT THEO NGÀY */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold text-sm uppercase">Biểu đồ hiệu suất vận hành theo ngày</h2>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Lọc Bưu cục */}
+            <select 
+              value={chart2BranchFilter} 
+              onChange={(e) => setChart2BranchFilter(e.target.value)}
+              className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+            >
+              <option value="all">Tất cả bưu cục</option>
+              {allBranchesList.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+
+            {/* Bộ lọc tick chọn ngày */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowChart2DatePicker(!showChart2DatePicker)}
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{currentChart2Label}</span>
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+
+              {showChart2DatePicker && (
+                <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                    <span className="font-semibold">Tick chọn ngày</span>
+                    <button 
+                      onClick={() => setSelectedChart2Dates({})} 
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {availableDates.map(d => {
+                      const isChecked = !!selectedChart2Dates[d];
+                      return (
+                        <div 
+                          key={d} 
+                          onClick={() => toggleChart2DateSelection(d)}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                        >
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{d}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lọc theo tuần / tháng */}
+            <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
+              <button 
+                onClick={() => { setChart2TimeFilter('week'); setSelectedChart2Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'week' && Object.values(selectedChart2Dates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                7 Ngày gần nhất
+              </button>
+              <button 
+                onClick={() => { setChart2TimeFilter('month'); setSelectedChart2Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tháng này
+              </button>
+              <button 
+                onClick={() => { setChart2TimeFilter('all'); setSelectedChart2Dates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${chart2TimeFilter === 'all' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tất cả
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chart2Data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+              <XAxis dataKey="displayDate" stroke="#888888" fontSize={12} tickLine={false} />
+              <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#888888" fontSize={12} tickLine={false} unit="%" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
+                formatter={(value: any, name: any) => [
+                  name === '%GTC' ? `${value}%` : Number(value || 0).toLocaleString(), 
+                  String(name || '')
+                ]}
+              />
+              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+              <Bar yAxisId="left" dataKey="Volume" fill="#8b5cf6" name="Volume" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="SLĐ Gán" fill="#06b6d4" name="SLĐ Gán" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="SLĐ GTC" fill="#ec4899" name="SLĐ GTC" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="%GTC" stroke="#f97316" strokeWidth={3} dot={{ r: 4, fill: '#f97316' }} name="%GTC" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* BẢNG TỔNG HỢP THEO BƯU CỤC */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden w-full">
+        <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <h2 className="font-semibold text-xs uppercase">BÁO CÁO TỔNG HỢP THEO BƯU CỤC</h2>
+          
+          <div className="relative">
+            <button 
+              onClick={() => setShowN1DatePicker(!showN1DatePicker)}
+              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+            >
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              <span>{currentN1Label}</span>
+              <ChevronDown className="w-3 h-3 ml-1" />
+            </button>
+
+            {showN1DatePicker && (
+              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                  <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
+                  <button 
+                    onClick={() => setSelectedN1Dates({})} 
+                    className="text-primary hover:underline text-[11px]"
+                  >
+                    Mặc định (N-1)
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {availableDates.map(d => {
+                    const isChecked = !!selectedN1Dates[d];
+                    return (
+                      <div 
+                        key={d} 
+                        onClick={() => toggleN1DateSelection(d)}
+                        className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                      >
+                        {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                        <span>{d}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-center border-collapse text-xs font-bold">
+            <thead className="bg-[#0000FF] text-white sticky top-0 z-10 uppercase font-bold text-sm">
+              <tr>
+                <th className="p-2 border-r border-blue-400">Tên bưu cục</th>
+                <th className="p-2 border-r border-blue-400">Loại hàng</th>
+                <th className="p-2 border-r border-blue-400">Volume</th>
+                <th className="p-2 border-r border-blue-400">% Gán</th>
+                <th className="p-2 border-r border-blue-400">SLĐ Gán</th>
+                <th className="p-2 border-r border-blue-400">% GTC</th>
+                <th className="p-2 border-r border-blue-400">SLĐ GTC</th>
+                <th className="p-2 border-r border-blue-400">Tồn đọng</th>
+                <th className="p-2 w-28">Tổng %GTC & Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody className="font-bold">
+              {branchKeys.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-4 text-center text-neutral-500 font-bold">Không có dữ liệu cho các ngày đã chọn</td>
+                </tr>
+              ) : (
+                branchKeys.map((branch, bIdx) => {
+                  const categories = n1ByBranchAndCategory[branch];
+                  const bMeta = branchSummaryMap[branch] || { branchGtcRate: 0 };
+                  const isLowGtc = bMeta.branchGtcRate < 0.60;
+                  const catValues = Object.values(categories);
+                  const isLastBranch = bIdx === branchKeys.length - 1;
+
+                  return catValues.map((row, idx) => {
+                    let rowBgClass = '';
+                    const catLower = row.category.toLowerCase();
+                    if (catLower.includes('ca 1')) rowBgClass = 'bg-[#FFCC99]/30 dark:bg-[#FFCC99]/10';
+                    else if (catLower.includes('ca 2')) rowBgClass = 'bg-[#CCFFCC]/30 dark:bg-[#CCFFCC]/10';
+                    else if (catLower.includes('tồn')) rowBgClass = 'bg-[#FF99CC]/30 dark:bg-[#FF99CC]/10';
+
+                    const isCa1LowAssigned = catLower.includes('ca 1') && row.assignedRate < 0.85;
+                    const isLastRowOfBranch = idx === catValues.length - 1;
+
+                    const borderStyle = isLastRowOfBranch && !isLastBranch 
+                      ? 'border-b-4 border-double border-neutral-400 dark:border-neutral-500' 
+                      : 'border-b border-neutral-200 dark:border-neutral-800';
+
+                    return (
+                      <tr key={`${branch}-${idx}`} className={`hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 ${rowBgClass} ${borderStyle}`}>
+                        {idx === 0 ? (
+                          <td className="p-2 font-bold text-sm align-middle border-r border-neutral-200 dark:border-neutral-700 bg-[#880000] text-white" rowSpan={3}>
+                            {branch}
+                          </td>
+                        ) : null}
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.category}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toLocaleString()}</td>
+                        <td className={`p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 ${isCa1LowAssigned ? 'text-[#FF0000]' : ''}`}>
+                          {(row.assignedRate * 100).toFixed(1)}%
+                        </td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{(row.gtcRate * 100).toFixed(1)}%</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                        
+                        {idx === 0 ? (
+                          <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={3}>
+                            <div className={`font-bold text-sm ${isLowGtc ? 'text-[#FF0000]' : ''}`}>
+                              {(bMeta.branchGtcRate * 100).toFixed(1)}%
+                            </div>
+                            {isLowGtc && <div className="text-xs text-[#FF0000] font-bold leading-tight">Cảnh báo</div>}
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  });
+                })
+              )}
+            </tbody>
+            {branchKeys.length > 0 && (
+              <tfoot className="bg-neutral-100 dark:bg-neutral-800 font-bold sticky bottom-0 z-10 text-sm border-t-2 border-neutral-400">
+                <tr>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center" colSpan={2}>TỔNG CỘNG TOÀN HỆ THỐNG</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toLocaleString()}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.assignedRate * 100).toFixed(1)}%</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.gtcRate * 100).toFixed(1)}%</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 text-red-600 font-bold text-center">{n1GlobalSummary.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                  <td className="p-2.5"></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {/* CHI TIẾT HIỆU SUẤT TỪNG BƯU CỤC */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+        <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <h2 className="font-semibold text-xs uppercase">CHI TIẾT HIỆU SUẤT TỪNG BƯU CỤC</h2>
+          
+          <div className="flex flex-wrap items-center gap-2 relative">
+            <div className="relative">
+              <button 
+                onClick={() => setShowDatePickerDropdown(!showDatePickerDropdown)}
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>
+                  {Object.values(selectedDates).filter(Boolean).length > 0 
+                    ? `Đã chọn (${Object.values(selectedDates).filter(Boolean).length} ngày)` 
+                    : 'Chọn ngày tùy ý'}
+                </span>
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+
+              {showDatePickerDropdown && (
+                <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                    <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
+                    <button 
+                      onClick={() => setSelectedDates({})} 
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {availableDates.map(d => {
+                      const isChecked = !!selectedDates[d];
+                      return (
+                        <div 
+                          key={d} 
+                          onClick={() => toggleDateSelection(d)}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                        >
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{d}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="inline-flex rounded-lg border border-neutral-300 dark:border-neutral-700 p-0.5 bg-neutral-100 dark:bg-neutral-800 text-xs">
+              <button 
+                onClick={() => { setTimeFilter('all'); setSelectedDates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${timeFilter === 'all' && Object.values(selectedDates).every(v => !v) ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tất cả
+              </button>
+              <button 
+                onClick={() => { setTimeFilter('month'); setSelectedDates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${timeFilter === 'month' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tháng
+              </button>
+              <button 
+                onClick={() => { setTimeFilter('week'); setSelectedDates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${timeFilter === 'week' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Tuần (T2-CN)
+              </button>
+              <button 
+                onClick={() => { setTimeFilter('day'); setSelectedDates({}); }} 
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${timeFilter === 'day' ? 'bg-white dark:bg-neutral-900 shadow-sm text-primary' : 'text-neutral-600 dark:text-neutral-400'}`}
+              >
+                Ngày N-1
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          {branchGrouped.length === 0 ? (
+            <div className="p-6 text-center text-neutral-500 text-sm">Không tìm thấy dữ liệu bưu cục phù hợp.</div>
+          ) : (
+            branchGrouped.map(({ branch, rows, summary }) => {
+              const isExpanded = !!expandedBranches[branch];
+              return (
+                <div key={branch} className="transition-colors">
+                  <div 
+                    onClick={() => toggleBranch(branch)}
+                    className="flex items-center justify-between p-3 bg-neutral-50/50 dark:bg-neutral-800/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer select-none text-xs"
+                  >
+                    <div className="flex items-center gap-2 font-semibold">
+                      {isExpanded ? <ChevronDown className="w-4 h-4 text-primary" /> : <ChevronRight className="w-4 h-4 text-neutral-400" />}
+                      <span>{branch}</span>
+                      <span className="font-normal px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                        {rows.length} dòng
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div>Vol: <span className="font-semibold">{summary.volume.toLocaleString()}</span></div>
+                      <div>% Gán: <span className="font-semibold">{(summary.assignedRate * 100).toFixed(1)}%</span></div>
+                      <div>% GTC: <span className="font-semibold text-emerald-600">{(summary.gtcRate * 100).toFixed(1)}%</span></div>
+                      <div>Tồn: <span className="font-semibold text-red-600">{summary.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</span></div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="p-3 bg-white dark:bg-neutral-900">
+                      <div className="overflow-x-auto max-h-[350px] border border-neutral-200 dark:border-neutral-800 rounded-lg">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-[#0000FF] text-white sticky top-0 z-10 uppercase font-bold text-sm">
+                            <tr>
+                              <th className="p-2 border-r border-blue-400">Ngày</th>
+                              <th className="p-2 border-r border-blue-400">Loại hàng</th>
+                              <th className="p-2 text-right border-r border-blue-400">Volume</th>
+                              <th className="p-2 text-right border-r border-blue-400">% Gán</th>
+                              <th className="p-2 text-right border-r border-blue-400">SLĐ Gán</th>
+                              <th className="p-2 text-right border-r border-blue-400">% GTC</th>
+                              <th className="p-2 text-right border-r border-blue-400">SLĐ GTC</th>
+                              <th className="p-2 text-right border-r border-blue-400">Tồn đọng</th>
+                              <th className="p-2 text-center">Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-bold">
+                            {rows.map((item, i) => {
+                              const vnStatus = translateStatus(item.status);
+                              return (
+                                <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 font-bold">
+                                  <td className="p-2 font-bold">{item.date}</td>
+                                  <td className="p-2 font-bold">{item.category}</td>
+                                  <td className="p-2 text-right font-bold">{item.volume.toLocaleString()}</td>
+                                  <td className="p-2 text-right font-bold">{(item.assignedRate * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right font-bold">{item.assignedVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 text-right font-bold">{(item.gtcRate * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right font-bold">{item.gtcVolume.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 text-right font-bold text-red-600">{item.backlog.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+                                  <td className="p-2 text-center font-bold">
+                                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
+                                      item.status === 'Critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                      item.status === 'Warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    }`}>
+                                      {vnStatus}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
