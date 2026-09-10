@@ -41,7 +41,7 @@ export default function OperationsTab() {
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
 
-  // Bộ lọc cho Ma trận bưu cục & ngày (Theo yêu cầu: Lọc loại hàng, lọc bưu cục, tick chọn ngày, dạng bung sổ Ngày/Tuần/Tháng)
+  // Bộ lọc cho Ma trận bưu cục & ngày
   const [chart3ModeFilter, setChart3ModeFilter] = useState<'day' | 'week' | 'month'>('week');
   const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
   const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
@@ -261,7 +261,7 @@ export default function OperationsTab() {
       }));
   }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
 
-  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY (Có đầy đủ bộ lọc, hiển thị tròn 1 số sau dấu phẩy)
+  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY
   const matrixDates = useMemo(() => {
     const currentDate = dateContext.n1;
     const weekAgo = subDays(currentDate, 7);
@@ -293,7 +293,7 @@ export default function OperationsTab() {
     if (chart3BranchFilter !== 'all') {
       list = list.filter(b => b === chart3BranchFilter);
     }
-    return list; // Đảm bảo trả về đúng số lượng bưu cục (5 bưu cục) để hiển thị trọn vẹn không cần scroll dọc
+    return list; 
   }, [operationsData, chart3BranchFilter]);
 
   const matrixDataMap = useMemo(() => {
@@ -338,7 +338,7 @@ export default function OperationsTab() {
     return map;
   }, [operationsData, chart3CategoryFilter]);
 
-  // BẢNG ĐÁNH GIÁ CHI TIẾT DỰA TRÊN 2 TIÊU CHÍ: %GTC VÀ HÀNG TỒN
+  // BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ THEO TIÊU CHÍ MỚI
   const matrixEvaluationList = useMemo(() => {
     const evaluation = matrixBranches.map(branch => {
       let totalVolBranch = 0;
@@ -363,27 +363,53 @@ export default function OperationsTab() {
       const ca2Ratio = safeDivide(totalCa2Branch, totalVolBranch) * 100;
       const backlogRatio = safeDivide(totalBacklogBranch, totalVolBranch) * 100;
 
-      // Đánh giá dựa trên 2 tiêu chí: %GTC và Hàng tồn
-      let status = 'Vận hành tối ưu';
-      let statusColor = 'text-emerald-500 bg-emerald-950/40 border-emerald-800';
-      let recommendation = 'Duy trì phong độ, tỷ trọng GTC tốt và kiểm soát tồn đọng hiệu quả.';
+      // Đánh giá %GTC
+      let gtcStatus = '';
+      let gtcColor = 'text-neutral-300 bg-neutral-800 border-neutral-700';
+      if (avgGtcRate <= 40) {
+        gtcStatus = 'Nguy kịch';
+        gtcColor = 'text-red-400 bg-red-950/60 border-red-800';
+      } else if (avgGtcRate > 40 && avgGtcRate <= 50) {
+        gtcStatus = 'Nguy hiểm';
+        gtcColor = 'text-red-400 bg-red-950/50 border-red-800';
+      } else if (avgGtcRate > 50 && avgGtcRate < 60) {
+        gtcStatus = 'Cảnh báo';
+        gtcColor = 'text-amber-400 bg-amber-950/50 border-amber-800';
+      } else if (avgGtcRate >= 60 && avgGtcRate <= 65) {
+        gtcStatus = 'An toàn';
+        gtcColor = 'text-blue-400 bg-blue-950/50 border-blue-800';
+      } else if (avgGtcRate > 65 && avgGtcRate <= 70) {
+        gtcStatus = 'Tốt';
+        gtcColor = 'text-emerald-400 bg-emerald-950/40 border-emerald-800';
+      } else if (avgGtcRate > 70 && avgGtcRate < 80) {
+        gtcStatus = 'Rất tốt';
+        gtcColor = 'text-emerald-400 bg-emerald-950/60 border-emerald-700';
+      } else {
+        gtcStatus = 'Tuyên dương';
+        gtcColor = 'text-primary bg-amber-500/20 border-amber-500';
+      }
 
-      if (avgGtcRate < 70 && backlogRatio > 10) {
-        status = 'Nguy động cấp độ 1';
-        statusColor = 'text-red-400 bg-red-950/40 border-red-800';
-        recommendation = '%GTC thấp (<70%) và tồn đọng cao (>10%). Cần đẩy mạnh xử lý tồn đọng và coaching nhân sự gấp.';
-      } else if (avgGtcRate < 70) {
-        status = '%GTC thấp';
-        statusColor = 'text-red-400 bg-red-950/40 border-red-800';
-        recommendation = 'Tỷ lệ %GTC dưới 70%. Cần kiểm tra năng suất giao nhận và nguyên nhân giao hàng không thành công.';
-      } else if (backlogRatio > 10) {
-        status = 'Tồn đọng cao';
-        statusColor = 'text-amber-400 bg-amber-950/40 border-amber-800';
-        recommendation = 'Hàng tồn đọng chiếm tỷ trọng cao (>10%). Cần bổ sung nhân sự tăng ca giải quyết backlog.';
-      } else if (avgGtcRate < 85) {
-        status = 'Cần cải thiện';
-        statusColor = 'text-amber-400 bg-amber-950/40 border-amber-800';
-        recommendation = '%GTC ở mức trung bình (70% - 85%). Đôn đốc nhân viên bám sát tiến độ giao hàng.';
+      // Đánh giá Hàng tồn
+      let backlogStatus = '';
+      let backlogColor = 'text-neutral-300 bg-neutral-800 border-neutral-700';
+      if (backlogRatio >= 10 && backlogRatio <= 20) {
+        backlogStatus = 'Xem xét xử lý';
+        backlogColor = 'text-amber-400 bg-amber-950/50 border-amber-800';
+      } else if (backlogRatio > 20 && backlogRatio <= 40) {
+        backlogStatus = 'Cảnh báo tồn cao';
+        backlogColor = 'text-orange-400 bg-orange-950/50 border-orange-800';
+      } else if (backlogRatio > 40 && backlogRatio <= 50) {
+        backlogStatus = 'Nguy cơ bể kho';
+        backlogColor = 'text-red-400 bg-red-950/50 border-red-800';
+      } else if (backlogRatio > 50 && backlogRatio <= 60) {
+        backlogStatus = 'Khẩn cấp';
+        backlogColor = 'text-red-500 bg-red-950/70 border-red-700';
+      } else if (backlogRatio > 60) {
+        backlogStatus = 'Bể vận hành';
+        backlogColor = 'text-red-600 bg-red-950 text-white border-red-600';
+      } else {
+        backlogStatus = 'Bình thường';
+        backlogColor = 'text-emerald-400 bg-emerald-950/40 border-emerald-800';
       }
 
       return {
@@ -396,9 +422,10 @@ export default function OperationsTab() {
         backlog: totalBacklogBranch,
         backlogRatio,
         avgGtcRate,
-        status,
-        statusColor,
-        recommendation,
+        gtcStatus,
+        gtcColor,
+        backlogStatus,
+        backlogColor,
       };
     });
 
@@ -509,7 +536,7 @@ export default function OperationsTab() {
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY (Cố định cột Bưu cục bên trái, cố định hàng Ngày ở trên, tách 2 hàng cho %GTC và các chỉ số Vol, Ca 1, Ca 2, Tồn, làm tròn 1 số sau dấu phẩy, cân đối vừa vặn không cần thanh trượt dọc) */}
+      {/* MA TRẬN BƯU CỤC & NGÀY (Cố định 5 bưu cục, chiều cao tối ưu không có thanh trượt dọc, làm tròn 1 số sau dấu phẩy) */}
       <div className="bg-neutral-900 text-white rounded-xl shadow-lg border border-neutral-800 p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
@@ -607,8 +634,8 @@ export default function OperationsTab() {
           </div>
         </div>
 
-        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, chiều cao cân đối đủ chứa 5 bưu cục không cần scroll dọc */}
-        <div className="overflow-x-auto max-h-[380px] rounded-lg border border-neutral-800">
+        {/* Khung cuộn ngang (Scroll X) với Cột Bưu cục cố định bên trái, giới hạn vừa vặn hiển thị trọn vẹn 5 bưu cục không cần thanh trượt dọc */}
+        <div className="overflow-x-auto max-h-[310px] rounded-lg border border-neutral-800">
           <table className="w-full border-collapse text-xs text-left">
             <thead className="bg-neutral-950 sticky top-0 z-20 text-neutral-400 uppercase">
               <tr>
@@ -648,11 +675,9 @@ export default function OperationsTab() {
                         <td key={dStr} className="p-2 text-center border-r border-neutral-800/60 align-middle">
                           {vol > 0 ? (
                             <div className="flex flex-col items-center justify-center gap-1">
-                              {/* Hàng 1: %GTC làm tròn 1 số sau dấu phẩy */}
                               <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`}>
                                 {gtc.toFixed(1)}%
                               </span>
-                              {/* Hàng 2: Vol, Ca 1, Ca 2, Tồn tách riêng rõ ràng */}
                               <div className="text-[10px] text-neutral-300 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-950/60 px-1.5 py-1 rounded w-full">
                                 <span><strong className="text-neutral-400">Vol:</strong> {vol.toFixed(1)}</span>
                                 <span><strong className="text-amber-400">Ca 1:</strong> {ca1.toFixed(1)}</span>
@@ -673,10 +698,10 @@ export default function OperationsTab() {
           </table>
         </div>
 
-        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ CHI TIẾT DỰA TRÊN 2 TIÊU CHÍ (%GTC VÀ HÀNG TỒN) */}
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ DỰA TRÊN TIÊU CHÍ %GTC VÀ HÀNG TỒN MỚI */}
         <div className="mt-6 pt-4 border-t border-neutral-800">
           <h3 className="font-semibold text-xs uppercase text-neutral-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> Bảng đánh giá & Khuyến nghị chi tiết dựa trên %GTC & Hàng tồn đọng
+            <TrendingUp className="w-4 h-4 text-primary" /> Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
           </h3>
           <div className="overflow-x-auto rounded-lg border border-neutral-800">
             <table className="w-full text-center border-collapse text-xs">
@@ -688,7 +713,8 @@ export default function OperationsTab() {
                   <th className="p-2.5 border-r border-neutral-800">Tỷ trọng Ca 2</th>
                   <th className="p-2.5 border-r border-neutral-800">Tỷ trọng Tồn</th>
                   <th className="p-2.5 border-r border-neutral-800">%GTC Trung bình</th>
-                  <th className="p-2.5">Đánh giá & Khuyến nghị chi tiết</th>
+                  <th className="p-2.5 border-r border-neutral-800">Trạng thái %GTC</th>
+                  <th className="p-2.5">Trạng thái Hàng Tồn</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
@@ -700,13 +726,15 @@ export default function OperationsTab() {
                     <td className="p-2.5 border-r border-neutral-800">{item.ca2.toFixed(1)} ({item.ca2Ratio.toFixed(1)}%)</td>
                     <td className="p-2.5 text-red-400 font-semibold border-r border-neutral-800">{item.backlog.toFixed(1)} ({item.backlogRatio.toFixed(1)}%)</td>
                     <td className="p-2.5 font-bold text-emerald-400 border-r border-neutral-800">{item.avgGtcRate.toFixed(1)}%</td>
-                    <td className="p-2.5 text-left">
-                      <div className="flex flex-col gap-1">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border w-fit ${item.statusColor}`}>
-                          {item.status}
-                        </span>
-                        <span className="text-[11px] text-neutral-300">{item.recommendation}</span>
-                      </div>
+                    <td className="p-2.5 border-r border-neutral-800">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.gtcColor}`}>
+                        {item.gtcStatus}
+                      </span>
+                    </td>
+                    <td className="p-2.5">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.backlogColor}`}>
+                        {item.backlogStatus}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -923,7 +951,7 @@ export default function OperationsTab() {
 
             {showN1DatePicker && (
               <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
                   <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
                   <button 
                     onClick={() => setSelectedN1Dates({})} 
@@ -1065,7 +1093,7 @@ export default function OperationsTab() {
 
               {showDatePickerDropdown && (
                 <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-800 text-xs">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
                     <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
                     <button 
                       onClick={() => setSelectedDates({})} 
