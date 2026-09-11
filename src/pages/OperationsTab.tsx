@@ -1,6 +1,6 @@
 import {  useState, useMemo, useEffect, useRef  } from 'react';
 import { useDashboard } from '../context/DashboardContext';
-import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2, } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2, } from 'lucide-react';
 import { getCurrentDate, getDateRangeContext, formatDateDDMMYYYY } from '../utils/dateEngine';
 import { safeDivide } from '../utils/calculations';
 import { parse, isValid, startOfWeek, endOfWeek, isWithinInterval, compareDesc, format, subDays, startOfMonth } from 'date-fns';
@@ -22,7 +22,7 @@ const parseDateString = (dateStr: string): Date => {
 };
 
 export default function OperationsTab() {
-  const { operationsData, filters } = useDashboard();
+  const { operationsData, filters, isSidebarOpen, setIsSidebarOpen } = useDashboard();
   const [expandedBranches, setExpandedBranches] = useState<Record<string, boolean>>({});
   
   // Bộ lọc cho Bảng Tổng hợp theo Bưu cục
@@ -41,7 +41,7 @@ export default function OperationsTab() {
   const [selectedChart2Dates, setSelectedChart2Dates] = useState<Record<string, boolean>>({});
   const [showChart2DatePicker, setShowChart2DatePicker] = useState<boolean>(false);
 
-  // Bộ lọc cho Ma trận bưu cục & ngày (Lọc loại hàng, lọc bưu cục, chọn tháng tùy ý, chọn ngày tùy ý)
+  // Bộ lọc cho Ma trận bưu cục & ngày (Thay chế độ Ngày/Tuần/Tháng bằng Chọn ngày tick riêng biệt & Chọn tháng tùy ý)
   const [chart3BranchFilter, setChart3BranchFilter] = useState<string>('all');
   const [chart3CategoryFilter, setChart3CategoryFilter] = useState<string>('all');
   const [selectedChart3Dates, setSelectedChart3Dates] = useState<Record<string, boolean>>({});
@@ -312,7 +312,7 @@ export default function OperationsTab() {
       }));
   }, [operationsData, chart2TimeFilter, chart2BranchFilter, chart2CategoryFilter, selectedChart2Dates, dateContext.n1]);
 
-  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY
+  // 5. DỮ LIỆU CHO BẢNG MA TRẬN BƯU CỤC & NGÀY (Lọc theo ngày được tick chọn hoặc tháng được tick chọn)
   const matrixDates = useMemo(() => {
     const hasSelectedDates = Object.values(selectedChart3Dates).some(v => v);
     const hasSelectedMonths = Object.values(selectedChart3Months).some(v => v);
@@ -328,7 +328,7 @@ export default function OperationsTab() {
         const mKey = format(rowDate, 'MM/yyyy');
         return !!selectedChart3Months[mKey];
       }
-      return true;
+      return true; // Mặc định hiển thị tất cả nếu chưa chọn bộ lọc ngày/tháng cụ thể nào
     });
   }, [availableDates, selectedChart3Dates, selectedChart3Months]);
 
@@ -384,43 +384,7 @@ export default function OperationsTab() {
     return map;
   }, [operationsData, chart3CategoryFilter]);
 
-  // DỮ LIỆU CHO BIỂU ĐỒ ĐƯỜNG PHÍA DƯỚI MA TRẬN
-  const matrixLineChartData = useMemo(() => {
-    // Gom nhóm tổng theo từng ngày trong matrixDates
-    return matrixDates.map(dStr => {
-      let totalVol = 0;
-      let totalCa1 = 0;
-      let totalCa2 = 0;
-      let totalBacklog = 0;
-      let totalGtc = 0;
-
-      matrixBranches.forEach(branch => {
-        const cell = matrixDataMap[branch]?.[dStr];
-        if (cell && cell.volume > 0) {
-          totalVol += cell.volume;
-          totalCa1 += cell.ca1;
-          totalCa2 += cell.ca2;
-          totalBacklog += cell.backlog;
-          totalGtc += (cell.gtcRate / 100) * cell.volume;
-        }
-      });
-
-      const avgGtc = safeDivide(totalGtc, totalVol) * 100;
-      const parsed = parseDateString(dStr);
-      const displayDate = isValid(parsed) ? format(parsed, 'dd/MM') : dStr;
-
-      return {
-        date: displayDate,
-        Vol: Number(totalVol.toFixed(1)),
-        'Ca 1': Number(totalCa1.toFixed(1)),
-        'Ca 2': Number(totalCa2.toFixed(1)),
-        'Tồn': Number(totalBacklog.toFixed(1)),
-        '%GTC': Number(avgGtc.toFixed(1)),
-      };
-    }).reverse(); // Hiển thị theo thứ tự thời gian tăng dần từ trái qua phải trên biểu đồ
-  }, [matrixDates, matrixBranches, matrixDataMap]);
-
-  // BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ THEO TIÊU CHÍ
+  // BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ THEO TIÊU CHÍ MỚI
   const matrixEvaluationList = useMemo(() => {
     const evaluation = matrixBranches.map(branch => {
       let totalVolBranch = 0;
@@ -602,20 +566,29 @@ export default function OperationsTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">TỔNG HỢP VẬN HÀNH</h1>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsSidebarOpen(prev => !prev)}
+            className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer text-neutral-800 dark:text-neutral-200"
+          >
+            {isSidebarOpen ? <PanelLeftClose className="w-4 h-4 text-primary" /> : <PanelLeftOpen className="w-4 h-4 text-primary" />}
+            <span>{isSidebarOpen ? 'Ẩn thanh menu' : 'Mở thanh menu'}</span>
+          </button>
+          <h1 className="text-2xl font-bold tracking-tight">TỔNG HỢP VẬN HÀNH</h1>
+        </div>
         <div className="text-sm text-neutral-500">
           Ngày hiện tại: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{n1Str}</span>
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY (Nền #DDDDDD, tiêu đề ngày tháng #003399 chữ trắng, tên bưu cục màu đỏ #FF0000, màu chữ bộ chỉ số chuẩn) */}
+      {/* MA TRẬN BƯU CỤC & NGÀY (Nền #DDDDDD, tiêu đề nền #FFFF33 chữ to, tên bưu cục màu đỏ #FF0000, có khoảng cách rõ ràng với bảng dưới) */}
       <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4 space-y-6">
         <div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
             <div className="flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-blue-700" />
               {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
-              <h2 className="font-extrabold text-base uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm">
+              <h2 className="font-extrabold text-lg uppercase text-neutral-900 bg-[#FFFF33] px-2.5 py-1 rounded shadow-sm">
                 Ma trận hiệu suất vận hành theo bưu cục & ngày
               </h2>
             </div>
@@ -645,7 +618,7 @@ export default function OperationsTab() {
                 ))}
               </select>
 
-              {/* Bộ lọc chọn Tháng (tự đóng khi click bên ngoài) */}
+              {/* Bộ lọc chọn Tháng */}
               <div className="relative" ref={monthPickerRef}>
                 <button 
                   onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
@@ -686,7 +659,7 @@ export default function OperationsTab() {
                 )}
               </div>
 
-              {/* Bộ lọc chọn Ngày (tự đóng khi click bên ngoài) */}
+              {/* Bộ lọc chọn Ngày (thay thế Ngày N-1 bằng chọn ngày tùy ý tick chọn) */}
               <div className="relative" ref={datePickerRef}>
                 <button 
                   onClick={() => setShowChart3DatePicker(!showChart3DatePicker)}
@@ -732,14 +705,14 @@ export default function OperationsTab() {
           {/* Khung cuộn ngang (Scroll X) không dùng thanh trượt dọc */}
           <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
             <table className="w-full border-collapse text-xs text-left">
-              <thead>
+              <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
                 <tr>
-                  <th className="p-3 sticky left-0 z-30 bg-[#003399] text-white border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
+                  <th className="p-3 sticky left-0 z-30 bg-neutral-200 border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
                   {matrixDates.map(dStr => {
                     const parsed = parseDateString(dStr);
                     const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
                     return (
-                      <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-[#003399] text-white font-bold">
+                      <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
                         {headerTitle}
                       </th>
                     );
@@ -755,7 +728,7 @@ export default function OperationsTab() {
                   matrixBranches.map((branch, bIdx) => (
                     <tr key={branch} className="hover:bg-neutral-50">
                       {/* Tên các Bưu cục chữ to, màu đỏ #FF0000 */}
-                      <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-sm border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
+                      <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-base border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
                         {bIdx + 1}. {branch}
                       </td>
                       {matrixDates.map(dStr => {
@@ -775,10 +748,10 @@ export default function OperationsTab() {
                                   {gtc.toFixed(1)}%
                                 </span>
                                 <div className="text-[11px] text-neutral-800 flex flex-wrap justify-center gap-x-2 gap-y-0.5 bg-neutral-100 px-1.5 py-1 rounded w-full font-semibold">
-                                  <span><strong style={{ color: '#0033FF' }}>Vol:</strong> {vol.toFixed(1)}</span>
-                                  <span><strong style={{ color: '#0000FF' }}>Ca 1:</strong> {ca1.toFixed(1)}</span>
-                                  <span><strong style={{ color: '#FF9900' }}>Ca 2:</strong> {ca2.toFixed(1)}</span>
-                                  <span><strong style={{ color: '#FF0000' }}>Tồn:</strong> {backlog.toFixed(1)}</span>
+                                  <span><strong className="text-neutral-500">Vol:</strong> {vol.toFixed(1)}</span>
+                                  <span><strong className="text-amber-600">Ca 1:</strong> {ca1.toFixed(1)}</span>
+                                  <span><strong className="text-cyan-600">Ca 2:</strong> {ca2.toFixed(1)}</span>
+                                  <span><strong className="text-rose-600">Tồn:</strong> {backlog.toFixed(1)}</span>
                                 </div>
                               </div>
                             ) : (
@@ -795,39 +768,7 @@ export default function OperationsTab() {
           </div>
         </div>
 
-        {/* BIỂU ĐỒ ĐƯỜNG PHÍA DƯỚI MA TRẬN */}
-        <div className="pt-6 border-t border-neutral-300">
-          <div className="mb-3">
-            <h3 className="font-extrabold text-sm uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm inline-block">
-              Biểu đồ xu hướng vận hành theo thời gian
-            </h3>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-neutral-300 h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={matrixLineChartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
-                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#888888" fontSize={12} tickLine={false} unit="%" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', border: 'none', fontSize: '12px' }}
-                  formatter={(value: any, name: any) => [
-                    name === '%GTC' ? `${Number(value).toFixed(1)}%` : Number(value).toFixed(1), 
-                    name
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Line yAxisId="left" type="monotone" dataKey="Vol" stroke="#0033FF" strokeWidth={2} name="Vol" dot={{ r: 3 }} />
-                <Line yAxisId="left" type="monotone" dataKey="Ca 1" stroke="#0000FF" strokeWidth={2} name="Ca 1" dot={{ r: 3 }} />
-                <Line yAxisId="left" type="monotone" dataKey="Ca 2" stroke="#FF9900" strokeWidth={2} name="Ca 2" dot={{ r: 3 }} />
-                <Line yAxisId="left" type="monotone" dataKey="Tồn" stroke="#FF0000" strokeWidth={2} name="Tồn" dot={{ r: 3 }} />
-                <Line yAxisId="right" type="monotone" dataKey="%GTC" stroke="#00EE00" strokeWidth={3} name="%GTC" dot={{ r: 4, fill: '#00EE00' }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ */}
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ (Có khoảng cách phân biệt rõ ràng và tô màu nền tiêu đề #FFFF33) */}
         <div className="pt-6 border-t border-neutral-300">
           <div className="mb-3">
             {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}

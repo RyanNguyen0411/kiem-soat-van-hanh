@@ -28,11 +28,11 @@ const navItems: TabItem[] = [
 ];
 
 const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, operationsData } = useDashboard();
+  const { activeTab, setActiveTab, operationsData, isSidebarOpen } = useDashboard();
   const criticalCount = operationsData.filter(item => item.status === 'Critical').length;
 
   return (
-    <aside className="w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col justify-between shrink-0 shadow-xs">
+    <aside className={`transition-all duration-300 overflow-hidden ${isSidebarOpen ? 'w-64' : 'w-0 -ml-64 border-r-0'} bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col justify-between shrink-0 shadow-xs`}>
       <div>
         {/* Logo Branding */}
         <div className="h-16 flex items-center px-6 border-b border-neutral-200 dark:border-neutral-800 gap-3">

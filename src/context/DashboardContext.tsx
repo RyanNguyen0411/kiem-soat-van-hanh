@@ -19,6 +19,8 @@ interface DashboardContextType {
   refreshData: () => Promise<void>;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (val: boolean | ((prev: boolean) => boolean)) => void;
   filters: {
     dateRange: string;
     branch: string;
@@ -44,6 +46,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
   const [filters, setFilters] = useState({
     dateRange: 'all',
@@ -203,6 +206,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         refreshData,
         darkMode,
         setDarkMode,
+        isSidebarOpen,
+        setIsSidebarOpen,
         filters,
         setFilters,
         resetFilters,
