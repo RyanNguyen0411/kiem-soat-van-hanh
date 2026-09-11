@@ -564,18 +564,17 @@ export default function OperationsTab() {
   const branchKeys = Object.keys(n1ByBranchAndCategory);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6 px-2 sm:px-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsSidebarOpen(prev => !prev)}
-            className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer text-neutral-800 dark:text-neutral-200"
-          >
-            {isSidebarOpen ? <PanelLeftClose className="w-4 h-4 text-primary" /> : <PanelLeftOpen className="w-4 h-4 text-primary" />}
-            <span>{isSidebarOpen ? 'Ẩn thanh menu' : 'Mở thanh menu'}</span>
-          </button>
-          <h1 className="text-2xl font-bold tracking-tight">TỔNG HỢP VẬN HÀNH</h1>
-        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(prev => !prev)}
+          className="flex items-center gap-2.5 bg-white dark:bg-neutral-800 border-2 border-[#FF9900] rounded-xl px-4 py-2.5 text-sm font-bold text-[#FF9900] shadow-md hover:bg-[#FF9900]/10 cursor-pointer transition-all"
+          title="Thu gọn / Mở rộng thanh menu"
+        >
+          {isSidebarOpen ? <PanelLeftClose className="w-6 h-6 text-[#FF9900]" /> : <PanelLeftOpen className="w-6 h-6 text-[#FF9900]" />}
+          <span className="text-base text-[#FF0000] font-extrabold">{isSidebarOpen ? 'Thu gọn thanh menu' : 'Mở rộng thanh menu'}</span>
+        </button>
+
         <div className="text-sm text-neutral-500">
           Ngày hiện tại: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{n1Str}</span>
         </div>
@@ -586,9 +585,9 @@ export default function OperationsTab() {
         <div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
             <div className="flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-blue-700" />
+              <BarChart2 className="w-6 h-6 text-blue-700" />
               {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
-              <h2 className="font-extrabold text-lg uppercase text-neutral-900 bg-[#FFFF33] px-2.5 py-1 rounded shadow-sm">
+              <h2 className="font-extrabold text-lg uppercase text-neutral-900 bg-[#FFFF33] px-3 py-1.5 rounded shadow-sm">
                 Ma trận hiệu suất vận hành theo bưu cục & ngày
               </h2>
             </div>
@@ -707,12 +706,12 @@ export default function OperationsTab() {
             <table className="w-full border-collapse text-xs text-left">
               <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
                 <tr>
-                  <th className="p-3 sticky left-0 z-30 bg-neutral-200 border-r border-neutral-300 w-48 shadow-md text-center text-sm">Bưu Cục</th>
+                  <th className="p-3.5 sticky left-0 z-30 bg-[#003399] text-white border-r border-neutral-300 w-48 shadow-md text-center text-sm font-bold">Bưu Cục</th>
                   {matrixDates.map(dStr => {
                     const parsed = parseDateString(dStr);
                     const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
                     return (
-                      <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
+                      <th key={dStr} className="p-3 text-center border-r border-neutral-300 min-w-[130px] bg-[#003399] text-white text-sm font-bold">
                         {headerTitle}
                       </th>
                     );
@@ -728,7 +727,7 @@ export default function OperationsTab() {
                   matrixBranches.map((branch, bIdx) => (
                     <tr key={branch} className="hover:bg-neutral-50">
                       {/* Tên các Bưu cục chữ to, màu đỏ #FF0000 */}
-                      <td className="p-3 sticky left-0 z-10 bg-neutral-100 font-extrabold text-base border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
+                      <td className="p-3.5 sticky left-0 z-10 bg-neutral-100 font-extrabold text-base border-r border-neutral-300 shadow-md text-[#FF0000] text-center">
                         {bIdx + 1}. {branch}
                       </td>
                       {matrixDates.map(dStr => {
@@ -772,7 +771,7 @@ export default function OperationsTab() {
         <div className="pt-6 border-t border-neutral-300">
           <div className="mb-3">
             {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
-            <h3 className="font-extrabold text-sm uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm inline-block">
+            <h3 className="font-extrabold text-base uppercase text-neutral-900 bg-[#FFFF33] px-2.5 py-1.5 rounded shadow-sm inline-block">
               Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
             </h3>
           </div>
