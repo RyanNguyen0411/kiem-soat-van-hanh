@@ -1,6 +1,6 @@
 import {  useState, useMemo, useEffect, useRef  } from 'react';
 import { useDashboard } from '../context/DashboardContext';
-import { PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2, } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2, } from 'lucide-react';
 import { getCurrentDate, getDateRangeContext, formatDateDDMMYYYY } from '../utils/dateEngine';
 import { safeDivide } from '../utils/calculations';
 import { parse, isValid, startOfWeek, endOfWeek, isWithinInterval, compareDesc, format, subDays, startOfMonth } from 'date-fns';
@@ -22,7 +22,7 @@ const parseDateString = (dateStr: string): Date => {
 };
 
 export default function OperationsTab() {
-  const { operationsData, filters, isSidebarOpen, setIsSidebarOpen } = useDashboard();
+  const { operationsData, filters } = useDashboard();
   const [expandedBranches, setExpandedBranches] = useState<Record<string, boolean>>({});
   
   // Bộ lọc cho Bảng Tổng hợp theo Bưu cục
@@ -564,30 +564,15 @@ export default function OperationsTab() {
   const branchKeys = Object.keys(n1ByBranchAndCategory);
 
   return (
-    <div className="w-full space-y-6 px-2 sm:px-4">
-      <div className="flex items-center justify-between">
-        <button 
-          onClick={() => setIsSidebarOpen(prev => !prev)}
-          className="flex items-center gap-2.5 bg-white dark:bg-neutral-800 border-2 border-[#FF9900] rounded-xl px-4 py-2.5 text-sm font-bold text-[#FF9900] shadow-md hover:bg-[#FF9900]/10 cursor-pointer transition-all"
-          title="Thu gọn / Mở rộng thanh menu"
-        >
-          {isSidebarOpen ? <PanelLeftClose className="w-6 h-6 text-[#FF9900]" /> : <PanelLeftOpen className="w-6 h-6 text-[#FF9900]" />}
-          <span className="text-base text-[#FF0000] font-extrabold">{isSidebarOpen ? 'Thu gọn thanh menu' : 'Mở rộng thanh menu'}</span>
-        </button>
-
-        <div className="text-sm text-neutral-500">
-          Ngày hiện tại: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{n1Str}</span>
-        </div>
-      </div>
-
+    <div className="w-full space-y-6 px-1 sm:px-2 max-w-[1440px] mx-auto">
       {/* MA TRẬN BƯU CỤC & NGÀY (Nền #DDDDDD, tiêu đề nền #FFFF33 chữ to, tên bưu cục màu đỏ #FF0000, có khoảng cách rõ ràng với bảng dưới) */}
-      <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4 space-y-6">
+      <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-3 sm:p-4 space-y-6 w-full">
         <div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
             <div className="flex items-center gap-2">
               <BarChart2 className="w-6 h-6 text-blue-700" />
               {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
-              <h2 className="font-extrabold text-lg uppercase text-neutral-900 bg-[#FFFF33] px-3 py-1.5 rounded shadow-sm">
+              <h2 className="font-extrabold text-base sm:text-lg uppercase text-neutral-900 bg-[#FFFF33] px-3 py-1.5 rounded shadow-sm">
                 Ma trận hiệu suất vận hành theo bưu cục & ngày
               </h2>
             </div>
@@ -597,7 +582,7 @@ export default function OperationsTab() {
               <select 
                 value={chart3CategoryFilter} 
                 onChange={(e) => setChart3CategoryFilter(e.target.value)}
-                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
               >
                 <option value="all">Tất cả loại hàng</option>
                 <option value="Hàng mới ca 1">Hàng mới ca 1</option>
@@ -609,7 +594,7 @@ export default function OperationsTab() {
               <select 
                 value={chart3BranchFilter} 
                 onChange={(e) => setChart3BranchFilter(e.target.value)}
-                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                className="bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
               >
                 <option value="all">Tất cả bưu cục</option>
                 {allBranchesList.map(b => (
@@ -621,7 +606,7 @@ export default function OperationsTab() {
               <div className="relative" ref={monthPickerRef}>
                 <button 
                   onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
-                  className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
                 >
                   <Calendar className="w-3.5 h-3.5 text-blue-700" />
                   <span>{currentChart3MonthLabel}</span>
@@ -662,7 +647,7 @@ export default function OperationsTab() {
               <div className="relative" ref={datePickerRef}>
                 <button 
                   onClick={() => setShowChart3DatePicker(!showChart3DatePicker)}
-                  className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 bg-white text-neutral-900 border border-neutral-300 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
                 >
                   <Calendar className="w-3.5 h-3.5 text-blue-700" />
                   <span>{currentChart3DateLabel}</span>
@@ -706,12 +691,12 @@ export default function OperationsTab() {
             <table className="w-full border-collapse text-xs text-left">
               <thead className="bg-neutral-200 sticky top-0 z-20 text-neutral-800 uppercase font-bold text-sm">
                 <tr>
-                  <th className="p-3.5 sticky left-0 z-30 bg-[#003399] text-white border-r border-neutral-300 w-48 shadow-md text-center text-sm font-bold">Bưu Cục</th>
+                  <th className="p-3.5 sticky left-0 z-30 bg-[#003399] text-white border-r border-neutral-300 w-44 shadow-md text-center text-sm font-bold">Bưu Cục</th>
                   {matrixDates.map(dStr => {
                     const parsed = parseDateString(dStr);
                     const headerTitle = isValid(parsed) ? format(parsed, 'dd.MM.yy') + ' ' + format(parsed, 'EEE') : dStr;
                     return (
-                      <th key={dStr} className="p-3 text-center border-r border-neutral-300 min-w-[130px] bg-[#003399] text-white text-sm font-bold">
+                      <th key={dStr} className="p-2.5 text-center border-r border-neutral-300 min-w-[130px] bg-neutral-200 font-bold">
                         {headerTitle}
                       </th>
                     );
@@ -740,7 +725,7 @@ export default function OperationsTab() {
                         const isLow = gtc < 60;
 
                         return (
-                          <td key={dStr} className="p-2.5 text-center border-r border-neutral-200 align-middle">
+                          <td key={dStr} className="p-2 text-center border-r border-neutral-200 align-middle">
                             {vol > 0 ? (
                               <div className="flex flex-col items-center justify-center gap-1">
                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${isLow ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'}`}>
@@ -771,7 +756,7 @@ export default function OperationsTab() {
         <div className="pt-6 border-t border-neutral-300">
           <div className="mb-3">
             {/* Tiêu đề tô màu nền #FFFF33, chữ to đậm */}
-            <h3 className="font-extrabold text-base uppercase text-neutral-900 bg-[#FFFF33] px-2.5 py-1.5 rounded shadow-sm inline-block">
+            <h3 className="font-extrabold text-sm uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm inline-block">
               Bảng đánh giá & Khuyến nghị chi tiết theo %GTC & Tỷ trọng tồn đọng
             </h3>
           </div>
@@ -928,7 +913,7 @@ export default function OperationsTab() {
             <div className="relative">
               <button 
                 onClick={() => setShowChart2DatePicker(!showChart2DatePicker)}
-                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
               >
                 <Calendar className="w-3.5 h-3.5 text-primary" />
                 <span>{currentChart2Label}</span>
@@ -1014,7 +999,7 @@ export default function OperationsTab() {
           <div className="relative">
             <button 
               onClick={() => setShowN1DatePicker(!showN1DatePicker)}
-              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
             >
               <Calendar className="w-3.5 h-3.5 text-primary" />
               <span>{currentN1Label}</span>
@@ -1152,7 +1137,7 @@ export default function OperationsTab() {
             <div className="relative">
               <button 
                 onClick={() => setShowDatePickerDropdown(!showDatePickerDropdown)}
-                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer shadow-sm"
               >
                 <Calendar className="w-3.5 h-3.5 text-primary" />
                 <span>
