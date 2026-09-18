@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment,  useState, useMemo, useEffect, useRef } from 'react';
 import { useDashboard } from '../context/DashboardContext';
 import { ChevronDown, ChevronRight, Calendar, CheckSquare, Square, BarChart2 } from 'lucide-react';
 import { getCurrentDate, getDateRangeContext, formatDateDDMMYYYY } from '../utils/dateEngine';
@@ -52,6 +52,7 @@ export default function OperationsTab() {
   // Ref để xử lý click bên ngoài đóng popup bộ lọc
   const monthPickerRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
+  const n1DatePickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -60,6 +61,9 @@ export default function OperationsTab() {
       }
       if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
         setShowChart3DatePicker(false);
+      }
+      if (n1DatePickerRef.current && !n1DatePickerRef.current.contains(event.target as Node)) {
+        setShowN1DatePicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -180,16 +184,21 @@ export default function OperationsTab() {
   }, [filteredN1DataRaw, n1Str]);
 
   const branchSummaryMap = useMemo(() => {
-    const summary: Record<string, { totalVol: number; totalGtcVol: number; branchGtcRate: number }> = {};
+    const summary: Record<string, { totalVol: number; totalAssignedVol: number; totalGtcVol: number; totalBacklog: number; branchGtcRate: number; branchAssignedRate: number }> = {};
     Object.entries(n1ByBranchAndCategory).forEach(([branch, categories]) => {
       let totalVol = 0;
+      let totalAssignedVol = 0;
       let totalGtcVol = 0;
+      let totalBacklog = 0;
       Object.values(categories).forEach(item => {
         totalVol += item.volume;
+        totalAssignedVol += item.assignedVolume;
         totalGtcVol += item.gtcVolume;
+        totalBacklog += item.backlog;
       });
       const branchGtcRate = safeDivide(totalGtcVol, totalVol);
-      summary[branch] = { totalVol, totalGtcVol, branchGtcRate };
+      const branchAssignedRate = safeDivide(totalAssignedVol, totalVol);
+      summary[branch] = { totalVol, totalAssignedVol, totalGtcVol, totalBacklog, branchGtcRate, branchAssignedRate };
     });
     return summary;
   }, [n1ByBranchAndCategory]);
@@ -607,7 +616,158 @@ export default function OperationsTab() {
         </div>
       </div>
 
-      {/* MA TRẬN BƯU CỤC & NGÀY (Tăng kích thước text và số liệu trong bảng Khuyến nghị chi tiết lên text-sm / font-bold) */}
+      {/* BẢNG CÁO TỔNG HỢP THEO BƯU CỤC (Thêm dòng TOTAL ở cuối mỗi bưu cục với màu nền % GTC #006600 và Tồn đọng #FF3300) */}
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden w-full">
+        <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2" ref={n1DatePickerRef}>
+          <h2 className="font-semibold text-xs uppercase">BÁO CÁO TỔNG HỢP THEO BƯU CỤC</h2>
+          
+          <div className="relative">
+            <button 
+              onClick={() => setShowN1DatePicker(!showN1DatePicker)}
+              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+            >
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              <span>{currentN1Label}</span>
+              <ChevronDown className="w-3 h-3 ml-1" />
+            </button>
+
+            {showN1DatePicker && (
+              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
+                  <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
+                  <button 
+                    onClick={() => setSelectedN1Dates({})} 
+                    className="text-primary hover:underline text-[11px]"
+                  >
+                    Mặc định (N-1)
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {availableDates.map(d => {
+                    const isChecked = !!selectedN1Dates[d];
+                    return (
+                      <div 
+                        key={d} 
+                        onClick={() => toggleN1DateSelection(d)}
+                        className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                      >
+                        {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                        <span>{d}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-center border-collapse text-xs font-bold">
+            <thead className="bg-[#0000FF] text-white sticky top-0 z-10 uppercase font-bold text-sm">
+              <tr>
+                <th className="p-2 border-r border-blue-400">Tên bưu cục</th>
+                <th className="p-2 border-r border-blue-400">Loại hàng</th>
+                <th className="p-2 border-r border-blue-400">Volume</th>
+                <th className="p-2 border-r border-blue-400">% Gán</th>
+                <th className="p-2 border-r border-blue-400">SLĐ Gán</th>
+                <th className="p-2 border-r border-blue-400">% GTC</th>
+                <th className="p-2 border-r border-blue-400">SLĐ GTC</th>
+                <th className="p-2 border-r border-blue-400">Tồn đọng</th>
+                <th className="p-2 w-36 text-base font-extrabold">Tổng %GTC & Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody className="font-bold">
+              {branchKeys.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-4 text-center text-neutral-500 font-bold">Không có dữ liệu cho các ngày đã chọn</td>
+                </tr>
+              ) : (
+                branchKeys.map((branch) => {
+                  const categories = n1ByBranchAndCategory[branch];
+                  const bMeta = branchSummaryMap[branch] || { totalVol: 0, totalAssignedVol: 0, totalGtcVol: 0, totalBacklog: 0, branchGtcRate: 0, branchAssignedRate: 0 };
+                  const isLowGtc = bMeta.branchGtcRate < 0.60;
+                  const catValues = Object.values(categories);
+
+                  return (
+                    <Fragment key={branch}>
+                      {catValues.map((row, idx) => {
+                        let rowBgClass = '';
+                        const catLower = row.category.toLowerCase();
+                        if (catLower.includes('ca 1')) rowBgClass = 'bg-[#FFCC99]/30 dark:bg-[#FFCC99]/10';
+                        else if (catLower.includes('ca 2')) rowBgClass = 'bg-[#CCFFCC]/30 dark:bg-[#CCFFCC]/10';
+                        else if (catLower.includes('tồn')) rowBgClass = 'bg-[#FF99CC]/30 dark:bg-[#FF99CC]/10';
+
+                        const isCa1LowAssigned = catLower.includes('ca 1') && row.assignedRate < 0.85;
+
+                        return (
+                          <tr key={`${branch}-${idx}`} className={`hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 ${rowBgClass} border-b border-neutral-200 dark:border-neutral-800`}>
+                            {idx === 0 ? (
+                              <td className="p-2 font-bold text-sm align-middle border-r border-neutral-200 dark:border-neutral-700 bg-[#880000] text-white" rowSpan={4}>
+                                {branch}
+                              </td>
+                            ) : null}
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.category}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toFixed(1)}</td>
+                            <td className={`p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 ${isCa1LowAssigned ? 'text-[#FF0000]' : ''}`}>
+                              {(row.assignedRate * 100).toFixed(1)}%
+                            </td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toFixed(1)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{(row.gtcRate * 100).toFixed(1)}%</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toFixed(1)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toFixed(1)}</td>
+                            
+                            {idx === 0 ? (
+                              <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={4}>
+                                <div className={`font-black text-lg ${isLowGtc ? 'text-[#FF0000]' : ''}`}>
+                                  {(bMeta.branchGtcRate * 100).toFixed(1)}%
+                                </div>
+                                {isLowGtc && <div className="text-xs text-[#FF0000] font-bold leading-tight">Cảnh báo</div>}
+                              </td>
+                            ) : null}
+                          </tr>
+                        );
+                      })}
+                      {/* Dòng TOTAL cho từng bưu cục theo yêu cầu */}
+                      <tr className="bg-neutral-100 dark:bg-neutral-800 font-extrabold border-b-4 border-double border-neutral-400">
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 text-blue-800 dark:text-blue-300">TOTAL</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalVol.toFixed(1)}</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{(bMeta.branchAssignedRate * 100).toFixed(1)}%</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalAssignedVol.toFixed(1)}</td>
+                        {/* % GTC nền #006600, chữ trắng */}
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 bg-[#006600] text-white">
+                          {(bMeta.branchGtcRate * 100).toFixed(1)}%
+                        </td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalGtcVol.toFixed(1)}</td>
+                        {/* Tồn đọng nền #FF3300, chữ trắng */}
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 bg-[#FF3300] text-white">
+                          {bMeta.totalBacklog.toFixed(1)}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })
+              )}
+            </tbody>
+            {branchKeys.length > 0 && (
+              <tfoot className="bg-neutral-200 dark:bg-neutral-700 font-bold sticky bottom-0 z-10 text-sm border-t-2 border-neutral-400">
+                <tr>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center" colSpan={2}>TỔNG CỘNG TOÀN HỆ THỐNG</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.assignedRate * 100).toFixed(1)}%</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center bg-[#006600] text-white">{(n1GlobalSummary.gtcRate * 100).toFixed(1)}%</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center bg-[#FF3300] text-white">{n1GlobalSummary.backlog.toFixed(1)}</td>
+                  <td className="p-2.5"></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {/* MA TRẬN BƯU CỤC & NGÀY */}
       <div className="bg-[#DDDDDD] text-neutral-900 rounded-xl shadow-md border border-neutral-300 p-4 space-y-6">
         <div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-300">
@@ -619,7 +779,6 @@ export default function OperationsTab() {
             </div>
             
             <div className="flex flex-wrap items-center gap-2">
-              {/* Bộ lọc Loại hàng */}
               <select 
                 value={chart3CategoryFilter} 
                 onChange={(e) => setChart3CategoryFilter(e.target.value)}
@@ -631,7 +790,6 @@ export default function OperationsTab() {
                 <option value="Hàng tồn">Hàng tồn</option>
               </select>
 
-              {/* Bộ lọc Bưu cục */}
               <select 
                 value={chart3BranchFilter} 
                 onChange={(e) => setChart3BranchFilter(e.target.value)}
@@ -643,7 +801,6 @@ export default function OperationsTab() {
                 ))}
               </select>
 
-              {/* Bộ lọc chọn Tháng */}
               <div className="relative" ref={monthPickerRef}>
                 <button 
                   onClick={() => setShowChart3MonthPicker(!showChart3MonthPicker)}
@@ -684,7 +841,6 @@ export default function OperationsTab() {
                 )}
               </div>
 
-              {/* Bộ lọc chọn Ngày */}
               <div className="relative" ref={datePickerRef}>
                 <button 
                   onClick={() => setShowChart3DatePicker(!showChart3DatePicker)}
@@ -727,7 +883,6 @@ export default function OperationsTab() {
             </div>
           </div>
 
-          {/* Khung cuộn ngang */}
           <div className="overflow-x-auto rounded-lg border border-neutral-300 bg-white">
             <table className="w-full border-collapse text-xs text-left">
               <thead>
@@ -824,7 +979,7 @@ export default function OperationsTab() {
           </div>
         </div>
 
-        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ (Đã tăng kích thước chữ/số liệu lên text-sm / font-bold) */}
+        {/* BẢNG ĐÁNH GIÁ & KHUYẾN NGHỊ */}
         <div className="pt-6 border-t border-neutral-300">
           <div className="mb-3">
             <h3 className="font-extrabold text-sm uppercase text-neutral-900 bg-[#FFFF33] px-2 py-1 rounded shadow-sm inline-block">
@@ -1059,143 +1214,6 @@ export default function OperationsTab() {
               <Line yAxisId="right" type="monotone" dataKey="%GTC" stroke="#f97316" strokeWidth={3} dot={{ r: 4, fill: '#f97316' }} name="%GTC" />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* BẢNG TỔNG HỢP THEO BƯU CỤC */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden w-full">
-        <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <h2 className="font-semibold text-xs uppercase">BÁO CÁO TỔNG HỢP THEO BƯU CỤC</h2>
-          
-          <div className="relative">
-            <button 
-              onClick={() => setShowN1DatePicker(!showN1DatePicker)}
-              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
-            >
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span>{currentN1Label}</span>
-              <ChevronDown className="w-3 h-3 ml-1" />
-            </button>
-
-            {showN1DatePicker && (
-              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
-                  <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
-                  <button 
-                    onClick={() => setSelectedN1Dates({})} 
-                    className="text-primary hover:underline text-[11px]"
-                  >
-                    Mặc định (N-1)
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  {availableDates.map(d => {
-                    const isChecked = !!selectedN1Dates[d];
-                    return (
-                      <div 
-                        key={d} 
-                        onClick={() => toggleN1DateSelection(d)}
-                        className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                      >
-                        {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
-                        <span>{d}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-center border-collapse text-xs font-bold">
-            <thead className="bg-[#0000FF] text-white sticky top-0 z-10 uppercase font-bold text-sm">
-              <tr>
-                <th className="p-2 border-r border-blue-400">Tên bưu cục</th>
-                <th className="p-2 border-r border-blue-400">Loại hàng</th>
-                <th className="p-2 border-r border-blue-400">Volume</th>
-                <th className="p-2 border-r border-blue-400">% Gán</th>
-                <th className="p-2 border-r border-blue-400">SLĐ Gán</th>
-                <th className="p-2 border-r border-blue-400">% GTC</th>
-                <th className="p-2 border-r border-blue-400">SLĐ GTC</th>
-                <th className="p-2 border-r border-blue-400">Tồn đọng</th>
-                <th className="p-2 w-36 text-base font-extrabold">Tổng %GTC & Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody className="font-bold">
-              {branchKeys.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-4 text-center text-neutral-500 font-bold">Không có dữ liệu cho các ngày đã chọn</td>
-                </tr>
-              ) : (
-                branchKeys.map((branch, bIdx) => {
-                  const categories = n1ByBranchAndCategory[branch];
-                  const bMeta = branchSummaryMap[branch] || { branchGtcRate: 0 };
-                  const isLowGtc = bMeta.branchGtcRate < 0.60;
-                  const catValues = Object.values(categories);
-                  const isLastBranch = bIdx === branchKeys.length - 1;
-
-                  return catValues.map((row, idx) => {
-                    let rowBgClass = '';
-                    const catLower = row.category.toLowerCase();
-                    if (catLower.includes('ca 1')) rowBgClass = 'bg-[#FFCC99]/30 dark:bg-[#FFCC99]/10';
-                    else if (catLower.includes('ca 2')) rowBgClass = 'bg-[#CCFFCC]/30 dark:bg-[#CCFFCC]/10';
-                    else if (catLower.includes('tồn')) rowBgClass = 'bg-[#FF99CC]/30 dark:bg-[#FF99CC]/10';
-
-                    const isCa1LowAssigned = catLower.includes('ca 1') && row.assignedRate < 0.85;
-                    const isLastRowOfBranch = idx === catValues.length - 1;
-
-                    const borderStyle = isLastRowOfBranch && !isLastBranch 
-                      ? 'border-b-4 border-double border-neutral-400 dark:border-neutral-500' 
-                      : 'border-b border-neutral-200 dark:border-neutral-800';
-
-                    return (
-                      <tr key={`${branch}-${idx}`} className={`hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50 ${rowBgClass} ${borderStyle}`}>
-                        {idx === 0 ? (
-                          <td className="p-2 font-bold text-sm align-middle border-r border-neutral-200 dark:border-neutral-700 bg-[#880000] text-white" rowSpan={3}>
-                            {branch}
-                          </td>
-                        ) : null}
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.category}</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toFixed(1)}</td>
-                        <td className={`p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 ${isCa1LowAssigned ? 'text-[#FF0000]' : ''}`}>
-                          {(row.assignedRate * 100).toFixed(1)}%
-                        </td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toFixed(1)}</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{(row.gtcRate * 100).toFixed(1)}%</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toFixed(1)}</td>
-                        <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toFixed(1)}</td>
-                        
-                        {idx === 0 ? (
-                          <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={3}>
-                            <div className={`font-black text-lg ${isLowGtc ? 'text-[#FF0000]' : ''}`}>
-                              {(bMeta.branchGtcRate * 100).toFixed(1)}%
-                            </div>
-                            {isLowGtc && <div className="text-xs text-[#FF0000] font-bold leading-tight">Cảnh báo</div>}
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  });
-                })
-              )}
-            </tbody>
-            {branchKeys.length > 0 && (
-              <tfoot className="bg-neutral-100 dark:bg-neutral-800 font-bold sticky bottom-0 z-10 text-sm border-t-2 border-neutral-400">
-                <tr>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center" colSpan={2}>TỔNG CỘNG TOÀN HỆ THỐNG</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toFixed(1)}</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.assignedRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toFixed(1)}</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.gtcRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toFixed(1)}</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 text-red-600 font-bold text-center">{n1GlobalSummary.backlog.toFixed(1)}</td>
-                  <td className="p-2.5"></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
         </div>
       </div>
 
