@@ -21,6 +21,11 @@ const parseDateString = (dateStr: string): Date => {
   return isValid(parsed) ? parsed : new Date(0);
 };
 
+// Hàm định dạng số: làm tròn, không thập phân, ngăn cách hàng nghìn bằng dấu chấm
+const formatNumber = (num: number) => {
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
 export default function OperationsTab() {
   const { operationsData, filters } = useDashboard();
   const [expandedBranches, setExpandedBranches] = useState<Record<string, boolean>>({});
@@ -28,6 +33,8 @@ export default function OperationsTab() {
   // Bộ lọc cho Bảng Tổng hợp theo Bưu cục
   const [selectedN1Dates, setSelectedN1Dates] = useState<Record<string, boolean>>({});
   const [showN1DatePicker, setShowN1DatePicker] = useState<boolean>(false);
+  const [selectedN1Branches, setSelectedN1Branches] = useState<Record<string, boolean>>({});
+  const [showN1BranchFilter, setShowN1BranchFilter] = useState<boolean>(false);
 
   // Bộ lọc cho Biểu đồ 1 (Theo bưu cục)
   const [chart1ModeFilter, setChart1ModeFilter] = useState<'day' | 'week' | 'month'>('week');
@@ -53,6 +60,7 @@ export default function OperationsTab() {
   const monthPickerRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const n1DatePickerRef = useRef<HTMLDivElement>(null);
+  const n1BranchFilterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,6 +72,9 @@ export default function OperationsTab() {
       }
       if (n1DatePickerRef.current && !n1DatePickerRef.current.contains(event.target as Node)) {
         setShowN1DatePicker(false);
+      }
+      if (n1BranchFilterRef.current && !n1BranchFilterRef.current.contains(event.target as Node)) {
+        setShowN1BranchFilter(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -605,7 +616,13 @@ export default function OperationsTab() {
   const activeChart3DateCount = Object.values(selectedChart3Dates).filter(Boolean).length;
   const currentChart3DateLabel = activeChart3DateCount > 0 ? `Đã chọn (${activeChart3DateCount} ngày)` : 'Chọn ngày tùy ý';
 
-  const branchKeys = Object.keys(n1ByBranchAndCategory);
+  const branchKeys = useMemo(() => {
+    const keys = Object.keys(n1ByBranchAndCategory);
+    const activeBranches = Object.keys(selectedN1Branches).filter(b => selectedN1Branches[b]);
+    return activeBranches.length > 0 ? keys.filter(b => activeBranches.includes(b)) : keys;
+  }, [n1ByBranchAndCategory, selectedN1Branches]);
+  const activeN1BranchCount = Object.values(selectedN1Branches).filter(Boolean).length;
+  const currentN1BranchLabel = activeN1BranchCount > 0 ? `Đã chọn (${activeN1BranchCount} bưu cục)` : 'Chọn bưu cục';
 
   return (
     <div className="space-y-6">
@@ -618,47 +635,90 @@ export default function OperationsTab() {
 
       {/* BẢNG CÁO TỔNG HỢP THEO BƯU CỤC (Thêm dòng TOTAL ở cuối mỗi bưu cục với màu nền % GTC #006600 và Tồn đọng #FF3300) */}
       <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden w-full">
-        <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2" ref={n1DatePickerRef}>
+        <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <h2 className="font-semibold text-xs uppercase">BÁO CÁO TỔNG HỢP THEO BƯU CỤC</h2>
           
-          <div className="relative">
-            <button 
-              onClick={() => setShowN1DatePicker(!showN1DatePicker)}
-              className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
-            >
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span>{currentN1Label}</span>
-              <ChevronDown className="w-3 h-3 ml-1" />
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Bộ lọc Bưu cục tick chọn nhiều */}
+            <div className="relative" ref={n1BranchFilterRef}>
+              <button 
+                onClick={() => setShowN1BranchFilter(!showN1BranchFilter)}
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <span>{currentN1BranchLabel}</span>
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
 
-            {showN1DatePicker && (
-              <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
-                <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
-                  <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
-                  <button 
-                    onClick={() => setSelectedN1Dates({})} 
-                    className="text-primary hover:underline text-[11px]"
-                  >
-                    Mặc định (N-1)
-                  </button>
+              {showN1BranchFilter && (
+                <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
+                    <span className="font-semibold">Tick chọn bưu cục</span>
+                    <button 
+                      onClick={() => setSelectedN1Branches({})} 
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      Tất cả
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {allBranchesList.map(branch => {
+                      const isChecked = !!selectedN1Branches[branch];
+                      return (
+                        <div 
+                          key={branch} 
+                          onClick={() => setSelectedN1Branches(prev => ({ ...prev, [branch]: !prev[branch] }))}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                        >
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{branch}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  {availableDates.map(d => {
-                    const isChecked = !!selectedN1Dates[d];
-                    return (
-                      <div 
-                        key={d} 
-                        onClick={() => toggleN1DateSelection(d)}
-                        className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                      >
-                        {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
-                        <span>{d}</span>
-                      </div>
-                    );
-                  })}
+              )}
+            </div>
+
+            {/* Bộ lọc Ngày */}
+            <div className="relative" ref={n1DatePickerRef}>
+              <button 
+                onClick={() => setShowN1DatePicker(!showN1DatePicker)}
+                className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{currentN1Label}</span>
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+
+              {showN1DatePicker && (
+                <div className="absolute right-0 mt-1 w-64 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xl z-50 p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-neutral-200 dark:border-neutral-700 text-xs">
+                    <span className="font-semibold">Tick chọn ngày (Giảm dần)</span>
+                    <button 
+                      onClick={() => setSelectedN1Dates({})} 
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      Mặc định (N-1)
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {availableDates.map(d => {
+                      const isChecked = !!selectedN1Dates[d];
+                      return (
+                        <div 
+                          key={d} 
+                          onClick={() => toggleN1DateSelection(d)}
+                          className="flex items-center gap-2 text-xs p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                        >
+                          {isChecked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-neutral-400" />}
+                          <span>{d}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -708,14 +768,14 @@ export default function OperationsTab() {
                               </td>
                             ) : null}
                             <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.category}</td>
-                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.volume.toFixed(1)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{formatNumber(row.volume)}</td>
                             <td className={`p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 ${isCa1LowAssigned ? 'text-[#FF0000]' : ''}`}>
                               {(row.assignedRate * 100).toFixed(1)}%
                             </td>
-                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.assignedVolume.toFixed(1)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{formatNumber(row.assignedVolume)}</td>
                             <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{(row.gtcRate * 100).toFixed(1)}%</td>
-                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{row.gtcVolume.toFixed(1)}</td>
-                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{row.backlog.toFixed(1)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700">{formatNumber(row.gtcVolume)}</td>
+                            <td className="p-2 font-bold border-r border-neutral-200 dark:border-neutral-700 text-red-600">{formatNumber(row.backlog)}</td>
                             
                             {idx === 0 ? (
                               <td className="p-2 align-middle bg-white dark:bg-neutral-900" rowSpan={4}>
@@ -731,17 +791,17 @@ export default function OperationsTab() {
                       {/* Dòng TOTAL cho từng bưu cục theo yêu cầu */}
                       <tr className="bg-neutral-100 dark:bg-neutral-800 font-extrabold border-b-4 border-double border-neutral-400">
                         <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 text-blue-800 dark:text-blue-300">TOTAL</td>
-                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalVol.toFixed(1)}</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{formatNumber(bMeta.totalVol)}</td>
                         <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{(bMeta.branchAssignedRate * 100).toFixed(1)}%</td>
-                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalAssignedVol.toFixed(1)}</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{formatNumber(bMeta.totalAssignedVol)}</td>
                         {/* % GTC nền #006600, chữ trắng */}
                         <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 bg-[#006600] text-white">
                           {(bMeta.branchGtcRate * 100).toFixed(1)}%
                         </td>
-                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{bMeta.totalGtcVol.toFixed(1)}</td>
+                        <td className="p-2 border-r border-neutral-200 dark:border-neutral-700">{formatNumber(bMeta.totalGtcVol)}</td>
                         {/* Tồn đọng nền #FF3300, chữ trắng */}
                         <td className="p-2 border-r border-neutral-200 dark:border-neutral-700 bg-[#FF3300] text-white">
-                          {bMeta.totalBacklog.toFixed(1)}
+                          {formatNumber(bMeta.totalBacklog)}
                         </td>
                       </tr>
                     </Fragment>
@@ -753,12 +813,12 @@ export default function OperationsTab() {
               <tfoot className="bg-neutral-200 dark:bg-neutral-700 font-bold sticky bottom-0 z-10 text-sm border-t-2 border-neutral-400">
                 <tr>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center" colSpan={2}>TỔNG CỘNG TOÀN HỆ THỐNG</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.volume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{formatNumber(n1GlobalSummary.volume)}</td>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{(n1GlobalSummary.assignedRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.assignedVolume.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{formatNumber(n1GlobalSummary.assignedVolume)}</td>
                   <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center bg-[#006600] text-white">{(n1GlobalSummary.gtcRate * 100).toFixed(1)}%</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{n1GlobalSummary.gtcVolume.toFixed(1)}</td>
-                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center bg-[#FF3300] text-white">{n1GlobalSummary.backlog.toFixed(1)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center">{formatNumber(n1GlobalSummary.gtcVolume)}</td>
+                  <td className="p-2.5 border-r border-neutral-200 dark:border-neutral-700 font-bold text-center bg-[#FF3300] text-white">{formatNumber(n1GlobalSummary.backlog)}</td>
                   <td className="p-2.5"></td>
                 </tr>
               </tfoot>
