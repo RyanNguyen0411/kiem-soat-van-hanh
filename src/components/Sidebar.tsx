@@ -28,16 +28,16 @@ const navItems: TabItem[] = [
 ];
 
 const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, operationsData, isSidebarOpen } = useDashboard();
+  const { activeTab, setActiveTab, operationsData } = useDashboard();
   const criticalCount = operationsData.filter(item => item.status === 'Critical').length;
 
   return (
-    <aside className={`transition-all duration-300 overflow-hidden ${isSidebarOpen ? 'w-64' : 'w-0 -ml-64 border-r-0'} bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col justify-between shrink-0 shadow-xs`}>
+    <nav className="nav flex flex-col justify-between">
       <div>
         {/* Logo Branding */}
-        <div className="h-16 flex items-center px-6 border-b border-neutral-200 dark:border-neutral-800 gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center font-bold text-black shadow-xs">
-            <PackageCheck className="w-5 h-5 text-neutral-900" />
+        <div className="flex items-center pb-4 mb-3 border-b border-neutral-200 dark:border-neutral-700 gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-500 flex items-center justify-center font-bold text-white shadow-xs">
+            <PackageCheck className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="font-black text-sm tracking-wider text-neutral-900 dark:text-neutral-100 uppercase">
@@ -50,46 +50,47 @@ const Sidebar: React.FC = () => {
         </div>
 
         {/* Navigation Menu */}
-        <nav className="p-3 space-y-1">
+        <ul className="space-y-1.5 list-none p-0 m-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-primary/20 dark:bg-primary/25 text-neutral-950 dark:text-primary font-semibold shadow-xs'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-neutral-950 dark:text-primary' : 'text-neutral-500 dark:text-neutral-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-                {item.id === 'alerts' && criticalCount > 0 && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
-                    {criticalCount}
-                  </span>
-                )}
-              </button>
+              <li key={item.id}>
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700/60 hover:text-neutral-900 dark:hover:text-neutral-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-500 dark:text-neutral-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.id === 'alerts' && criticalCount > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
+                      {criticalCount}
+                    </span>
+                  )}
+                </button>
+              </li>
             );
           })}
-        </nav>
+        </ul>
       </div>
 
       {/* Footer / Version */}
-      <div className="p-4 border-t border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
-        <div className="flex items-center justify-between font-mono">
-          <span>Phiên bản: 1.0.0</span>
-          <span className="text-emerald-500 flex items-center gap-1">
+      <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="flex items-center justify-between font-mono text-[11px]">
+          <span>v1.0.0</span>
+          <span className="text-emerald-500 flex items-center gap-1 font-sans">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block"></span>
-            Online
+            Sẵn sàng
           </span>
         </div>
       </div>
-    </aside>
+    </nav>
   );
 };
 

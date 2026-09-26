@@ -1,1 +1,100 @@
-/* Custom app styles if needed */
+/* Thiết lập chung cho khung trang Dashboard Grid */
+.page {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 260px; /* Cột trái: 240px, Giữa: linh hoạt, Cột phải: 260px */
+    grid-template-rows: auto 1fr auto;                 /* Hàng Header: auto, Nội dung: linh hoạt, Footer: auto */
+    grid-template-areas: 
+        "header header header"
+        "nav    main   aside"
+        "footer footer footer";
+    min-height: 100vh;
+    gap: 16px; /* Khoảng cách giữa các ô lưới */
+    padding: 16px;
+    box-sizing: border-box;
+    background-color: #f4f6f9;
+}
+
+/* Gán các phần tử HTML vào đúng vị trí trên lưới */
+.header { 
+    grid-area: header; 
+    background: #fff; 
+    padding: 14px 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+}
+
+.nav { 
+    grid-area: nav; 
+    background: #fff; 
+    padding: 16px; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+}
+
+.main { 
+    grid-area: main; 
+    background: #fff; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    overflow-x: auto; 
+}
+
+.aside { 
+    grid-area: aside; 
+    background: #fff; 
+    padding: 16px; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+}
+
+.footer { 
+    grid-area: footer; 
+    background: #fff; 
+    padding: 14px 16px; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    text-align: center; 
+}
+
+/* Hỗ trợ Dark mode đồng bộ với ứng dụng */
+.dark .page {
+    background-color: #0b1120;
+}
+.dark .header,
+.dark .nav,
+.dark .main,
+.dark .aside,
+.dark .footer {
+    background: #1e293b;
+    color: #f1f5f9;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    border: 1px solid #334155;
+}
+
+/* Màn hình trung bình / Tablet (769px - 1100px) */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .page {
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-areas: 
+            "header header"
+            "nav    main"
+            "aside  aside"
+            "footer footer";
+    }
+}
+
+/* Responsive cho màn hình nhỏ / Điện thoại (dưới 768px) */
+@media (max-width: 768px) {
+    .page {
+        grid-template-columns: 1fr; /* Chuyển về 1 cột duy nhất */
+        grid-template-areas: 
+            "header"
+            "main"
+            "nav"
+            "aside"
+            "footer"; /* Sắp xếp lại thứ tự ưu tiên hiển thị trên mobile */
+        padding: 12px;
+        gap: 12px;
+    }
+}
