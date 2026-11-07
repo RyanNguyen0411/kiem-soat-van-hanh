@@ -18,7 +18,9 @@ import {
   Zap,
   PhoneCall,
   Truck,
-  Timer
+  Timer,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -114,6 +116,7 @@ export const BacklogGltTab: React.FC = () => {
   // State chọn nhóm KPI làm menu điều hướng danh sách chi tiết
   type KpiGroup = 'all' | 'giao' | 'lay' | 'uutien' | 'chuacochuyen' | 'overdue' | 'tts';
   const [selectedKpi, setSelectedKpi] = useState<KpiGroup>('all');
+  const [showKpiCards, setShowKpiCards] = useState<boolean>(true);
   const tableRef = useRef<HTMLDivElement>(null);
 
   const handleKpiCardClick = (kpi: KpiGroup) => {
@@ -516,14 +519,36 @@ export const BacklogGltTab: React.FC = () => {
         <div className="py-1 px-3 md:px-6 border-b border-slate-100 dark:border-slate-800/80">
           <div className="w-full max-w-[1600px] mx-auto flex flex-col xl:flex-row xl:items-center justify-between gap-1.5">
             <div className="min-w-0 shrink-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <PackageX className="w-4 h-4 text-rose-600 shrink-0" />
-                <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider whitespace-nowrap">
-                  Phân Hệ Tồn Đọng GLT (Giao - Lấy - Trả)
-                </h2>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 whitespace-nowrap">
-                  {dataset.tonDongGlt.length.toLocaleString('vi-VN')} đơn
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <PackageX className="w-4 h-4 text-rose-600 shrink-0" />
+                  <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider whitespace-nowrap">
+                    Phân Hệ Tồn Đọng GLT (Giao - Lấy - Trả)
+                  </h2>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 whitespace-nowrap">
+                    {dataset.tonDongGlt.length.toLocaleString('vi-VN')} đơn
+                  </span>
+                </div>
+
+                {/* NÚT THU GỌN / XEM 7 THẺ KPI (TỐI ƯU VIEW TRÊN ĐIỆN THOẠI) */}
+                <button
+                  type="button"
+                  onClick={() => setShowKpiCards(prev => !prev)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-semibold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer whitespace-nowrap shadow-2xs"
+                  title={showKpiCards ? "Thu gọn 7 thẻ KPI tồn đọng để tối ưu không gian xem trên điện thoại" : "Mở rộng xem 7 thẻ KPI"}
+                >
+                  {showKpiCards ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Thu gọn thẻ KPI</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Xem 7 thẻ KPI ({tabKPIs.totalCount.toLocaleString('vi-VN')})</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -605,9 +630,10 @@ export const BacklogGltTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Hàng 2: Menu 6 Thẻ KPI Tồn Đọng (Tương tác bấm để xem chi tiết bên dưới, cố định ở đỉnh không bị mất đi) */}
-        <div className="py-1.5 px-3 md:px-6 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800">
-          <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
+        {/* Hàng 2: Menu 6 Thẻ KPI Tồn Đọng (Tương tác bấm để xem chi tiết bên dưới, có thể thu gọn trên điện thoại) */}
+        {showKpiCards && (
+          <div className="py-1.5 px-3 md:px-6 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
+            <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
             {/* 1. Tổng Tồn GLT */}
             <button
               type="button"
@@ -799,6 +825,7 @@ export const BacklogGltTab: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
 
       </div>
 
