@@ -1,0 +1,16 @@
+{
+  "short_name": "GHN Long An",
+  "name": "GHN Express - Điều Hành Vận Hành Long An",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "./",
+  "background_color": "#0f172a",
+  "theme_color": "#ea580c",
+  "display": "standalone",
+  "orientation": "any"
+}

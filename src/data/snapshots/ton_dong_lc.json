@@ -1,0 +1,2842 @@
+[
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYM8YPV8",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMYMTY6",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYEQD9F4",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMY7L4G",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYEQQBFD",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYEQAGWY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMYDFA9",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "VNGH80039661018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMRXQPC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMAN4GG",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "12_24",
+    "canhBao": "Cần LC 12_24"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "VNGH80440810816",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "12_24",
+    "canhBao": "Cần LC 12_24"
+  },
+  {
+    "tenBC": "(LAN) Tầm Vu",
+    "maBC": "21710000",
+    "maDonHang": "GYMX4FVM",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "24_36",
+    "canhBao": "Bổ sung gấp 24_36"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYEQ3UDB",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYEQVYGN",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMY3TRE_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYEQYUCT",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMABXTY",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80449631020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80747511019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80475631018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMTYFY9",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMYAHHV",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80174721017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMREEND",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMETL49_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMETUYN_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMEE4LK",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMTLYVG",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80401841013",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "VNGH80758631013",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMETL3M_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Phước Lý",
+    "maBC": "22849000",
+    "maDonHang": "GYMR6MDX_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Đước 1",
+    "maBC": "23220000",
+    "maDonHang": "GYMEALMH",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMHWXFU",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYF8HY",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYACUQ",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMXGGGE",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM89VA9",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM8XYMD",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYXGHM",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMXBGK7",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMA38VB",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMA4V6Q",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYBUYV",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYM37F",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRU797",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRVLHT",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYEQN9KC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMX7BQT",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMX6DE7",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMALXKP",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM88B9R",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRCGM6",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRNTNQ",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRYA6L",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMM8LM7",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM8XDF4",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM88CY4",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80656181018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80511811111",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80160801111",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYEL7R4M",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80795191019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMYFT4A",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMRWX7G",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYM86LTN_PR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMXHKLX",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYELGDY6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYMECHXV",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYEL7FN8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "GYEQ3WPE",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80945971017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80441681018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80300281018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80221371017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80045161017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "maDonHang": "VNGH80679051017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "12_24",
+    "canhBao": "Cần LC 12_24"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYHWW6",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYYCLE",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMR3BB8",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMAHPLV",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMRG8N8",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQNKDL",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLV",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHME",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67GP",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTCQ",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTUX",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLL",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHL6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCXAY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67UN",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67G3",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCX8T",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80067161019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80394361019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67GT",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80395931020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHMM",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80774601020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80570441111",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80641581018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80486381018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80561781018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80476681020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80963581018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80445601020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80843601020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80633381018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80748361019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80946981018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80712181018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80937201020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80641781018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80116241111",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80950801020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80546781018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80132171019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80495131020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80660131020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80644041111",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80837801020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80312781018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80678001020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80692201020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80798171018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80003381018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80053401020",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80560561019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80067361019",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHED",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHMW",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80741781018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67GF",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCX84",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67GK",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHL9",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67G4",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCX8W",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67U6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHEC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL67GY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCX87",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL677M",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHMH",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEL6774",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCX8A",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHEF",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTCV",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHEQ",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHE9",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTCU",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTC9",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTC4",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHE7",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHEW",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHMX",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTCN",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLM",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLG",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLU",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLE",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHFB",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCTC6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHF6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHLD",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYELCHL7",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMMTBLK",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMANEAV",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMMDCXY",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMR8L7R",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMR8L7E",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMXVTM7",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYTWVR",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYML48",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYD3BP",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMYE3BT",
+    "loaiDon": "Luân chuyển trả",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQ39HC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "0_6",
+    "canhBao": "Cần LC 0_6"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7DY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7BB",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7PY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAFBH",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7D8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7PU",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7P8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAFBA",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7BK",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7DR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80108211018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80309611018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80851211018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80015101017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQALAD",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80154501017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80154101017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80108011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80800811018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80252001018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9W3",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WB",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80815211018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WH",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80830011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WL",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACTG",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80309811018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80991601018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA94R",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80717301017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80440011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACTR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAU6B",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9TD",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACH8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WW",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9TG",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAU6A",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGX6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGXW",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACTP",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGGP",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAU6V",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGGL",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WK",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGG6",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAG7Y",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHL",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80162011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80040701017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGGQ",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGX3",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAU6Q",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WD",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9WP",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGXR",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHM",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHE",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80360501017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80431011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80046501017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80440611018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80578611018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80189801018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80431411018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80520811018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80590701017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80401011018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80418611018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACT8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80876901017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGG9",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80959901017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80765901017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80660901017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80601611018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80634211018",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80865701017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80745501017",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGX9",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAU6Y",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHA",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA9TF",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHX",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGGD",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQACHY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQALXY",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQANNN",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQANND",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAGGV",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQXR8Q",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQGE8F",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAFB8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7B4",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQC3FQ",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQA7DE",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQGE8L",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYEQAFBC",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMEWHL8",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "OTHER",
+    "trangThai": "Chưa đóng kiện",
+    "thoiGianTonDong": "6_12",
+    "canhBao": "Cần LC 6_12"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80825311016",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "24_36",
+    "canhBao": "Bổ sung gấp 24_36"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "VNGH80332041014",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "TTS",
+    "trangThai": "Đã đóng kiện",
+    "thoiGianTonDong": "24_36",
+    "canhBao": "Bổ sung gấp 24_36"
+  },
+  {
+    "tenBC": "(LAN) Rạch Kiến",
+    "maBC": "22206000",
+    "maDonHang": "GYMMCBNP",
+    "loaiDon": "Luân chuyển giao",
+    "khachHang": "SHOPEE",
+    "trangThai": "Không cần đóng kiện",
+    "thoiGianTonDong": "24_36",
+    "canhBao": "Bổ sung gấp 24_36"
+  }
+]

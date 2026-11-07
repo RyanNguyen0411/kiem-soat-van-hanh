@@ -1,64 +1,153 @@
 import React from 'react';
+import { 
+  RefreshCw, 
+  ExternalLink, 
+  Sun, 
+  Moon, 
+  Menu, 
+  AlertCircle,
+  Sparkles 
+} from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
-import { RefreshCw, Sun, Moon, Database, Clock } from 'lucide-react';
-import { format } from 'date-fns';
 
-const Header: React.FC = () => {
-  const { loading, refreshData, lastUpdated, nextUpdate, darkMode, setDarkMode, errors } = useDashboard();
-  const hasErrors = Object.values(errors).some(err => err !== null);
+export const Header: React.FC = () => {
+  const { 
+    syncStatus, 
+    refreshData, 
+    darkMode, 
+    setDarkMode, 
+    setIsSidebarOpen,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
+    spreadsheetId
+  } = useDashboard();
+
+  const handleToggleSidebar = () => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(prev => !prev);
+    } else {
+      setIsSidebarCollapsed(prev => !prev);
+    }
+  };
 
   return (
-    <header className="header flex items-center justify-between">
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-3 w-3 relative">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${hasErrors ? 'bg-red-400' : 'bg-emerald-400'} opacity-75`}></span>
-            <span className={`relative inline-flex rounded-full h-3 w-3 ${hasErrors ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-          </span>
-          <h1 className="text-lg md:text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 flex items-center gap-2">
-            Dashboard Báo Cáo
-            <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-primary/20 text-neutral-800 dark:text-primary border border-primary/30">
-              GHN Express
-            </span>
-          </h1>
-        </div>
-      </div>
+    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-4">
+        {/* Left: Branding & Title */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleToggleSidebar}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center"
+            title={isSidebarCollapsed ? 'Mở rộng thanh menu (Ctrl+B)' : 'Thu gọn thanh menu (Ctrl+B)'}
+          >
+            <Menu className="w-5 h-5 text-orange-400" />
+          </button>
 
-      <div className="flex items-center space-x-2 md:space-x-4">
-        {/* Sync Info */}
-        <div className="hidden lg:flex items-center text-xs text-neutral-500 dark:text-neutral-400 gap-3 border-r border-neutral-200 dark:border-neutral-800 pr-4">
-          <div className="flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5" />
-            <span>Đồng bộ: {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '--:--:--'}</span>
-          </div>
-          {nextUpdate && (
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Tiếp theo: {format(nextUpdate, 'HH:mm:ss')}</span>
+          <div className="flex items-center gap-2.5">
+            {/* GHN Brand Symbol */}
+            <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-black text-white text-base shadow-sm tracking-tighter">
+              GHN
             </div>
-          )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-extrabold tracking-wide text-white uppercase font-sans">
+                  GHN Area Operation Control Center
+                </h1>
+                <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full">
+                  Area Manager BI
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Hệ thống Quản trị & Phân tích Vận hành 5 Bưu cục Khu vực Long An
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Manual Refresh */}
-        <button
-          onClick={() => refreshData()}
-          disabled={loading}
-          title="Làm mới dữ liệu từ Google Sheets"
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
-          <span className="hidden sm:inline">{loading ? 'Đang tải...' : 'Làm mới'}</span>
-        </button>
+        {/* Right: Sync Status & Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Connection Status Badge */}
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                syncStatus.source === 'LIVE_SHEETS' ? 'bg-emerald-400' : 'bg-amber-400'
+              }`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                syncStatus.source === 'LIVE_SHEETS' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`} />
+            </span>
+            <span className="text-[11px] font-medium hidden md:inline text-slate-300">
+              {syncStatus.source === 'LIVE_SHEETS' ? 'Google Sheets Trực tiếp' : 'Dữ liệu Kiểm toán'}
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">
+              ({syncStatus.lastUpdated})
+            </span>
+          </div>
 
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          title={darkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
-          className="p-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 transition-colors"
-        >
-          {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-neutral-600" />}
-        </button>
+          {/* Sync / Refresh Button */}
+          <button
+            onClick={() => refreshData()}
+            disabled={syncStatus.isSyncing}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              syncStatus.isSyncing 
+                ? 'bg-slate-800 text-slate-400 cursor-wait' 
+                : 'bg-orange-600 hover:bg-orange-500 text-white shadow-sm'
+            }`}
+            title="Đồng bộ lại toàn bộ 6 Sheet từ Google Sheets"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncStatus.isSyncing ? 'animate-spin text-orange-400' : ''}`} />
+            <span className="hidden sm:inline">Làm mới dữ liệu</span>
+          </button>
+
+          {/* Gemini AI Copilot Launcher */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-gemini-ai'))}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-sm transition-all cursor-pointer"
+            title="Hỏi Cố Vấn Trưởng AI Gemini (AM Huy - ĐNB)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span className="hidden md:inline">Gemini AI Copilot</span>
+          </button>
+
+          {/* View Google Sheets Link */}
+          <a
+            href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors hidden lg:flex items-center gap-1 text-xs"
+            title="Mở Google Sheets gốc"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Nguồn Sheets</span>
+          </a>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title={darkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+          >
+            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
+
+      {/* Warning Alert Banner if sync error */}
+      {syncStatus.error && (
+        <div className="bg-amber-500/10 border-t border-amber-500/20 px-4 py-1.5 flex items-center justify-between text-xs text-amber-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span>{syncStatus.error}</span>
+          </div>
+          <button
+            onClick={() => refreshData()}
+            className="underline font-bold text-amber-400 hover:text-amber-200 ml-4"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
     </header>
   );
 };
