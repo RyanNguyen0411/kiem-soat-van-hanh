@@ -550,9 +550,9 @@ export const GlobalSpotlightSearch: React.FC = () => {
   return (
     <>
       {/* ========================================================================= */}
-      {/* 1. FLOATING SEARCH BUTTON Ở GÓC DƯỚI BÊN PHẢI (THU GỌN GỌN GÀNG, KHÔNG CHỒNG CHÉO) */}
+      {/* 1. FLOATING SEARCH BUTTON Ở GÓC DƯỚI BÊN PHẢI (THU GỌN SIÊU NHỎ, KHÔNG CHỒNG CHÉO) */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-15 lg:bottom-6 right-3 lg:right-6 z-40 flex items-center group">
+      <div className="floating-search-btn flex items-center group">
         {/* Tooltip hiển thị khi hover */}
         <div className="hidden sm:flex items-center gap-1.5 mr-2 px-2.5 py-1 rounded-full bg-slate-900/95 text-white text-[11px] font-semibold shadow-lg backdrop-blur-xs border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none translate-x-2 group-hover:translate-x-0">
           <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
@@ -566,11 +566,11 @@ export const GlobalSpotlightSearch: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="relative w-9 h-9 sm:w-10 sm:h-10 lg:w-11 lg:h-11 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400/40"
+          className="floating-action-circle relative bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400/40"
           title="Mở Tìm Kiếm Nhanh (Ctrl + K)"
           aria-label="Mở tìm kiếm nhanh"
         >
-          <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 lg:w-5 lg:h-5 text-white stroke-[2.3]" />
+          <Search className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white stroke-[2.3]" />
         </button>
       </div>
 

@@ -353,8 +353,8 @@ AM Huy cần tôi đưa ra góc nhìn phân tích điểm nghẽn, kế hoạch 
 
   return (
     <>
-      {/* 1. Nút bấm AI Copilot Nổi ở góc dưới bên phải (Thu gọn tinh tế, xếp trên nút Tìm kiếm, không che menu) */}
-      <div className="fixed bottom-26 lg:bottom-19 right-3 lg:right-6 z-40 flex items-center group">
+      {/* 1. Nút bấm AI Copilot Nổi ở góc dưới bên phải (Thu gọn siêu nhỏ, xếp ngay ngắn trên nút Tìm kiếm, không che menu) */}
+      <div className="floating-ai-btn flex items-center group">
         <div className="hidden sm:flex items-center gap-1.5 mr-2 px-2.5 py-1 rounded-full bg-slate-900/95 text-white text-[11px] font-bold shadow-lg backdrop-blur-md border border-purple-500/40 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none translate-x-2 group-hover:translate-x-0">
           <Sparkles className="w-3 h-3 text-pink-400 animate-pulse" />
           <span>Cố Vấn AI</span>
@@ -363,14 +363,14 @@ AM Huy cần tôi đưa ra góc nhìn phân tích điểm nghẽn, kế hoạch 
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="relative w-9 h-9 sm:w-10 sm:h-10 lg:w-11 lg:h-11 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 hover:from-purple-500 hover:to-pink-600 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400/40"
+          className="floating-action-circle relative bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 hover:from-purple-500 hover:to-pink-600 text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400/40"
           title="Mở Trợ Lý Cố Vấn AI (Ctrl+J)"
           aria-label="Mở Trợ Lý Cố Vấn AI"
         >
-          <Bot className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white stroke-[2.2]" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+          <Bot className="w-4 h-4 lg:w-4.5 lg:h-4.5 text-white stroke-[2.2]" />
+          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gradient-to-r from-pink-500 to-rose-500 border border-white" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-gradient-to-r from-pink-500 to-rose-500 border border-white" />
           </span>
         </button>
       </div>

@@ -9,3 +9,49 @@ body,
   margin: 0;
   padding: 0;
 }
+
+/* =========================================================================
+   FLOATING ACTION BUTTONS: TỐI ƯU SIÊU NHỎ GỌN, KHÔNG CHỒNG CHÉO & KHÔNG CHE MENU
+   ========================================================================= */
+.floating-search-btn {
+  position: fixed !important;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+  right: 12px !important;
+  z-index: 40 !important;
+}
+
+.floating-ai-btn {
+  position: fixed !important;
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+  right: 12px !important;
+  z-index: 40 !important;
+}
+
+.floating-action-circle {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+@media (min-width: 1024px) {
+  .floating-search-btn {
+    bottom: 24px !important;
+    right: 24px !important;
+  }
+  .floating-ai-btn {
+    bottom: 68px !important;
+    right: 24px !important;
+  }
+  .floating-action-circle {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+}
