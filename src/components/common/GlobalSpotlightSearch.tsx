@@ -550,29 +550,27 @@ export const GlobalSpotlightSearch: React.FC = () => {
   return (
     <>
       {/* ========================================================================= */}
-      {/* 1. FLOATING SEARCH BUTTON Ở GÓC DƯỚI BÊN PHẢI (YÊU CẦU NGƯỜI DÙNG) */}
+      {/* 1. FLOATING SEARCH BUTTON Ở GÓC DƯỚI BÊN PHẢI (THU GỌN GỌN GÀNG, KHÔNG CHỒNG CHÉO) */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-7 right-7 z-40 flex items-center group">
+      <div className="fixed bottom-15 lg:bottom-6 right-3 lg:right-6 z-40 flex items-center group">
         {/* Tooltip hiển thị khi hover */}
-        <div className="hidden sm:flex items-center gap-1.5 mr-3 px-3 py-1.5 rounded-full bg-slate-900/90 text-white text-xs font-semibold shadow-lg backdrop-blur-xs border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none translate-x-2 group-hover:translate-x-0">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-          <span>Tìm kiếm nhanh toàn hệ thống</span>
-          <kbd className="ml-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono border border-slate-700 text-orange-400">
-            Ctrl + K
+        <div className="hidden sm:flex items-center gap-1.5 mr-2 px-2.5 py-1 rounded-full bg-slate-900/95 text-white text-[11px] font-semibold shadow-lg backdrop-blur-xs border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none translate-x-2 group-hover:translate-x-0">
+          <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
+          <span>Tìm kiếm</span>
+          <kbd className="ml-1 px-1 py-0.2 rounded bg-slate-800 text-[9px] font-mono border border-slate-700 text-orange-400">
+            Ctrl+K
           </kbd>
         </div>
 
-        {/* Nút bấm tròn Floating Action Button */}
+        {/* Nút bấm tròn Floating Action Button thu gọn tinh tế */}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="relative w-13 h-13 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center border-2 border-white dark:border-slate-800 cursor-pointer focus:outline-none focus:ring-4 focus:ring-orange-400/40"
+          className="relative w-9 h-9 sm:w-10 sm:h-10 lg:w-11 lg:h-11 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400/40"
           title="Mở Tìm Kiếm Nhanh (Ctrl + K)"
           aria-label="Mở tìm kiếm nhanh"
         >
-          {/* Hiệu ứng xung nhịp nhẹ khi rảnh */}
-          <span className="absolute -inset-1 rounded-full bg-orange-400/30 animate-ping -z-10 opacity-75" />
-          <Search className="w-6 h-6 text-white stroke-[2.3]" />
+          <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 lg:w-5 lg:h-5 text-white stroke-[2.3]" />
         </button>
       </div>
 
