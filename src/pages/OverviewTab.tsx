@@ -322,15 +322,15 @@ export const OverviewTab: React.FC = () => {
       } else if (isHighVol && !isHighGtc) {
         quadrant = 'Điểm Nghẽn Tải (Bottleneck)';
         quadrantDesc = 'Sản lượng quá tải, tồn kho cao dẫn tới tỷ lệ GTC bị kéo giảm.';
-        actionDirective = 'Cần tăng tốc độ gán hàng mới Ca 2, san tải tuyến và hỗ trợ bưu tá.';
+        actionDirective = 'Tăng tốc độ gán Ca 2, san tải tuyến và hỗ trợ bưu tá.';
       } else if (!isHighVol && isHighGtc) {
         quadrant = 'Tinh Gọn (Agile / Efficient)';
         quadrantDesc = 'Tuyến giao gọn gàng, tỷ lệ hoàn tất cao.';
-        actionDirective = 'Có thể hỗ trợ nhận tải hoặc chia sẻ tuyến cho bưu cục lân cận.';
+        actionDirective = 'Tuyến gọn, sẵn sàng hỗ trợ tải cho bưu cục lân cận.';
       } else {
         quadrant = 'Cần Giám Sát (At Risk)';
         quadrantDesc = 'Sản lượng trung bình nhưng tỷ lệ hoàn tất chưa đạt chuẩn.';
-        actionDirective = 'Rà soát bưu tá OFF, năng lực giao ca 2 và thời gian xử lý đơn.';
+        actionDirective = 'Rà soát bưu tá OFF, năng lực giao ca 2 và rút ngắn leadtime.';
       }
 
       return {
@@ -1500,77 +1500,83 @@ export const OverviewTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Bảng Chi Tiết Ma Trận Sức Khỏe */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        {/* Bảng Chi Tiết Ma Trận Sức Khỏe Vận Hành (Canh chỉnh chuẩn Data Analyst, không ngắt dòng làm dãn khoảng cách) */}
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
           <table className="w-full text-xs text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-2.5 px-3">Bưu Cục &amp; Xếp Hạng</th>
-                <th className="py-2.5 px-3 text-center">Volume &amp; % Gán</th>
-                <th className="py-2.5 px-3 text-center">% GTC &amp; Khoảng Cách</th>
-                <th className="py-2.5 px-3 text-center">Tồn Đọng (GLT + LC)</th>
-                <th className="py-2.5 px-3 text-center">Nhân Sự &amp; Chuyên Cần</th>
-                <th className="py-2.5 px-3 text-center">Hiệu Quả Ca 2</th>
-                <th className="py-2.5 px-3 text-left">Chỉ Đạo Điều Hành Khuyến Nghị</th>
-                <th className="py-2.5 px-3 text-center">Điều Hướng Nhanh</th>
+                <th className="py-2.5 px-3 w-[15%] min-w-[150px] whitespace-nowrap">Bưu Cục &amp; Xếp Hạng</th>
+                <th className="py-2.5 px-3 w-[9%] min-w-[90px] text-center whitespace-nowrap">Volume &amp; % Gán</th>
+                <th className="py-2.5 px-3 w-[10%] min-w-[100px] text-center whitespace-nowrap">% GTC &amp; Khoảng Cách</th>
+                <th className="py-2.5 px-3 w-[13%] min-w-[130px] text-center whitespace-nowrap">Tồn Đọng (GLT + LC)</th>
+                <th className="py-2.5 px-3 w-[11%] min-w-[110px] text-center whitespace-nowrap">Nhân Sự &amp; Chuyên Cần</th>
+                <th className="py-2.5 px-3 w-[9%] min-w-[90px] text-center whitespace-nowrap">Hiệu Quả Ca 2</th>
+                <th className="py-2.5 px-3 w-[21%] min-w-[220px] text-left">Chỉ Đạo Điều Hành Khuyến Nghị</th>
+                <th className="py-2.5 px-3 w-[12%] min-w-[140px] text-center whitespace-nowrap">Điều Hướng Nhanh</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {operationalScorecard.map((item) => (
-                <tr key={item.buuCuc} className="hover:bg-slate-50/60 dark:hover:bg-slate-750/50 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <tr key={item.buuCuc} className="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 transition-colors">
+                  {/* 1. Bưu Cục & Xếp Hạng */}
+                  <td className="py-2.5 px-3 whitespace-nowrap">
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
                       <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
                       <span>{item.buuCuc}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${item.tierBadge}`}>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`px-2 py-0.2 rounded-full text-[9.5px] font-extrabold border whitespace-nowrap ${item.tierBadge}`}>
                         {item.tierLabel}
                       </span>
-                      <span className="font-mono font-bold text-[11px] text-slate-600 dark:text-slate-400">
+                      <span className="font-mono font-bold text-[10.5px] text-slate-600 dark:text-slate-400">
                         {item.healthScore}/100đ
                       </span>
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className="font-bold text-slate-900 dark:text-white">
+                  {/* 2. Volume & % Gán */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="font-bold text-slate-900 dark:text-white text-xs">
                       {item.totalVol.toLocaleString('vi-VN')}
                     </div>
-                    <div className="text-[11px] text-slate-500 font-medium">
-                      Gán: <strong className="text-blue-600">{item.assignedRate.toFixed(1)}%</strong>
+                    <div className="text-[10.5px] text-slate-500 font-medium">
+                      Gán: <strong className="text-blue-600 dark:text-blue-400">{item.assignedRate.toFixed(1)}%</strong>
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className="font-black text-sm text-slate-900 dark:text-white">
+                  {/* 3. % GTC & Khoảng Cách */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="font-black text-xs text-slate-900 dark:text-white">
                       {item.gtcRate.toFixed(2)}%
                     </div>
-                    <div className={`text-[10px] font-bold ${item.gtcGap >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}% vượt chuẩn` : `${item.gtcGap.toFixed(1)}% vs chuẩn`}
+                    <div className={`text-[10px] font-bold ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}% vượt` : `${item.gtcGap.toFixed(1)}% vs chuẩn`}
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className={`font-bold ${item.totalBacklog > 2000 ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}`}>
+                  {/* 4. Tồn Đọng (GLT + LC) */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className={`font-bold text-xs ${item.totalBacklog > 2000 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
                       {item.totalBacklog.toLocaleString('vi-VN')} đơn
                     </div>
                     <div className="text-[10px] text-slate-500 font-medium">
-                      {item.gltCount.toLocaleString('vi-VN')} GLT &bull; {item.lcCount} LC ({item.backlogRate.toFixed(1)}% Vol)
+                      {item.gltCount.toLocaleString('vi-VN')} GLT &bull; {item.lcCount} LC ({item.backlogRate.toFixed(1)}%)
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className="font-bold text-slate-900 dark:text-white">
+                  {/* 5. Nhân Sự & Chuyên Cần */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="font-bold text-slate-900 dark:text-white text-xs">
                       {item.totalStaff} NV
                     </div>
                     <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {item.activeStaffInPeriod} NV đi làm ({item.attendanceRate.toFixed(0)}%)
+                      {item.activeStaffInPeriod} đi làm ({item.attendanceRate.toFixed(0)}%)
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className="font-bold text-indigo-600 dark:text-indigo-400">
+                  {/* 6. Hiệu Quả Ca 2 */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xs">
                       {item.ca2Rate.toFixed(1)}% GTC
                     </div>
                     <div className="text-[10px] text-slate-500">
@@ -1578,42 +1584,44 @@ export const OverviewTab: React.FC = () => {
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-left max-w-xs">
-                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-700 dark:text-slate-300">
-                      <div className="font-bold text-orange-600 dark:text-orange-400 mb-0.5 flex items-center gap-1">
-                        <Target className="w-3 h-3 shrink-0" />
-                        <span>{item.quadrant}</span>
-                      </div>
-                      <div>{item.actionDirective}</div>
+                  {/* 7. Chỉ Đạo Điều Hành Khuyến Nghị (Trình bày gọn gàng, không dãn hàng) */}
+                  <td className="py-2.5 px-3 text-left">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Target className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+                      <span className="font-bold text-orange-600 dark:text-orange-400 text-[11px] whitespace-nowrap">
+                        {item.quadrant}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal">
+                      {item.actionDirective}
                     </div>
                   </td>
 
-                  <td className="py-3 px-3 text-center">
-                    <div className="flex flex-col gap-1 w-28 mx-auto">
+                  {/* 8. Điều Hướng Nhanh (Sắp xếp hàng ngang tinh gọn, giảm 50% chiều cao hàng) */}
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => navigateToTab('bao_cao_gtc_bc', { buuCuc: item.buuCuc })}
-                        className="px-2 py-1 rounded bg-orange-600 hover:bg-orange-700 text-white font-bold text-[10px] transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                        className="px-2 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                         title={`Xem chi tiết Báo Cáo GTC BC ${item.buuCuc}`}
                       >
                         <FileSpreadsheet className="w-3 h-3" />
                         <span>Báo Cáo BC</span>
                       </button>
-                      <div className="grid grid-cols-2 gap-1">
-                        <button
-                          onClick={() => navigateToTab('gtc_nhan_vien', { buuCuc: item.buuCuc })}
-                          className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 text-[9px] font-bold transition-all cursor-pointer"
-                          title="Xem Bưu tá"
-                        >
-                          Bưu tá
-                        </button>
-                        <button
-                          onClick={() => navigateToTab('ton_dong_glt', { buuCuc: item.buuCuc })}
-                          className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 text-[9px] font-bold transition-all cursor-pointer"
-                          title="Xem Tồn GLT"
-                        >
-                          Tồn kho
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => navigateToTab('gtc_nhan_vien', { buuCuc: item.buuCuc })}
+                        className="px-1.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-[9.5px] font-bold transition-all cursor-pointer"
+                        title="Xem Bưu tá"
+                      >
+                        Bưu tá
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('ton_dong_glt', { buuCuc: item.buuCuc })}
+                        className="px-1.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 text-[9.5px] font-bold transition-all cursor-pointer"
+                        title="Xem Tồn GLT"
+                      >
+                        Tồn kho
+                      </button>
                     </div>
                   </td>
                 </tr>
