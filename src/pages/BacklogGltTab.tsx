@@ -630,6 +630,35 @@ export const BacklogGltTab: React.FC = () => {
           </div>
         </div>
 
+        {/* THANH ĐIỀU HÀNH & NÚT THU GỌN / MỞ RỘNG 7 THẺ KPI (ĐẶT TRỰC DIỆN NGAY TRÊN 7 THẺ KPI) */}
+        <div className="py-1 px-3 md:px-6 bg-slate-100/90 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+            <span className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-200 tracking-wider truncate">
+              {showKpiCards ? '7 Thẻ Điều Hướng Tồn Đọng GLT' : `7 Thẻ KPI (${tabKPIs.totalCount.toLocaleString('vi-VN')} đơn tồn)`}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowKpiCards(prev => !prev)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95 shrink-0"
+            title={showKpiCards ? "Thu gọn 7 thẻ KPI tồn đọng để tối ưu không gian xem trên điện thoại" : "Mở rộng xem 7 thẻ KPI"}
+          >
+            {showKpiCards ? (
+              <>
+                <span>Thu gọn 7 thẻ KPI</span>
+                <ChevronUp className="w-4 h-4 stroke-[2.5]" />
+              </>
+            ) : (
+              <>
+                <span>Mở rộng xem 7 thẻ KPI</span>
+                <ChevronDown className="w-4 h-4 stroke-[2.5]" />
+              </>
+            )}
+          </button>
+        </div>
+
         {/* Hàng 2: Menu 6 Thẻ KPI Tồn Đọng (Tương tác bấm để xem chi tiết bên dưới, có thể thu gọn trên điện thoại) */}
         {showKpiCards && (
           <div className="py-1.5 px-3 md:px-6 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
