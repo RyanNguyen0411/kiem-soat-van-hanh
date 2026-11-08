@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   TrendingDown,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Activity,
+  Layers
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -88,6 +90,8 @@ const TENURE_COLORS: Record<string, string> = {
 
 type TimeFilterMode = 'all' | 'month' | 'week';
 type ActiveKpiType = 'all' | 'early' | 'days' | 'cod' | 'hotspot' | null;
+type MatrixGranularity = 'month' | 'week' | 'day';
+type MatrixViewMode = 'volume' | 'impact';
 
 export default function NghiViecTab() {
   const { dataset, setActiveTab } = useDashboard();
@@ -103,6 +107,33 @@ export default function NghiViecTab() {
   const [selectedTenure, setSelectedTenure] = useState<string>('all');
   const [selectedReasonGroup, setSelectedReasonGroup] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // =========================================================================
+  // STATE: BỘ LỌC RIÊNG CỦA MA TRẬN THỜI GIAN & SỨC ẢNH HƯỞNG BƯU CỤC
+  // =========================================================================
+  const [matrixGranularity, setMatrixGranularity] = useState<MatrixGranularity>('month');
+  const [matrixSelectedPos, setMatrixSelectedPos] = useState<string[]>(OFFICIAL_POST_OFFICES);
+  const [matrixViewMode, setMatrixViewMode] = useState<MatrixViewMode>('volume');
+  const [matrixExpandedPeriod, setMatrixExpandedPeriod] = useState<string | null>(null);
+
+  const toggleMatrixPo = (po: string) => {
+    setMatrixSelectedPos(prev => {
+      if (prev.includes(po)) {
+        if (prev.length === 1) return prev; // Giữ tối thiểu 1 bưu cục
+        return prev.filter(p => p !== po);
+      } else {
+        return [...prev, po];
+      }
+    });
+  };
+
+  const toggleAllMatrixPos = () => {
+    if (matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length) {
+      setMatrixSelectedPos([OFFICIAL_POST_OFFICES[0]]);
+    } else {
+      setMatrixSelectedPos(OFFICIAL_POST_OFFICES);
+    }
+  };
 
   // Active KPI card interact
   const [activeKpiCard, setActiveKpiCard] = useState<ActiveKpiType>(null);
@@ -271,6 +302,161 @@ export default function NghiViecTab() {
       '% Nghỉ Sớm': parseFloat(p.under3MRate)
     }));
   }, [postOfficeMatrix]);
+
+  // =========================================================================
+  // DỮ LIỆU MA TRẬN THEO THỜI GIAN (THÁNG/TUẦN/NGÀY) & SỨC ẢNH HƯỞNG BƯU CỤC
+  // =========================================================================
+  const timePeriods = useMemo(() => {
+    if (matrixGranularity === 'month') {
+      const set = new Set<string>();
+      rawList.forEach(r => { if (r.thangNghiViec) set.add(r.thangNghiViec); });
+      return Array.from(set).sort((a, b) => {
+        const [m1, y1] = a.split('/').map(Number);
+        const [m2, y2] = b.split('/').map(Number);
+        return y1 !== y2 ? y1 - y2 : m1 - m2;
+      });
+    } else if (matrixGranularity === 'week') {
+      const set = new Set<string>();
+      rawList.forEach(r => { if (r.tuanNghiViec) set.add(r.tuanNghiViec); });
+      return Array.from(set).sort((a, b) => {
+        const n1 = parseInt(a.replace('Tuần ', ''), 10) || 0;
+        const n2 = parseInt(b.replace('Tuần ', ''), 10) || 0;
+        return n1 - n2;
+      });
+    } else {
+      const set = new Set<string>();
+      rawList.forEach(r => { if (r.ngayNghiViec) set.add(r.ngayNghiViec); });
+      return Array.from(set).sort((a, b) => {
+        const [d1, m1, y1] = a.split('/').map(Number);
+        const [d2, m2, y2] = b.split('/').map(Number);
+        const time1 = new Date(y1, m1 - 1, d1).getTime();
+        const time2 = new Date(y2, m2 - 1, d2).getTime();
+        return time1 - time2;
+      });
+    }
+  }, [rawList, matrixGranularity]);
+
+  const timeMatrixRows = useMemo(() => {
+    const grandTotal = rawList.length || 1;
+
+    return timePeriods.map(period => {
+      const items = rawList.filter(r => {
+        if (matrixGranularity === 'month') return r.thangNghiViec === period;
+        if (matrixGranularity === 'week') return r.tuanNghiViec === period;
+        return r.ngayNghiViec === period;
+      });
+
+      const periodAreaTotal = items.length;
+      const poCounts: Record<string, number> = {};
+      let selectedTotal = 0;
+      let topPo = '';
+      let topPoCount = 0;
+
+      OFFICIAL_POST_OFFICES.forEach(po => {
+        const c = items.filter(r => r.buuCuc === po).length;
+        poCounts[po] = c;
+        if (matrixSelectedPos.includes(po)) {
+          selectedTotal += c;
+        }
+        if (c > topPoCount) {
+          topPoCount = c;
+          topPo = po.replace('(LAN) ', '');
+        }
+      });
+
+      const impactShareGrand = ((periodAreaTotal / grandTotal) * 100).toFixed(1);
+
+      return {
+        period,
+        label: matrixGranularity === 'month' ? `Tháng ${period}` : (matrixGranularity === 'week' ? period : `Ngày ${period}`),
+        shortLabel: matrixGranularity === 'month' ? `T${period.split('/')[0]}` : (matrixGranularity === 'week' ? period.replace('Tuần ', 'W') : period.slice(0, 5)),
+        poCounts,
+        selectedTotal,
+        periodAreaTotal,
+        topPo: topPo ? `${topPo} (${topPoCount})` : '-',
+        topPoName: topPo,
+        topPoCount,
+        impactShareGrand,
+        items
+      };
+    });
+  }, [rawList, timePeriods, matrixGranularity, matrixSelectedPos]);
+
+  const timeMatrixChartData = useMemo(() => {
+    return timeMatrixRows.map(row => {
+      const entry: Record<string, string | number> = {
+        name: row.shortLabel,
+        fullName: row.label,
+        'Tổng Kỳ': row.selectedTotal,
+        'Tổng Toàn Khu Vực': row.periodAreaTotal
+      };
+
+      OFFICIAL_POST_OFFICES.forEach(po => {
+        if (matrixSelectedPos.includes(po)) {
+          const short = po.replace('(LAN) ', '');
+          const count = row.poCounts[po] || 0;
+          if (matrixViewMode === 'volume') {
+            entry[short] = count;
+          } else {
+            entry[short] = row.selectedTotal > 0 ? Number(((count / row.selectedTotal) * 100).toFixed(1)) : 0;
+          }
+        }
+      });
+
+      return entry;
+    });
+  }, [timeMatrixRows, matrixSelectedPos, matrixViewMode]);
+
+  const cumulativePoImpact = useMemo(() => {
+    const total = rawList.length || 1;
+    return OFFICIAL_POST_OFFICES.map(po => {
+      const count = rawList.filter(r => r.buuCuc === po).length;
+      const share = ((count / total) * 100).toFixed(1);
+      let level = 'Rất thấp';
+      let badgeColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300';
+      
+      const monthCounts: Record<string, number> = {};
+      rawList.filter(r => r.buuCuc === po).forEach(r => {
+        monthCounts[r.thangNghiViec] = (monthCounts[r.thangNghiViec] || 0) + 1;
+      });
+      let maxMonth = '';
+      let maxMonthCount = 0;
+      Object.entries(monthCounts).forEach(([m, c]) => {
+        if (c > maxMonthCount) {
+          maxMonthCount = c;
+          maxMonth = `T${m.split('/')[0]} (${c} ca)`;
+        }
+      });
+
+      if (parseFloat(share) >= 35) {
+        level = 'Cực cao (Điểm nóng số 1)';
+        badgeColor = 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300';
+      } else if (parseFloat(share) >= 30) {
+        level = 'Rất cao (Điểm nóng số 2)';
+        badgeColor = 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border-red-300';
+      } else if (parseFloat(share) >= 20) {
+        level = 'Cao (Bùng phát Q3)';
+        badgeColor = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300';
+      } else if (parseFloat(share) >= 5) {
+        level = 'Thấp (Ổn định)';
+        badgeColor = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300';
+      } else {
+        level = 'Rất thấp (Vững chắc)';
+        badgeColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300';
+      }
+
+      return {
+        buuCuc: po,
+        shortName: po.replace('(LAN) ', ''),
+        count,
+        share,
+        level,
+        badgeColor,
+        peakPeriod: maxMonth || '-',
+        color: PO_COLORS[po] || '#94A3B8'
+      };
+    }).sort((a, b) => b.count - a.count);
+  }, [rawList]);
 
   // =========================================================================
   // 2. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ NHÓM THÂM NIÊN (G01 - G10)
@@ -896,7 +1082,410 @@ export default function NghiViecTab() {
       </div>
 
       {/* =========================================================================
-          KHỐI 1: BẢNG KÊ TỔNG QUAN BÊN TRÁI & SONG SONG BÊN PHẢI ĐỒ THỊ MA TRẬN 5 BƯU CỤC
+          KHỐI 1 (MỚI): BẢNG THỐNG KÊ NGHỈ VIỆC THEO THÁNG/CHU KỲ CỦA CÁC BƯU CỤC (TRÁI)
+          VÀ SONG SONG BÊN PHẢI LÀ ĐỒ THỊ MA TRẬN SỨC ẢNH HƯỞNG SO VỚI TOÀN KHU VỰC
+          ========================================================================= */}
+      <div id="section-time-matrix" className="space-y-3.5 scroll-mt-28">
+        
+        {/* THANH ĐIỀU HÀNH BỘ LỌC RIÊNG CỦA MA TRẬN (TICK NGÀY, TICK TUẦN, TICK THÁNG, TICK BƯU CỤC) */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3.5 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                <Activity className="w-4 h-4 stroke-[2.2]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                    MA TRẬN NGHỈ VIỆC THEO THỜI GIAN &amp; SỨC ẢNH HƯỞNG 5 BƯU CỤC
+                  </h3>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                    Toàn Khu Vực Long An
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-slate-400">
+                  Phân tích động thái biến động nhân sự qua từng tháng/tuần/ngày và đo lường tỷ trọng sức ảnh hưởng của từng bưu cục
+                </p>
+              </div>
+            </div>
+
+            {/* Chế độ xem đồ thị (Khối lượng ca / % Sức ảnh hưởng chuẩn hóa 100%) */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-750 p-1 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setMatrixViewMode('volume')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  matrixViewMode === 'volume'
+                    ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                Khối Lượng (Ca Nghỉ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMatrixViewMode('impact')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  matrixViewMode === 'impact'
+                    ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                % Sức Ảnh Hưởng (100%)
+              </button>
+            </div>
+          </div>
+
+          {/* Dòng điều khiển: Tick Chu Kỳ & Tick Bưu Cục */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            {/* 1. Tick Chu kỳ: Ngày / Tuần / Tháng */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 font-bold text-[11px] flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                Chu Kỳ:
+              </span>
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-750 p-0.5 rounded-lg font-semibold text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setMatrixGranularity('month')}
+                  className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                    matrixGranularity === 'month'
+                      ? 'bg-orange-600 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>Theo Tháng</span>
+                  <span className="text-[9.5px] opacity-80 font-mono">(10T)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMatrixGranularity('week')}
+                  className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                    matrixGranularity === 'week'
+                      ? 'bg-orange-600 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>Theo Tuần</span>
+                  <span className="text-[9.5px] opacity-80 font-mono">(33W)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMatrixGranularity('day')}
+                  className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                    matrixGranularity === 'day'
+                      ? 'bg-orange-600 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>Theo Ngày</span>
+                  <span className="text-[9.5px] opacity-80 font-mono">(60D)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Tick Bưu Cục */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-slate-400 font-bold text-[11px] flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-orange-500" />
+                Tick Bưu Cục:
+              </span>
+              
+              <button
+                type="button"
+                onClick={toggleAllMatrixPos}
+                className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all cursor-pointer ${
+                  matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length
+                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                {matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length ? 'Tất Cả 5 BC' : 'Chọn Hết'}
+              </button>
+
+              {OFFICIAL_POST_OFFICES.map(po => {
+                const isChecked = matrixSelectedPos.includes(po);
+                const short = po.replace('(LAN) ', '');
+                return (
+                  <button
+                    key={po}
+                    type="button"
+                    onClick={() => toggleMatrixPo(po)}
+                    className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                      isChecked
+                        ? 'bg-white dark:bg-slate-750 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400/40 shadow-2xs'
+                        : 'bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <span 
+                      className={`w-2 h-2 rounded-full ${isChecked ? '' : 'opacity-30'}`}
+                      style={{ backgroundColor: PO_COLORS[po] }}
+                    />
+                    <span>{short}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* SONG SONG: BẢNG KÊ THỐNG KÊ (TRÁI) // ĐỒ THỊ MA TRẬN SỨC ẢNH HƯỞNG (PHẢI) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          
+          {/* CỘT TRÁI: BẢNG THỐNG KÊ NGHỈ VIỆC THEO THỜI GIAN CỦA CÁC BƯU CỤC */}
+          <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                    BẢNG THỐNG KÊ NGHỈ VIỆC {matrixGranularity === 'month' ? 'THEO THÁNG' : (matrixGranularity === 'week' ? 'THEO TUẦN' : 'THEO NGÀY')}
+                  </h4>
+                </div>
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  Click hàng để xem chi tiết
+                </span>
+              </div>
+
+              <div className="overflow-x-auto max-h-[380px] overflow-y-auto mt-2 pr-0.5">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-100/90 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px] sticky top-0 z-10">
+                    <tr>
+                      <th className="p-2 w-[18%]">Chu Kỳ</th>
+                      {OFFICIAL_POST_OFFICES.map(po => {
+                        if (!matrixSelectedPos.includes(po)) return null;
+                        const short = po.replace('(LAN) ', '');
+                        return (
+                          <th key={po} className="p-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PO_COLORS[po] }} />
+                              <span>{short}</span>
+                            </div>
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 text-right w-[14%]">Tổng Kỳ</th>
+                      <th className="p-2 text-center w-[16%]">Điểm Nóng</th>
+                      <th className="p-2 text-right w-[14%]">% Toàn Khu Vực</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                    {timeMatrixRows.map((row) => {
+                      const isExpanded = matrixExpandedPeriod === row.period;
+                      return (
+                        <tr
+                          key={row.period}
+                          onClick={() => setMatrixExpandedPeriod(isExpanded ? null : row.period)}
+                          className={`hover:bg-indigo-50/50 dark:hover:bg-slate-750/70 transition-all cursor-pointer ${
+                            isExpanded ? 'bg-indigo-50/80 dark:bg-indigo-950/40 font-semibold' : ''
+                          }`}
+                        >
+                          <td className="p-2 font-mono font-bold text-slate-900 dark:text-white">
+                            {row.label}
+                          </td>
+                          {OFFICIAL_POST_OFFICES.map(po => {
+                            if (!matrixSelectedPos.includes(po)) return null;
+                            const count = row.poCounts[po] || 0;
+                            const isHot = count > 0 && count === row.topPoCount;
+                            return (
+                              <td key={po} className="p-2 text-right font-mono">
+                                {count > 0 ? (
+                                  <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
+                                    isHot 
+                                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-black' 
+                                      : 'text-slate-800 dark:text-slate-200'
+                                  }`}>
+                                    {count}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-600">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="p-2 text-right font-mono font-black text-rose-600 dark:text-rose-400">
+                            {row.selectedTotal}
+                          </td>
+                          <td className="p-2 text-center">
+                            {row.topPo !== '-' ? (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 truncate max-w-[100px] inline-block">
+                                {row.topPo}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                            {row.impactShareGrand}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-100/95 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t border-slate-300 dark:border-slate-600 sticky bottom-0 z-10 text-[11px]">
+                    <tr>
+                      <td className="p-2 uppercase">TỔNG CỘNG</td>
+                      {OFFICIAL_POST_OFFICES.map(po => {
+                        if (!matrixSelectedPos.includes(po)) return null;
+                        const sum = timeMatrixRows.reduce((s, r) => s + (r.poCounts[po] || 0), 0);
+                        return (
+                          <td key={po} className="p-2 text-right font-mono font-bold">
+                            {sum}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 text-right text-rose-600 font-mono font-black text-xs">
+                        {timeMatrixRows.reduce((s, r) => s + r.selectedTotal, 0)}
+                      </td>
+                      <td className="p-2 text-center text-slate-400">-</td>
+                      <td className="p-2 text-right font-mono text-indigo-600">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Accordion mở rộng chi tiết các bưu tá nghỉ việc trong kỳ đang chọn */}
+              {matrixExpandedPeriod && (
+                <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-indigo-200 dark:border-indigo-800/60 text-xs space-y-1.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white pb-1 border-b border-slate-200 dark:border-slate-700">
+                    <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      Chi tiết {timeMatrixRows.find(r => r.period === matrixExpandedPeriod)?.label} ({timeMatrixRows.find(r => r.period === matrixExpandedPeriod)?.selectedTotal || 0} ca nghỉ đang chọn)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMatrixExpandedPeriod(null)}
+                      className="text-slate-400 hover:text-slate-600 text-[10px] cursor-pointer"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                    {timeMatrixRows.find(r => r.period === matrixExpandedPeriod)?.items
+                      .filter(p => matrixSelectedPos.includes(p.buuCuc))
+                      .map(p => (
+                        <div key={p.id} className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                          <div>
+                            <strong className="text-slate-900 dark:text-white">{p.ten}</strong>
+                            <span className="text-slate-400 font-mono ml-1.5">({p.id})</span>
+                            <span className="text-slate-500 ml-1.5">&bull; {p.buuCuc}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-mono">{p.nhomThamNien.split(':')[0]}</span>
+                            <span className="font-mono text-indigo-600 font-bold">{p.soNgayLam}d</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400 flex items-center justify-between">
+              <span>Đang tick chọn: <strong>{matrixSelectedPos.length}/5 bưu cục</strong></span>
+              <span>Tổng số mốc thời gian: <strong>{timeMatrixRows.length} {matrixGranularity === 'month' ? 'tháng' : (matrixGranularity === 'week' ? 'tuần' : 'ngày')}</strong></span>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI: ĐỒ THỊ MA TRẬN SỨC ẢNH HƯỞNG & ĐÁNH GIÁ TÍCH LŨY TOÀN KHU VỰC */}
+          <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+                <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4 text-orange-600" />
+                  ĐỒ THỊ MA TRẬN SỨC ẢNH HƯỞNG 5 BƯU CỤC
+                </h4>
+                <span className="text-[10px] text-slate-400">
+                  {matrixViewMode === 'volume' ? 'Cột xếp chồng khối lượng ca nghỉ' : 'Cột chuẩn hóa 100% tỷ trọng sức ảnh hưởng'}
+                </span>
+              </div>
+
+              {/* Đồ thị Recharts Stacked Bar */}
+              <div className="h-60 sm:h-64 mt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={timeMatrixChartData} margin={{ top: 10, right: 15, bottom: 10, left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 600 }} />
+                    <YAxis 
+                      unit={matrixViewMode === 'impact' ? '%' : ''} 
+                      domain={matrixViewMode === 'impact' ? [0, 100] : ['auto', 'auto']}
+                      tick={{ fontSize: 10 }} 
+                    />
+                    <Tooltip 
+                      formatter={(val, name) => [
+                        matrixViewMode === 'impact' ? `${val}%` : `${val} ca`,
+                        name
+                      ]}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) return payload[0].payload.fullName || label;
+                        return label;
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10.5px', paddingTop: '4px' }} />
+                    {OFFICIAL_POST_OFFICES.map(po => {
+                      if (!matrixSelectedPos.includes(po)) return null;
+                      const short = po.replace('(LAN) ', '');
+                      return (
+                        <Bar 
+                          key={po} 
+                          dataKey={short} 
+                          stackId="impactMatrixStack" 
+                          fill={PO_COLORS[po] || '#94A3B8'} 
+                          radius={matrixViewMode === 'impact' ? [0, 0, 0, 0] : [2, 2, 0, 0]} 
+                        />
+                      );
+                    })}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* BẢNG ĐÁNH GIÁ SỨC ẢNH HƯỞNG TÍCH LŨY TOÀN KHU VỰC (CUMULATIVE AREA IMPACT) */}
+            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                <span className="flex items-center gap-1 text-orange-600">
+                  <Layers className="w-3.5 h-3.5" />
+                  Xếp Hạng Sức Ảnh Hưởng Toàn Khu Vực (81 Ca Nghỉ):
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Tỷ trọng % so với tổng thể khu vực
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5">
+                {cumulativePoImpact.map(item => (
+                  <div 
+                    key={item.buuCuc} 
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-750/70 space-y-0.5 text-center"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="text-[11px] font-extrabold text-slate-900 dark:text-white truncate">
+                        {item.shortName}
+                      </span>
+                    </div>
+                    <div className="text-base font-black text-rose-600 dark:text-rose-400 font-mono">
+                      {item.count} <span className="text-[9.5px] font-normal text-slate-400">ca</span>
+                    </div>
+                    <div className="text-[10px] font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                      {item.share}%
+                    </div>
+                    <div className={`text-[8.5px] font-bold px-1 py-0.2 rounded border truncate ${item.badgeColor}`}>
+                      {item.level.split('(')[0]}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* =========================================================================
+          KHỐI 2: BẢNG KÊ TỔNG QUAN BÊN TRÁI & SONG SONG BÊN PHẢI ĐỒ THỊ MA TRẬN 5 BƯU CỤC
           ========================================================================= */}
       <div id="section-overview-po" className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch scroll-mt-28">
         
