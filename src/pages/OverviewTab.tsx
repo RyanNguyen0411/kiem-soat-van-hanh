@@ -437,7 +437,7 @@ export const OverviewTab: React.FC = () => {
     };
   }, [ca2OperationalData]);
 
-  // Aging distribution for chart 8
+  // Aging distribution for chart 8 (Đồng bộ theo filteredGlt)
   const agingData = useMemo(() => {
     const buckets: Record<string, number> = {
       '0_6h (Mới)': 0,
@@ -449,7 +449,7 @@ export const OverviewTab: React.FC = () => {
       '> 120h (Khẩn cấp)': 0
     };
 
-    dataset.tonDongGlt.forEach(r => {
+    filteredGlt.forEach(r => {
       const a = r.thoiGianTonDong;
       if (a === '0_6') buckets['0_6h (Mới)']++;
       else if (a === '6_12') buckets['6_12h']++;
@@ -461,9 +461,391 @@ export const OverviewTab: React.FC = () => {
     });
 
     return Object.entries(buckets).map(([name, value]) => ({ name, value }));
-  }, [dataset.tonDongGlt]);
+  }, [filteredGlt]);
 
   const AGING_COLORS = ['#10B981', '#34D399', '#38BDF8', '#FBBF24', '#F97316', '#EF4444', '#991B1B'];
+
+  // =========================================================================
+  // CẢNH BÁO VẬN HÀNH TRỌNG YẾU DÀNH CHO AREA MANAGER (ĐỐI SOÁT ĐỘNG THEO BỘ LỌC)
+  // LOGICS CHUYÊN SÂU DATA ANALYST: TỔNG HỢP TOÀN BỘ GTC, TỒN KHO, SLA >120H & NHÂN SỰ
+  // =========================================================================
+  const executiveOperationalAlerts = useMemo(() => {
+    const isAll = filterBuuCuc === 'all';
+    const allPos = ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
+
+    // 1. Xác định nhãn ngữ cảnh thời gian đang lọc
+    let timeLabel = 'Toàn kỳ ghi nhận';
+    if (filterDates.length > 0) {
+      timeLabel = filterDates.length === 1 
+        ? `Ngày ${filterDates[0]}` 
+        : `${filterDates.length} ngày chọn lọc (${filterDates.slice(0, 2).join(', ')}${filterDates.length > 2 ? '...' : ''})`;
+    } else if (filterWeek !== 'all') {
+      const w = availableWeeks.find(x => x.key === filterWeek);
+      timeLabel = w ? w.label : filterWeek;
+    } else if (filterMonth !== 'all') {
+      const m = availableMonths.find(x => x.key === filterMonth);
+      timeLabel = m ? m.label : filterMonth;
+    }
+
+    const loaiHangLabel = filterLoaiHang !== 'all' ? ` • ${filterLoaiHang}` : '';
+
+    // 2. Tính toán hiệu suất chuẩn 5 bưu cục theo kỳ thời gian (để xếp hạng & đối soát tương quan)
+    const regionalScorecard = allPos.map(po => {
+      const poGtc = dataset.gtcBuuCuc.filter(r => {
+        if (r.buuCuc !== po) return false;
+        if (effectiveDates.length > 0 && !effectiveDates.includes(r.ngay)) return false;
+        if (filterLoaiHang !== 'all' && r.loaiHang !== filterLoaiHang) return false;
+        return true;
+      });
+      const poGlt = dataset.tonDongGlt.filter(r => r.buuCuc === po);
+      const poLc = dataset.tonDongLc.filter(r => r.tenBC === po);
+      const poNs = dataset.nhanSu.filter(r => r.buuCuc === po);
+      const poGtcNv = dataset.gtcNhanVien.filter(r => {
+        if (r.buuCuc !== po) return false;
+        if (effectiveDates.length > 0 && !effectiveDates.includes(r.ngay)) return false;
+        return true;
+      });
+
+      const totalVol = poGtc.reduce((a, b) => a + (b.volume || 0), 0);
+      const totalGan = poGtc.reduce((a, b) => a + (b.sldGan || 0), 0);
+      const totalGtc = poGtc.reduce((a, b) => a + (b.sldGTC || 0), 0);
+      const gtcRate = totalVol > 0 ? (totalGtc / totalVol) * 100 : 0;
+      const assignedRate = totalVol > 0 ? (totalGan / totalVol) * 100 : 0;
+      const gtcGap = gtcRate - 70;
+
+      const gltCount = poGlt.length;
+      const lcCount = poLc.length;
+      const totalBacklog = gltCount + lcCount;
+      const backlogRate = totalVol > 0 ? (totalBacklog / totalVol) * 100 : 0;
+
+      // Đơn khẩn cấp > 120h
+      const urgent120h = poGlt.filter(r => r.thoiGianTonDong === '120_192' || r.thoiGianTonDong === '192').length;
+      const ttsCount = poGlt.filter(r => r.canhBao && (r.canhBao.includes('TTS') || r.canhBao.includes('Trọng điểm'))).length;
+
+      // Nhân sự & ca 2
+      const totalStaff = poNs.length;
+      const activeStaff = new Set(poGtcNv.map(r => r.maNV)).size;
+      const attendanceRate = totalStaff > 0 ? Math.min(100, (activeStaff / totalStaff) * 100) : 0;
+
+      const ca2Records = poGtc.filter(r => r.loaiHang === 'Hàng Mới Ca 2');
+      const ca2Vol = ca2Records.reduce((a, b) => a + (b.volume || 0), 0);
+      const ca2Gtc = ca2Records.reduce((a, b) => a + (b.sldGTC || 0), 0);
+      const ca2Rate = ca2Vol > 0 ? (ca2Gtc / ca2Vol) * 100 : 0;
+
+      // Sức khỏe
+      const gtcScore = Math.min(45, (gtcRate / 70) * 45);
+      const backlogScore = Math.max(0, 25 - (backlogRate * 3.5));
+      const ganScore = Math.min(15, (assignedRate / 95) * 15);
+      const ca2Score = Math.min(15, (ca2Rate / 60) * 15);
+      const healthScore = Math.min(100, Math.max(0, Math.round(gtcScore + backlogScore + ganScore + ca2Score)));
+
+      let tierLabel = 'Hạng B • Ổn Định';
+      let tierBadge = 'bg-blue-600 text-white';
+      if (healthScore >= 75) {
+        tierLabel = 'Hạng A • Xuất Sắc';
+        tierBadge = 'bg-emerald-600 text-white';
+      } else if (healthScore >= 65) {
+        tierLabel = 'Hạng B • Ổn Định';
+        tierBadge = 'bg-blue-600 text-white';
+      } else if (healthScore >= 55) {
+        tierLabel = 'Hạng C • Cần Cải Thiện';
+        tierBadge = 'bg-amber-600 text-white';
+      } else {
+        tierLabel = 'Hạng D • Báo Động';
+        tierBadge = 'bg-rose-600 text-white';
+      }
+
+      return {
+        buuCuc: po,
+        totalVol,
+        totalGan,
+        assignedRate,
+        totalGtc,
+        gtcRate,
+        gtcGap,
+        totalBacklog,
+        gltCount,
+        lcCount,
+        urgent120h,
+        ttsCount,
+        totalStaff,
+        activeStaff,
+        attendanceRate,
+        ca2Vol,
+        ca2Gtc,
+        ca2Rate,
+        healthScore,
+        tierLabel,
+        tierBadge
+      };
+    });
+
+    // Sắp xếp theo %GTC và HealthScore
+    const sortedByGtc = [...regionalScorecard].sort((a, b) => a.gtcRate - b.gtcRate);
+    const sortedByHealth = [...regionalScorecard].sort((a, b) => b.healthScore - a.healthScore);
+
+    // 3. Phân tích Tồn đọng trong phạm vi bộ lọc đang áp dụng
+    const currentGlt = filteredGlt;
+    const currentLc = filteredLc;
+    const currentBacklog = currentGlt.length + currentLc.length;
+    const urgent120_192 = currentGlt.filter(r => r.thoiGianTonDong === '120_192').length;
+    const urgentOver192 = currentGlt.filter(r => r.thoiGianTonDong === '192').length;
+    const totalUrgent120h = urgent120_192 + urgentOver192;
+    const ttsCountFiltered = currentGlt.filter(r => r.canhBao && (r.canhBao.includes('TTS') || r.canhBao.includes('Trọng điểm'))).length;
+    const donGiaoTon = currentGlt.filter(r => r.loaiDon === 'Giao').length;
+    const donLayTon = currentGlt.filter(r => r.loaiDon === 'Lấy').length;
+    const chuaCoChuyenDi = currentGlt.filter(r => r.trangThai && r.trangThai.toLowerCase().includes('chưa có chuyến đi')).length;
+
+    // Tìm bưu cục giữ nhiều đơn >120h nhất
+    const urgentBcMap: Record<string, number> = {};
+    currentGlt.filter(r => r.thoiGianTonDong === '120_192' || r.thoiGianTonDong === '192').forEach(r => {
+      urgentBcMap[r.buuCuc] = (urgentBcMap[r.buuCuc] || 0) + 1;
+    });
+    const topUrgentBc = Object.entries(urgentBcMap).sort((a, b) => b[1] - a[1])[0] || [null, 0];
+
+    // 4. Phân tích Nhân viên hiệu suất thấp trong phạm vi bộ lọc
+    const empMap: Record<string, {
+      maNV: string;
+      tenNV: string;
+      buuCuc: string;
+      tongDon: number;
+      tongDonGTC: number;
+      soNgay: number;
+    }> = {};
+
+    filteredGtcNv.forEach(r => {
+      if (!r.maNV) return;
+      if (!empMap[r.maNV]) {
+        empMap[r.maNV] = {
+          maNV: r.maNV,
+          tenNV: r.tenNV || r.maNV,
+          buuCuc: r.buuCuc,
+          tongDon: 0,
+          tongDonGTC: 0,
+          soNgay: 0
+        };
+      }
+      empMap[r.maNV].tongDon += r.tongDon || 0;
+      empMap[r.maNV].tongDonGTC += r.tongDonGTC || 0;
+      empMap[r.maNV].soNgay += 1;
+    });
+
+    const empList = Object.values(empMap).map(e => ({
+      ...e,
+      gtcRate: e.tongDon > 0 ? Number(((e.tongDonGTC / e.tongDon) * 100).toFixed(1)) : 0
+    }));
+
+    // Lọc nhân sự có sản lượng (>= 30 đơn) nhưng %GTC < 60%
+    const lowPerfCouriers = empList
+      .filter(e => e.tongDon >= 30 && e.gtcRate < 60)
+      .sort((a, b) => a.gtcRate - b.gtcRate);
+
+    // Bưu tá xuất sắc nhất (để tuyên dương nếu không có bưu tá yếu)
+    const topPerfCouriers = empList
+      .filter(e => e.tongDon >= 50)
+      .sort((a, b) => b.gtcRate - a.gtcRate);
+
+    // 5. Phân tích Ca 2 trong phạm vi bộ lọc
+    const ca2RecordsFiltered = filteredGtcBc.filter(r => r.loaiHang === 'Hàng Mới Ca 2');
+    const ca2VolFiltered = ca2RecordsFiltered.reduce((a, b) => a + (b.volume || 0), 0);
+    const ca2GtcFiltered = ca2RecordsFiltered.reduce((a, b) => a + (b.sldGTC || 0), 0);
+    const ca2RateFiltered = ca2VolFiltered > 0 ? (ca2GtcFiltered / ca2VolFiltered) * 100 : 0;
+
+    // =========================================================================
+    // CASE A: BỘ LỌC ĐANG CHỌN "TẤT CẢ 5 BƯU CỤC" (TOÀN KHU VỰC LONG AN)
+    // =========================================================================
+    if (isAll) {
+      const worstBc = sortedByGtc[0];
+      const totalAreaGlt = regionalScorecard.reduce((a, b) => a + b.gltCount, 0);
+
+      // Thẻ 1: Điểm Nóng & Bưu Cục Nghẽn Tải Toàn Khu Vực
+      const card1 = {
+        title: worstBc && worstBc.gtcRate < 65 
+          ? `🔴 Điểm Nóng: Bưu Cục ${worstBc.buuCuc}` 
+          : `⚖️ Bưu Cục Cần Bứt Phá: ${worstBc?.buuCuc || 'Khu vực'}`,
+        badge: worstBc ? worstBc.tierLabel : 'Đang rà soát',
+        badgeColor: worstBc && worstBc.healthScore < 60 ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white',
+        content: worstBc ? (
+          <span>
+            Volume: <b>{worstBc.totalVol.toLocaleString('vi-VN')} đơn</b> nhưng %GTC chỉ đạt <b>{worstBc.gtcRate.toFixed(2)}%</b> ({worstBc.gtcGap >= 0 ? `+${worstBc.gtcGap.toFixed(1)}%` : `${worstBc.gtcGap.toFixed(1)}%`} so với chuẩn 70%). Đang giữ tới <b>{worstBc.gltCount.toLocaleString('vi-VN')} đơn tồn GLT</b> ({totalAreaGlt > 0 ? ((worstBc.gltCount / totalAreaGlt) * 100).toFixed(1) : 0}% toàn khu vực) và <b>{worstBc.lcCount} đơn tồn LC</b>!
+          </span>
+        ) : 'Đang tổng hợp dữ liệu...',
+        directive: worstBc 
+          ? `Chỉ đạo AM: Yêu cầu Bưu cục trưởng ${worstBc.buuCuc} san tải ngay các tuyến quá tải, đôn đốc gán hàng Ca 2 đạt tối thiểu 95% và chốt xử lý trước 14h.`
+          : 'Chỉ đạo AM: Giữ vững nhịp độ khai thác, kiểm soát tồn cuối ngày.'
+      };
+
+      // Thẻ 2: Cảnh Báo Tồn Đọng Rủi Ro Cao & SLA (>120h, Trọng Điểm TTS)
+      const card2 = {
+        title: totalUrgent120h > 0 
+          ? `⚠️ ${totalUrgent120h.toLocaleString('vi-VN')} Đơn Tồn Khẩn Cấp Quá Hạn > 120h` 
+          : `✅ Kiểm Soát Tồn Quá Hạn Xuất Sắc (0 đơn > 120h)`,
+        badge: totalUrgent120h > 100 ? 'Báo động đỏ SLA' : totalUrgent120h > 0 ? 'Cảnh báo SLA' : 'Kiểm soát tốt',
+        badgeColor: totalUrgent120h > 100 ? 'bg-rose-600 text-white' : totalUrgent120h > 0 ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white',
+        content: totalUrgent120h > 0 ? (
+          <span>
+            Tại Sheet Tồn đọng GLT có <b>{urgent120_192} đơn</b> từ 120-192h và <b>{urgentOver192} đơn</b> &gt; 192h chưa giải phóng. {topUrgentBc[0] ? <span>Dồn ứ nhiều nhất tại <b>{topUrgentBc[0]} ({topUrgentBc[1]} đơn)</b>.</span> : ''} Khu vực còn có <b>{ttsCountFiltered.toLocaleString('vi-VN')} đơn Trọng điểm TTS</b> và <b>{currentLc.length} đơn tồn LC</b>.
+          </span>
+        ) : (
+          <span>
+            Kho hàng 5 bưu cục kiểm soát tốt, không phát sinh đơn quá hạn khẩn cấp &gt; 120h. Tổng tồn kho hiện tại gồm <b>{currentGlt.length.toLocaleString('vi-VN')} đơn GLT</b> ({donGiaoTon} giao tồn, {donLayTon} lấy tồn) và <b>{currentLc.length} đơn LC</b>.
+          </span>
+        ),
+        directive: topUrgentBc[0] && totalUrgent120h > 0
+          ? `Chỉ đạo AM: Chỉ đạo BCT ${topUrgentBc[0]} và Điều phối kho mở kiểm đếm vật lý, phát dứt điểm hoặc hoàn tất biên bản bồi thường trong ca 1.`
+          : 'Chỉ đạo AM: Kiểm soát chặt chẽ hàng luân chuyển liên bưu cục và giải phóng đơn lấy tồn trong ngày.'
+      };
+
+      // Thẻ 3: Điểm Nghẽn Nhân Sự & Giao Hàng Ca 2
+      const lowCount = lowPerfCouriers.length;
+      const card3 = {
+        title: lowCount > 0 
+          ? `👷 ${lowCount} Bưu Tá Hiệu Suất Thấp (< 60% GTC)` 
+          : `💪 Đội Ngũ Bưu Tá Vận Hành Đạt Chuẩn`,
+        badge: lowCount > 3 ? 'Cần can thiệp gấp' : lowCount > 0 ? 'Đôn đốc tuyến' : 'Tích cực',
+        badgeColor: lowCount > 3 ? 'bg-rose-600 text-white' : lowCount > 0 ? 'bg-orange-600 text-white' : 'bg-emerald-600 text-white',
+        content: lowCount > 0 ? (
+          <span>
+            Ghi nhận {lowCount} bưu tá giao thấp: {lowPerfCouriers.slice(0, 3).map((e, idx) => (
+              <span key={e.maNV}>
+                <b>{e.tenNV}</b> ({e.gtcRate}%, {e.buuCuc.replace('(LAN) ', '')}){idx < Math.min(lowCount, 3) - 1 ? ', ' : ''}
+              </span>
+            ))}{lowCount > 3 ? ` và ${lowCount - 3} nhân sự khác` : ''}. Tỷ lệ hoàn tất Hàng Mới Ca 2 khu vực đạt <b>{ca2RateFiltered.toFixed(1)}%</b> ({ca2RateFiltered >= 60 ? 'Đạt chuẩn' : 'Chưa đạt mốc 60%'}).
+          </span>
+        ) : (
+          <span>
+            Toàn bộ bưu tá đều đạt %GTC &ge; 60%. Dẫn đầu năng suất: {topPerfCouriers.slice(0, 2).map((e, idx) => (
+              <span key={e.maNV}><b>{e.tenNV}</b> ({e.gtcRate}% - {e.tongDon} đơn){idx === 0 ? ', ' : ''}</span>
+            ))}. Tỷ lệ giao Ca 2 đạt <b>{ca2RateFiltered.toFixed(1)}%</b> ({ca2VolFiltered.toLocaleString('vi-VN')} đơn).
+          </span>
+        ),
+        directive: lowCount > 0 
+          ? 'Chỉ đạo AM: Yêu cầu Trưởng bưu cục trực tiếp đi tuyến kiểm tra bưu tá giao yếu, nghiêm cấm tình trạng bưu tá ôm đơn không phát.'
+          : 'Chỉ đạo AM: Tiếp tục duy trì chính sách thưởng hoa hồng khuyến khích bưu tá xuất chuyến Ca 2.'
+      };
+
+      return {
+        scopeTitle: `TOÀN DIỆN KHU VỰC (5 BƯU CỤC LONG AN) • ${timeLabel.toUpperCase()}${loaiHangLabel.toUpperCase()}`,
+        statusBadge: kpis.gtcRateTotal >= 65 ? 'Vận hành Ổn định' : 'Vận hành Cần Tăng Tốc',
+        statusColor: kpis.gtcRateTotal >= 65 ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300' : 'text-rose-700 bg-rose-100 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300',
+        summaryPill: (
+          <span>
+            Volume: <b>{kpis.totalVolume.toLocaleString('vi-VN')}</b> &bull; %GTC: <b>{kpis.gtcRateTotal.toFixed(2)}%</b> ({kpis.gtcRateTotal >= 70 ? `+${(kpis.gtcRateTotal - 70).toFixed(1)}%` : `${(kpis.gtcRateTotal - 70).toFixed(1)}%`} vs chuẩn) &bull; Tồn kho: <b>{currentBacklog.toLocaleString('vi-VN')}</b> đơn &bull; Quá hạn &gt;120h: <b>{totalUrgent120h}</b> đơn
+          </span>
+        ),
+        cards: [card1, card2, card3]
+      };
+    }
+
+    // =========================================================================
+    // CASE B: BỘ LỌC ĐANG CHỌN 1 BƯU CỤC CỤ THỂ (ví dụ: (LAN) Cần Đước 1, (LAN) Rạch Kiến, ...)
+    // =========================================================================
+    const targetPoStats = regionalScorecard.find(p => p.buuCuc === filterBuuCuc);
+    const poRank = sortedByHealth.findIndex(p => p.buuCuc === filterBuuCuc) + 1;
+    const poLowPerfCouriers = lowPerfCouriers.filter(e => e.buuCuc === filterBuuCuc);
+    const poTopPerfCouriers = topPerfCouriers.filter(e => e.buuCuc === filterBuuCuc);
+
+    // Thẻ 1: Sức Khỏe & Vị Thế Vận Hành Của Riêng Bưu Cục Này
+    const card1 = {
+      title: targetPoStats 
+        ? `🏢 Bưu Cục ${filterBuuCuc}: ${targetPoStats.tierLabel}` 
+        : `🏢 Bưu Cục ${filterBuuCuc}`,
+      badge: targetPoStats ? `Hạng #${poRank}/5 BC (${targetPoStats.healthScore}/100đ)` : 'Chi tiết BC',
+      badgeColor: targetPoStats?.tierBadge || 'bg-blue-600 text-white',
+      content: targetPoStats ? (
+        <span>
+          Sản lượng kỳ này: <b>{targetPoStats.totalVol.toLocaleString('vi-VN')} đơn</b>. Tỷ lệ %GTC đạt <b>{targetPoStats.gtcRate.toFixed(2)}%</b> ({targetPoStats.gtcGap >= 0 ? `+${targetPoStats.gtcGap.toFixed(1)}% vượt chuẩn` : `${targetPoStats.gtcGap.toFixed(1)}% so với chuẩn 70%`}). Tỷ lệ gán hàng đạt <b>{targetPoStats.assignedRate.toFixed(1)}%</b>. Bưu cục hiện đứng thứ <b>#{poRank}/5 bưu cục</b> toàn khu vực Long An.
+        </span>
+      ) : 'Đang tính toán số liệu...',
+      directive: targetPoStats && targetPoStats.gtcGap < 0
+        ? `Chỉ đạo AM: Yêu cầu Bưu cục trưởng ${filterBuuCuc} họp khẩn buổi trưa, đẩy nhanh tiến độ xuất chuyến 2 và hỗ trợ các tuyến có tỷ lệ giao thấp.`
+        : `Chỉ đạo AM: Biểu dương ban điều hành ${filterBuuCuc}, duy trì tỷ lệ gán hàng trên 95% và giải phóng hàng tồn cuối ngày.`
+    };
+
+    // Thẻ 2: Kiểm Soát Tồn Kho & Rủi Ro SLA Của Bưu Cục Này
+    const card2 = {
+      title: totalUrgent120h > 0 
+        ? `⚠️ ${totalUrgent120h} Đơn Quá Hạn > 120h Tại Bưu Cục` 
+        : `✅ Kho Bãi Sạch Sẽ (0 đơn quá hạn > 120h)`,
+      badge: totalUrgent120h > 20 ? 'Báo động kho BC' : totalUrgent120h > 0 ? 'Cần giải phóng' : 'Kho đạt chuẩn',
+      badgeColor: totalUrgent120h > 20 ? 'bg-rose-600 text-white' : totalUrgent120h > 0 ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white',
+      content: (
+        <span>
+          Tổng tồn đọng tại kho: <b>{currentBacklog.toLocaleString('vi-VN')} đơn</b> ({currentGlt.length} GLT &bull; {currentLc.length} Luân chuyển LC). {totalUrgent120h > 0 ? (
+            <span>Trong đó có <b>{totalUrgent120h} đơn quá hạn &gt; 120h</b> ({urgent120_192} đơn từ 120-192h, {urgentOver192} đơn &gt; 192h) và <b>{ttsCountFiltered} đơn Trọng điểm TTS</b> có nguy cơ trễ SLA đối tác.</span>
+          ) : (
+            <span>Không có đơn quá hạn khẩn cấp &gt; 120h. Cơ cấu tồn gồm <b>{donGiaoTon} đơn giao tồn</b>, <b>{donLayTon} đơn lấy tồn</b> và <b>{chuaCoChuyenDi} đơn chưa xuất chuyến</b>.</span>
+          )}
+        </span>
+      ),
+      directive: totalUrgent120h > 0
+        ? `Chỉ đạo AM: Yêu cầu BCT ${filterBuuCuc} lập danh sách kiểm tra vật lý ngay 16h, phân loại lý do tồn và giao dứt điểm trong ngày.`
+        : `Chỉ đạo AM: Đôn đốc nhân viên điều phối gán hết ${donGiaoTon} đơn giao tồn cho các bưu tá có năng lực tải còn trống.`
+    };
+
+    // Thẻ 3: Đội Ngũ Bưu Tá & Hiệu Quả Giao Ca 2 Tại Bưu Cục Này
+    const poLowCount = poLowPerfCouriers.length;
+    const card3 = {
+      title: poLowCount > 0 
+        ? `👷 ${poLowCount} Bưu Tá Cần Đôn Đốc (%GTC < 60%)` 
+        : `💪 Đội Ngũ Bưu Tá Bưu Cục Vận Hành Tốt`,
+      badge: `Chuyên cần: ${targetPoStats?.attendanceRate.toFixed(0) || 0}%`,
+      badgeColor: (targetPoStats?.attendanceRate || 0) >= 90 ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white',
+      content: (
+        <span>
+          Chuyên cần: <b>{targetPoStats?.activeStaff || 0}/{targetPoStats?.totalStaff || 0} NV</b> đi làm ({targetPoStats?.attendanceRate.toFixed(0)}%). Hiệu quả Ca 2: <b>{targetPoStats?.ca2Rate.toFixed(1)}% GTC</b> ({targetPoStats?.ca2Vol.toLocaleString('vi-VN')} đơn). {poLowCount > 0 ? (
+            <span>Nhân viên giao thấp: {poLowPerfCouriers.map((e, idx) => (
+              <span key={e.maNV}>
+                <b>{e.tenNV}</b> ({e.gtcRate}% - {e.tongDon} đơn){idx < poLowCount - 1 ? ', ' : ''}
+              </span>
+            ))}.</span>
+          ) : poTopPerfCouriers.length > 0 ? (
+            <span>Bưu tá xuất sắc tiêu biểu: {poTopPerfCouriers.slice(0, 2).map((e, idx) => (
+              <span key={e.maNV}><b>{e.tenNV}</b> ({e.gtcRate}% - {e.tongDon} đơn){idx === 0 ? ', ' : ''}</span>
+            ))}. Không có bưu tá nào giao dưới 60%.</span>
+          ) : 'Chưa ghi nhận dữ liệu bưu tá phát sinh sản lượng trong kỳ.'}
+        </span>
+      ),
+      directive: poLowCount > 0
+        ? `Chỉ đạo AM: Yêu cầu Trưởng bưu cục kèm cặp ${poLowPerfCouriers[0]?.tenNV || 'nhân viên'}, kiểm tra tỷ lệ kết nối người nhận và tái phân tuyến hợp lý.`
+        : `Chỉ đạo AM: Duy trì chuyên cần ca 2 và đảm bảo tỷ lệ xuất chuyến 2 đạt trên 85%.`
+    };
+
+    return {
+      scopeTitle: `ĐỐI SOÁT BƯU CỤC: ${filterBuuCuc.toUpperCase()} • ${timeLabel.toUpperCase()}${loaiHangLabel.toUpperCase()}`,
+      statusBadge: targetPoStats ? targetPoStats.tierLabel : 'Đang xử lý',
+      statusColor: targetPoStats && targetPoStats.healthScore >= 75 
+        ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300' 
+        : targetPoStats && targetPoStats.healthScore >= 65
+        ? 'text-blue-700 bg-blue-100 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300'
+        : 'text-amber-700 bg-amber-100 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300',
+      summaryPill: (
+        <span>
+          Volume: <b>{targetPoStats?.totalVol.toLocaleString('vi-VN') || 0}</b> &bull; %GTC: <b>{targetPoStats?.gtcRate.toFixed(2) || 0}%</b> ({targetPoStats && targetPoStats.gtcGap >= 0 ? `+${targetPoStats.gtcGap.toFixed(1)}%` : `${targetPoStats?.gtcGap.toFixed(1) || 0}%`} vs chuẩn) &bull; Tồn kho: <b>{currentBacklog.toLocaleString('vi-VN')}</b> đơn &bull; Quá hạn &gt;120h: <b>{totalUrgent120h}</b> đơn
+        </span>
+      ),
+      cards: [card1, card2, card3]
+    };
+  }, [
+    filterBuuCuc,
+    filterMonth,
+    filterWeek,
+    filterDates,
+    filterLoaiHang,
+    effectiveDates,
+    filteredGtcBc,
+    filteredGtcNv,
+    filteredGlt,
+    filteredLc,
+    dataset.gtcBuuCuc,
+    dataset.gtcNhanVien,
+    dataset.tonDongGlt,
+    dataset.tonDongLc,
+    dataset.nhanSu,
+    kpis,
+    availableWeeks,
+    availableMonths
+  ]);
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
@@ -481,7 +863,7 @@ export const OverviewTab: React.FC = () => {
               </h2>
             </div>
             <span className="px-2 py-0.5 text-[11px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 rounded-md shrink-0">
-              {filterBuuCuc === 'all' ? '6 Bưu cục Long An' : filterBuuCuc}
+              {filterBuuCuc === 'all' ? '5 Bưu cục Long An' : filterBuuCuc}
             </span>
           </div>
 
@@ -718,38 +1100,69 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Operational Alerts Box (Phát hiện điểm nóng vận hành) */}
-      <div className="bg-gradient-to-r from-red-500/10 via-orange-500/10 to-amber-500/10 border-l-4 border-red-500 p-4 rounded-xl shadow-sm">
-        <div className="flex items-start gap-3">
-          <Flame className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5 animate-pulse" />
-          <div className="flex-1 text-xs text-slate-800 dark:text-slate-200 space-y-1.5">
-            <div className="font-bold text-red-600 dark:text-red-400 uppercase tracking-wide flex items-center gap-2">
-              <span>Cảnh Báo Vận Hành Trọng Yếu Dành Cho Area Manager</span>
-              <span className="px-1.5 py-0.5 text-[10px] bg-red-600 text-white rounded">Ưu tiên xử lý</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-              <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-red-200 dark:border-red-900/50">
-                <div className="font-bold text-slate-900 dark:text-white">🔴 Điểm Nóng: Bưu Cục (LAN) Rạch Kiến</div>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                  Volume cao nhất (81.229 đơn) nhưng <b>%GTC thấp nhất khu vực (60,11%)</b>. Chiếm tới <b>4.428 đơn tồn GLT (40,5%)</b> và <b>207 đơn tồn LC (72,9%)</b>!
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-amber-200 dark:border-amber-900/50">
-                <div className="font-bold text-slate-900 dark:text-white">⚠️ 167 Đơn Tồn Khẩn Cấp Quá Hạn &gt; 120h</div>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                  Tại Sheet Tồn đọng GLT có 162 đơn từ 120-192h và 5 đơn &gt; 192h chưa được giải phóng. Cần yêu cầu bưu cục trưởng kiểm tra ngay.
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-orange-200 dark:border-orange-900/50">
-                <div className="font-bold text-slate-900 dark:text-white">👷 Nhân Viên Hiệu Suất Thấp (&lt; 60% GTC)</div>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                  Trần Anh Tuấn (27,5%), Nguyễn Lê Tuấn Anh (57,1%), Lương Trọng Đức (57,7%) tại Rạch Kiến đang có tỷ lệ giao rất thấp, cần đôn đốc lộ trình phát.
-                </div>
-              </div>
+      {/* =========================================================================
+          CẢNH BÁO VẬN HÀNH TRỌNG YẾU DÀNH CHO AREA MANAGER (ĐỐI SOÁT ĐỘNG THEO BỘ LỌC)
+          LOGICS CHUYÊN SÂU DATA ANALYST: TỔNG HỢP GTC, TỒN KHO, SLA >120H & NHÂN SỰ
+          ========================================================================= */}
+      <div className="bg-gradient-to-r from-red-500/10 via-orange-500/10 to-amber-500/10 dark:from-red-950/30 dark:via-orange-950/20 dark:to-amber-950/20 border-l-4 border-red-500 p-3.5 sm:p-4 rounded-xl shadow-sm space-y-3">
+        {/* Header & Quick Status Strip */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 pb-2.5 border-b border-red-200/70 dark:border-red-900/40">
+          <div className="flex items-center gap-2">
+            <Flame className="w-5 h-5 text-red-600 flex-shrink-0 animate-pulse" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wide text-xs sm:text-sm">
+                Cảnh Báo Vận Hành Trọng Yếu Dành Cho Area Manager
+              </span>
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-600 text-white rounded uppercase shadow-2xs">
+                Ưu tiên xử lý
+              </span>
             </div>
           </div>
+
+          {/* Phạm vi lọc & Đánh giá nhanh */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+              Phạm vi: <strong className="text-slate-900 dark:text-white font-bold">{executiveOperationalAlerts.scopeTitle}</strong>
+            </span>
+            <span className={`px-2 py-0.5 text-[11px] font-extrabold rounded-md border shadow-2xs ${executiveOperationalAlerts.statusColor}`}>
+              {executiveOperationalAlerts.statusBadge}
+            </span>
+          </div>
+        </div>
+
+        {/* Thanh KPI tóm lược vận hành đối soát */}
+        <div className="text-[11.5px] text-slate-700 dark:text-slate-300 bg-white/70 dark:bg-slate-850/70 px-3 py-1.5 rounded-lg border border-red-100 dark:border-red-900/30">
+          {executiveOperationalAlerts.summaryPill}
+        </div>
+
+        {/* 3 Thẻ Cảnh Báo Đối Soát Dữ Liệu Chuyên Sâu */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {executiveOperationalAlerts.cards.map((card, idx) => (
+            <div 
+              key={idx}
+              className="p-3 rounded-lg bg-white/95 dark:bg-slate-800/95 border border-slate-200/90 dark:border-slate-700/90 shadow-2xs flex flex-col justify-between space-y-2 hover:shadow-md transition-all"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-100 dark:border-slate-700/60">
+                  <div className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1" title={card.title}>
+                    {card.title}
+                  </div>
+                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded shrink-0 shadow-2xs ${card.badgeColor}`}>
+                    {card.badge}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+                  {card.content}
+                </div>
+              </div>
+
+              {/* Dòng Chỉ Đạo Tác Chiến Dành Riêng Cho AM */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700/80 text-[10.5px] font-medium text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 p-2 rounded-md flex items-start gap-1.5">
+                <Target className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
+                <span className="leading-tight">{card.directive}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -898,7 +1311,9 @@ export const OverviewTab: React.FC = () => {
           <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
             {kpis.activeEmployeesCount} bưu tá
           </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">6 Bưu cục hoạt động</div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">
+            {filterBuuCuc === 'all' ? '5 Bưu cục hoạt động' : filterBuuCuc}
+          </div>
         </div>
       </div>
 
@@ -1170,12 +1585,12 @@ export const OverviewTab: React.FC = () => {
 
       {/* Row 2 Charts: Post Office Comparisons, Backlog, Aging */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Biểu đồ 4: So sánh %GTC giữa 6 Bưu cục */}
+        {/* Biểu đồ 4: So sánh %GTC giữa 5 Bưu cục */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                4. So Sánh %GTC Giữa 6 Bưu Cục
+                4. So Sánh %GTC Giữa 5 Bưu Cục
               </h4>
               <p className="text-[11px] text-slate-400">Hiệu suất giao thành công tích lũy</p>
             </div>
@@ -1271,14 +1686,14 @@ export const OverviewTab: React.FC = () => {
 
       {/* Row 3 Charts: Volume ranking, Salary breakdown, and Salary vs GTC */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Biểu đồ 5: Xếp hạng sản lượng 6 bưu cục */}
+        {/* Biểu đồ 5: Xếp hạng sản lượng 5 bưu cục */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                5. Xếp Hạng Sản Lượng 6 Bưu Cục
+                5. Xếp Hạng Sản Lượng 5 Bưu Cục
               </h4>
-              <p className="text-[11px] text-slate-400">Volume tháng 10/2026</p>
+              <p className="text-[11px] text-slate-400">Sản lượng theo bộ lọc thời gian</p>
             </div>
           </div>
           <div className="h-60">
@@ -1464,7 +1879,7 @@ export const OverviewTab: React.FC = () => {
               <span className="text-xs text-slate-400 font-semibold">/100 (Hạng B)</span>
             </div>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 block">
-              3/5 Bưu cục duy trì Hạng B ổn định
+              {operationalScorecard.filter(p => p.healthScore >= 65).length}/5 Bưu cục duy trì Hạng A &amp; B
             </span>
           </div>
 
@@ -1482,20 +1897,20 @@ export const OverviewTab: React.FC = () => {
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Tổng Đơn Tồn (GLT + LC)</span>
             <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
-              {(dataset.tonDongGlt.length + dataset.tonDongLc.length).toLocaleString('vi-VN')}
+              {(filteredGlt.length + filteredLc.length).toLocaleString('vi-VN')}
             </div>
             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 block">
-              {dataset.tonDongGlt.length.toLocaleString('vi-VN')} GLT &bull; {dataset.tonDongLc.length} Luân chuyển
+              {filteredGlt.length.toLocaleString('vi-VN')} GLT &bull; {filteredLc.length} Luân chuyển
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Quy Mô Nhân Sự Realtime</span>
             <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
-              {dataset.nhanSu.length || 81} <span className="text-xs text-slate-400 font-normal">Nhân sự</span>
+              {filterBuuCuc === 'all' ? (dataset.nhanSu.length || 81) : dataset.nhanSu.filter(r => r.buuCuc === filterBuuCuc).length} <span className="text-xs text-slate-400 font-normal">Nhân sự</span>
             </div>
             <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium mt-0.5 block">
-              Đồng bộ dữ liệu Task Nhân Sự
+              {filterBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục' : `Định biên ${filterBuuCuc}`}
             </span>
           </div>
         </div>
