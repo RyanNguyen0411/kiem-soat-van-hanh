@@ -221,7 +221,7 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
   };
 
   return (
-    <div className="px-3 pt-3 pb-1 sm:px-4 sm:pt-3 shrink-0">
+    <div className="sticky top-0 z-30 px-3 pt-3 pb-1 sm:px-4 sm:pt-3 shrink-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md transition-all">
       <div className={`p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-850 border shadow-xs transition-all ${currentMeta.accentGradient}`}>
         
         {/* HÀNG 1: BREADCRUMB & NÚT MỞ SƠ ĐỒ CÂY CƠ CẤU */}

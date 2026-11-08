@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Truck, Send } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -196,16 +196,6 @@ export const BacklogLcTab: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'lc' } }))}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-[#229ED9]/50"
-            title="Xuất và gửi báo cáo Telegram Tồn Đọng Luân Chuyển (LC) cho 5 bưu cục"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Báo Cáo Telegram LC</span>
-          </button>
-
           <IndependentFilter
             title="Lọc Tồn LC"
             fields={filterFields}

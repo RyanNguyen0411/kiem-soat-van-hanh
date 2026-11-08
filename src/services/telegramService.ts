@@ -460,7 +460,7 @@ function getLcAgingGroup(rawAge: string): LcAgingGroup | null {
   }
   // Nhóm 36 - 48h (Cảnh báo đặc biệt theo chỉ đạo của AM)
   if (s.includes('36_48') || s.includes('36-48') || (num >= 36 && num <= 48)) {
-    return { key: '36_48', title: '🚨 Nhóm 36h - 48h (CẢNH BÁO NGUY CƠ - BACKLOG = 0)', sortOrder: 2, isWarning: true };
+    return { key: '36_48', title: '🚨 Nhóm 36h - 48h', sortOrder: 2, isWarning: true };
   }
   // Nhóm 24 - 36h
   if (s.includes('24_36') || s.includes('24-36') || (num >= 24 && num < 36)) {
