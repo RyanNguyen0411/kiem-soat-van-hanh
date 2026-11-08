@@ -189,7 +189,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
           {/* HEADER MODAL */}
           <div className="p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-md shrink-0">
+              <div className="p-2 rounded-xl bg-[#229ED9] text-white shadow-md shrink-0">
                 <Send className="w-5 h-5 stroke-[2.2]" />
               </div>
               <div className="min-w-0">
@@ -197,7 +197,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                   <h2 className="text-xs sm:text-sm md:text-base font-black uppercase tracking-wide text-white truncate">
                     BÁO CÁO TELEGRAM: TỒN ĐỌNG &amp; XỬ LÝ SLA
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-2xs">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-[#229ED9] text-white shadow-2xs">
                     Mỗi BC 1 Tin Nhắn Riêng
                   </span>
                 </div>
@@ -299,18 +299,18 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
           {/* REPORT TYPE SELECTOR TABS */}
           <div className="px-3 py-2 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-xs font-bold">
-              {/* Tab 1: Tồn Đọng GLT */}
+              {/* Tab 1: Tồn Đọng 120h & 192h */}
               <button
                 type="button"
                 onClick={() => setReportType('glt')}
                 className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                   reportType === 'glt'
-                    ? 'bg-rose-600 text-white shadow-xs font-black'
+                    ? 'bg-[#229ED9] text-white shadow-xs font-black'
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <PackageX className="w-4 h-4" />
-                <span>Báo Cáo Tồn Đọng GLT (120h &amp; 192h)</span>
+                <span>Báo Cáo Tồn Đọng 120h &amp; 192h</span>
                 <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-black/20 text-white">
                   5 BC
                 </span>
@@ -533,7 +533,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                 type="button"
                 onClick={handleSendAllBatch}
                 disabled={isBatchSending}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-rose-500 hover:from-rose-500 hover:to-pink-500 text-white font-extrabold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs active:scale-95 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs active:scale-95 disabled:opacity-50"
               >
                 {isBatchSending ? (
                   <>

@@ -255,11 +255,11 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
                 onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { 
                   detail: { reportType: activeTab === 'ton_dong_glt' ? 'glt' : 'lc' } 
                 }))}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer border border-rose-500/50 animate-pulse"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#229ED9] hover:bg-[#1e8ec3] text-white text-[11px] font-black shadow-sm transition-all cursor-pointer border border-[#229ED9]/50"
                 title="Bắn báo cáo Telegram 5 bưu cục"
               >
                 <Send className="w-3.5 h-3.5 text-white" />
-                <span>Báo Cáo Telegram {activeTab === 'ton_dong_glt' ? '(120h & 192h)' : 'Tồn LC'}</span>
+                <span>{activeTab === 'ton_dong_glt' ? 'Báo Cáo Telegram' : 'Báo Cáo Telegram LC'}</span>
               </button>
             )}
 
