@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   Users, 
   UserCheck, 
+  UserMinus,
   Building2, 
   Briefcase, 
   Award, 
@@ -141,7 +142,7 @@ const SENIORITY_GROUPS_DEF = [
 ];
 
 export const NhanSuTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal, navigateToTab } = useDashboard();
+  const { dataset, selectedBuuCucGlobal, navigateToTab, setActiveTab } = useDashboard();
   
   // State quản lý xem chi tiết nhóm thâm niên
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -467,6 +468,15 @@ export const NhanSuTab: React.FC = () => {
                 className="w-36 sm:w-44 pl-8 pr-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
               />
             </div>
+
+            <button
+              onClick={() => setActiveTab('ns_nghi_viec')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-2xs transition-all whitespace-nowrap cursor-pointer"
+              title="Chuyển sang phân tích nhân sự nghỉ việc"
+            >
+              <UserMinus className="w-3.5 h-3.5" />
+              <span>NS Nghỉ Việc ({dataset.nghiViec?.length || 81})</span>
+            </button>
 
             <button
               onClick={handleExport}

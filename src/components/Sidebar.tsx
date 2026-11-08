@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   FileSpreadsheet,
   UserCheck,
+  UserMinus,
   ChevronDown,
   X
 } from 'lucide-react';
@@ -155,6 +156,15 @@ export const Sidebar: React.FC = () => {
           icon: UserCheck,
           badge: `${dataset.nhanSu.length || 81} NV`,
           badgeColor: 'bg-indigo-600 text-white'
+        },
+        {
+          id: 'ns_nghi_viec',
+          label: 'NS Nghỉ Việc',
+          subLabel: 'Thực trạng, thâm niên & lý do nghỉ',
+          icon: UserMinus,
+          badge: `${dataset.nghiViec?.length || 81} Đã nghỉ`,
+          badgeColor: 'bg-rose-600 text-white',
+          isHot: true
         },
         {
           id: 'hoa_hong_ngay',

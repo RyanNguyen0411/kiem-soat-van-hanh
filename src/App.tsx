@@ -18,6 +18,7 @@ import GtcPostOfficeTab from './pages/GtcPostOfficeTab';
 import BaoCaoGtcBcTab from './pages/BaoCaoGtcBcTab';
 import GtcEmployeeTab from './pages/GtcEmployeeTab';
 import NhanSuTab from './pages/NhanSuTab';
+import NghiViecTab from './pages/NghiViecTab';
 import DailySalaryTab from './pages/DailySalaryTab';
 import ReturnRateTab from './pages/ReturnRateTab';
 import BacklogGltTab from './pages/BacklogGltTab';
@@ -43,6 +44,7 @@ const DashboardContent: React.FC = () => {
           {activeTab === 'bao_cao_gtc_bc' && <BaoCaoGtcBcTab />}
           {activeTab === 'gtc_nhan_vien' && <GtcEmployeeTab />}
           {activeTab === 'nhan_su' && <NhanSuTab />}
+          {activeTab === 'ns_nghi_viec' && <NghiViecTab />}
           {activeTab === 'hoa_hong_ngay' && <DailySalaryTab />}
           {activeTab === 'ty_le_tra_hang' && <ReturnRateTab />}
           {activeTab === 'ton_dong_glt' && <BacklogGltTab />}

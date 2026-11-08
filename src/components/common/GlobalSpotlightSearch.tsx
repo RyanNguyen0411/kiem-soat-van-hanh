@@ -238,6 +238,30 @@ export const GlobalSpotlightSearch: React.FC = () => {
         rawText: removeVietnameseAccents('ton dong lc luan chuyen ton kho trung tam 284 don trung chuyen')
       },
       {
+        id: 'feat-staff',
+        category: 'feature',
+        categoryLabel: 'Nhân Sự & Quỹ Lương',
+        title: 'Phân Hệ Quản Trị Nhân Sự (Task Nhân Sự)',
+        subTitle: 'Quản trị danh sách nhân sự hiện hữu, phân tầng 10 nhóm thâm niên G01-G10 và cơ cấu chức danh',
+        tag: 'Nhân Sự',
+        tagColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
+        targetTab: 'nhan_su',
+        destinationLabel: 'Tab: Task Nhân Sự',
+        rawText: removeVietnameseAccents('nhan su task nhan su buu ta hien huu tham nien g01 g10 hop dong')
+      },
+      {
+        id: 'feat-resigned',
+        category: 'feature',
+        categoryLabel: 'Nhân Sự & Quỹ Lương',
+        title: 'Phân Hệ Nhân Sự Nghỉ Việc (NS Nghỉ Việc)',
+        subTitle: 'Quản trị 81 nhân sự nghỉ việc, ma trận thâm niên G01-G10, phân tích lý do thôi việc, số ngày làm việc cụ thể',
+        tag: 'NS Nghỉ Việc',
+        tagColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
+        targetTab: 'ns_nghi_viec',
+        destinationLabel: 'Tab: NS Nghỉ Việc',
+        rawText: removeVietnameseAccents('nghi viec ns nghi viec thoi viec nghi ngang ly do nghi viec tham nien 81 nhan su')
+      },
+      {
         id: 'feat-overview',
         category: 'feature',
         categoryLabel: 'Executive Dashboard',

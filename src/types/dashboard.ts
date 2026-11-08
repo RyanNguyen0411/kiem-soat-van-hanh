@@ -4,6 +4,7 @@ export type TabType =
   | 'bao_cao_gtc_bc'
   | 'gtc_nhan_vien' 
   | 'nhan_su'
+  | 'ns_nghi_viec'
   | 'hoa_hong_ngay' 
   | 'ty_le_tra_hang' 
   | 'ton_dong_glt' 
@@ -108,6 +109,32 @@ export interface NhanSuRecord {
   thamNienNgay?: number; // Days calculated from hire date to reference date
 }
 
+export interface NghiViecRecord {
+  id: string; // mã NV
+  ten: string;
+  ngayVaoLamText: string;
+  ngayNghiViecText: string;
+  chucVu: string;
+  buuCucRaw: string;
+  buuCuc: string;
+  maBC: string;
+  section: string;
+  am: string;
+  lyDoNghiViec: string;
+  nhomLyDo: string;
+  nhomThamNien: string;
+  ngayLamViecCuoi: string;
+  ngayVaoLam: string; // dd/mm/yyyy
+  ngayNghiViec: string; // dd/mm/yyyy
+  soNgayLam: number; // số ngày làm việc cụ thể
+  sanLuongTb: number; // sản lượng giao trung bình
+  mucLuongTb: number; // mức lương trung bình
+  isRealtimeLog: boolean;
+  thangNghiViec: string;
+  namNghiViec: string;
+  tuanNghiViec: string;
+}
+
 export interface DatasetState {
   gtcBuuCuc: GtcPostOfficeRecord[];
   gtcNhanVien: GtcEmployeeRecord[];
@@ -116,6 +143,7 @@ export interface DatasetState {
   tonDongGlt: BacklogGltRecord[];
   tonDongLc: BacklogLcRecord[];
   nhanSu: NhanSuRecord[];
+  nghiViec: NghiViecRecord[];
 }
 
 export interface SyncStatus {

@@ -35,7 +35,8 @@ const defaultDataset: DatasetState = {
   tyLeTraHang: [],
   tonDongGlt: [],
   tonDongLc: [],
-  nhanSu: []
+  nhanSu: [],
+  nghiViec: []
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
