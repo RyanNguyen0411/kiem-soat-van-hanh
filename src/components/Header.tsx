@@ -6,7 +6,8 @@ import {
   Moon, 
   Menu, 
   AlertCircle,
-  Sparkles 
+  Sparkles,
+  FolderTree 
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 
@@ -97,6 +98,20 @@ export const Header: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncStatus.isSyncing ? 'animate-spin text-orange-400' : ''}`} />
             <span className="hidden sm:inline">Làm mới dữ liệu</span>
+          </button>
+
+          {/* Cây Cơ Cấu / Menu Tổng Hợp Launcher */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-executive-directory'))}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 hover:border-orange-500/50 transition-all cursor-pointer"
+            title="Mở Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M)"
+          >
+            <FolderTree className="w-3.5 h-3.5 text-orange-400" />
+            <span className="hidden sm:inline">Cây Cơ Cấu</span>
+            <kbd className="hidden xl:inline px-1 py-0.2 rounded bg-slate-900 text-[9px] font-mono text-orange-400 border border-slate-700">
+              Ctrl+M
+            </kbd>
           </button>
 
           {/* Gemini AI Copilot Launcher */}

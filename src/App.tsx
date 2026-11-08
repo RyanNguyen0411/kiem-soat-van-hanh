@@ -12,6 +12,8 @@ import Sidebar from './components/Sidebar';
 import { GlobalSpotlightSearch } from './components/common/GlobalSpotlightSearch';
 import { GeminiAiDrawer } from './components/common/GeminiAiDrawer';
 import { OperationalCalendarDrawer } from './components/common/OperationalCalendarDrawer';
+import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryModal';
+import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -40,6 +42,9 @@ const DashboardContent: React.FC = () => {
 
         {/* Content Area with smooth scrolling */}
         <main className="flex-1 min-h-0 overflow-y-auto bg-slate-100/70 dark:bg-slate-900/90 pb-20 lg:pb-12 scroll-smooth">
+          {/* Executive Breadcrumb & Highlighted Active View Banner */}
+          <ExecutiveBreadcrumbBar />
+
           {activeTab === 'overview' && <OverviewTab />}
           {activeTab === 'gtc_buu_cuc' && <GtcPostOfficeTab />}
           {activeTab === 'bao_cao_gtc_bc' && <BaoCaoGtcBcTab />}
@@ -145,6 +150,9 @@ const DashboardContent: React.FC = () => {
 
       {/* GHN Operational Calendar & E-commerce Forecast */}
       <OperationalCalendarDrawer />
+
+      {/* Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M) */}
+      <ExecutiveDirectoryModal />
     </div>
   );
 };
