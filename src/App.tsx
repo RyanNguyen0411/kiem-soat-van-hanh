@@ -14,6 +14,7 @@ import { GeminiAiDrawer } from './components/common/GeminiAiDrawer';
 import { OperationalCalendarDrawer } from './components/common/OperationalCalendarDrawer';
 import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryModal';
 import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
+import { TelegramReportModal } from './components/common/TelegramReportModal';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -153,6 +154,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M) */}
       <ExecutiveDirectoryModal />
+
+      {/* Báo Cáo Telegram Tồn Đọng GLT (120h & 192h) và Tồn LC */}
+      <TelegramReportModal />
     </div>
   );
 };

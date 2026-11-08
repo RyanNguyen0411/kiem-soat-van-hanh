@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Truck } from 'lucide-react';
+import { Truck, Send } from 'lucide-react';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -195,13 +195,25 @@ export const BacklogLcTab: React.FC = () => {
           </p>
         </div>
 
-        <IndependentFilter
-          title="Lọc Tồn LC"
-          fields={filterFields}
-          selectedValues={filterValues}
-          onApply={val => setFilterValues(val)}
-          onReset={() => setFilterValues({ tenBC: [], loaiDon: [], trangThai: [], canhBao: [] })}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'lc' } }))}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            title="Xuất và gửi báo cáo Telegram Tồn Đọng Luân Chuyển (LC) cho 5 bưu cục"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Báo Cáo Telegram Tồn LC</span>
+          </button>
+
+          <IndependentFilter
+            title="Lọc Tồn LC"
+            fields={filterFields}
+            selectedValues={filterValues}
+            onApply={val => setFilterValues(val)}
+            onReset={() => setFilterValues({ tenBC: [], loaiDon: [], trangThai: [], canhBao: [] })}
+          />
+        </div>
       </div>
 
       {/* KPI Cards Section */}

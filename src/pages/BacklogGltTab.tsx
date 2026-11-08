@@ -20,7 +20,8 @@ import {
   Truck,
   Timer,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Send
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -548,6 +549,17 @@ export const BacklogGltTab: React.FC = () => {
                       <span>Xem 7 thẻ KPI ({tabKPIs.totalCount.toLocaleString('vi-VN')})</span>
                     </>
                   )}
+                </button>
+
+                {/* NÚT BÁO CÁO TELEGRAM TỒN ĐỌNG GLT 120H & 192H */}
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt' } }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-extrabold text-[11px] shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                  title="Xuất và gửi báo cáo Telegram Tồn Đọng GLT (120h & 192h) cho 5 bưu cục"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Báo Cáo Telegram (120h &amp; 192h)</span>
                 </button>
               </div>
             </div>

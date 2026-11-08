@@ -11,7 +11,8 @@ import {
   RotateCcw, 
   UserCheck, 
   UserMinus, 
-  Coins 
+  Coins,
+  Send 
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import type { TabType } from '../../types/dashboard';
@@ -246,19 +247,35 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
             </span>
           </nav>
 
-          {/* Quick Action: Mở Cây Cơ Cấu [Ctrl+M] */}
-          <button
-            type="button"
-            onClick={handleOpenTree}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shadow-xs transition-all cursor-pointer border border-slate-700 hover:border-orange-500/50 group"
-            title="Mở Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M)"
-          >
-            <FolderTree className="w-3.5 h-3.5 text-orange-400 group-hover:scale-110 transition-transform" />
-            <span>Cây Cơ Cấu (Menu Tổng Hợp)</span>
-            <kbd className="hidden sm:inline px-1 rounded bg-slate-800 text-[9px] font-mono text-orange-400 border border-slate-700">
-              Ctrl+M
-            </kbd>
-          </button>
+          {/* Quick Actions: Telegram Báo Cáo & Mở Cây Cơ Cấu [Ctrl+M] */}
+          <div className="flex items-center gap-1.5">
+            {(activeTab === 'ton_dong_glt' || activeTab === 'ton_dong_lc') && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { 
+                  detail: { reportType: activeTab === 'ton_dong_glt' ? 'glt' : 'lc' } 
+                }))}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer border border-rose-500/50 animate-pulse"
+                title="Bắn báo cáo Telegram 5 bưu cục"
+              >
+                <Send className="w-3.5 h-3.5 text-white" />
+                <span>Báo Cáo Telegram {activeTab === 'ton_dong_glt' ? '(120h & 192h)' : 'Tồn LC'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleOpenTree}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shadow-xs transition-all cursor-pointer border border-slate-700 hover:border-orange-500/50 group"
+              title="Mở Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M)"
+            >
+              <FolderTree className="w-3.5 h-3.5 text-orange-400 group-hover:scale-110 transition-transform" />
+              <span>Cây Cơ Cấu</span>
+              <kbd className="hidden sm:inline px-1 rounded bg-slate-800 text-[9px] font-mono text-orange-400 border border-slate-700">
+                Ctrl+M
+              </kbd>
+            </button>
+          </div>
         </div>
 
         {/* HÀNG 2: HIGHLIGHT TIÊU ĐỀ NỔI BẬT & BỘ NÚT CHUYỂN TAB CÙNG CỤM */}
