@@ -327,7 +327,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                 }`}
               >
                 <Truck className="w-4 h-4" />
-                <span>Báo Cáo Tồn Đọng Luân Chuyển LC</span>
+                <span>Báo Cáo Tồn Đọng Luân Chuyển (LC)</span>
                 <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-black/20 text-white">
                   5 BC
                 </span>
@@ -352,7 +352,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                   </span>
                 ) : (
                   <span>
-                    <strong>Quy chuẩn báo cáo LC:</strong> Mỗi bưu cục gửi 1 tin nhắn riêng. Chi tiết từng mã đơn theo 2 nhóm <strong>"Luân chuyển giao"</strong> và <strong>"Luân chuyển trả"</strong> (mỗi mã 1 hàng, có trạng thái đóng kiện).
+                    <strong>Quy chuẩn báo cáo LC:</strong> Mỗi bưu cục gửi 1 tin nhắn riêng. Lọc các đơn từ <strong>12-24h trở đi</strong>, phân nhóm theo mốc giờ và loại LC (<strong>Giao/Trả</strong>). Cảnh báo đặc biệt đối với nhóm <strong>36-48h</strong>.
                   </span>
                 )}
               </div>
@@ -410,6 +410,11 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                           </>
                         ) : (
                           <>
+                            {item.count36_48 > 0 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                                36-48h: {item.count36_48} đơn
+                              </span>
+                            )}
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                               LC Giao: {item.countGiao} đơn
                             </span>
@@ -417,7 +422,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                               LC Trả: {item.countTra} đơn
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white">
-                              Tổng: {item.totalLcOrders} đơn
+                              Số lượng đơn (≥12h): {item.totalLcOrders} đơn
                             </span>
                           </>
                         )}

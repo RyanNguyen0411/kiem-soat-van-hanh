@@ -423,27 +423,113 @@ export interface LcBranchReport {
   totalLcOrders: number;
   countGiao: number;
   countTra: number;
+  count36_48: number;
   ordersGiao: BacklogLcRecord[];
   ordersTra: BacklogLcRecord[];
   message: string;
 }
 
+interface LcAgingGroup {
+  key: string;
+  title: string;
+  sortOrder: number;
+  isWarning: boolean;
+}
+
 /**
- * Xây dựng báo cáo Telegram TỒN ĐỌNG LUÂN CHUYỂN KHO (LC) cho từng bưu cục riêng biệt
- * - Chi tiết từng mã đơn theo nhóm "Luân chuyển giao" và "Luân chuyển trả"
- * - Mỗi mã đơn là 1 hàng
- * - Nếu không có thì ghi chú "Không có"
+ * Phân loại tuổi tồn luân chuyển LC theo mốc giờ (chỉ lấy từ 12-24h trở đi)
+ * - Bỏ qua các nhóm < 12h (0_6, 6_12)
+ * - Cảnh báo đối với nhóm 36-48h
  */
-export function buildLcTelegramReports(tonDongLc: BacklogLcRecord[]): LcBranchReport[] {
-  const nowStr = new Date().toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
+function getLcAgingGroup(rawAge: string): LcAgingGroup | null {
+  const s = (rawAge || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!s) return null;
+
+  // Loại bỏ các nhóm dưới 12h
+  if (s === '0_6' || s === '0-6' || s === '6_12' || s === '6-12' || s === '<12' || s === '<12h') {
+    return null;
+  }
+  const num = parseInt(s, 10);
+  if (!isNaN(num) && num < 12 && !s.includes('_') && !s.includes('-')) {
+    return null;
+  }
+
+  // Nhóm > 48h
+  if (s.includes('>48') || s.includes('48+') || (!isNaN(num) && num > 48 && !s.includes('_') && !s.includes('-'))) {
+    return { key: '>48', title: '🔴 Nhóm > 48h (NGHIÊM TRỌNG)', sortOrder: 1, isWarning: true };
+  }
+  // Nhóm 36 - 48h (Cảnh báo đặc biệt theo chỉ đạo của AM)
+  if (s.includes('36_48') || s.includes('36-48') || (num >= 36 && num <= 48)) {
+    return { key: '36_48', title: '🚨 Nhóm 36h - 48h (CẢNH BÁO NGUY CƠ - BACKLOG = 0)', sortOrder: 2, isWarning: true };
+  }
+  // Nhóm 24 - 36h
+  if (s.includes('24_36') || s.includes('24-36') || (num >= 24 && num < 36)) {
+    return { key: '24_36', title: '⚠️ Nhóm 24h - 36h', sortOrder: 3, isWarning: false };
+  }
+  // Nhóm 12 - 24h
+  if (s.includes('12_24') || s.includes('12-24') || (num >= 12 && num < 24)) {
+    return { key: '12_24', title: '⏱️ Nhóm 12h - 24h', sortOrder: 4, isWarning: false };
+  }
+
+  return { key: 'other', title: `⏱️ Nhóm ${rawAge}`, sortOrder: 5, isWarning: false };
+}
+
+/**
+ * Render chi tiết danh sách đơn theo nhóm mốc giờ cho từng loại LC (Giao / Trả)
+ * Loại bỏ "Chưa đóng kiện" và "Không cần đóng kiện"
+ */
+function renderLcOrderSection(
+  titleHeader: string,
+  emptyText: string,
+  orders: BacklogLcRecord[]
+): string {
+  let section = `${titleHeader}\n`;
+  if (orders.length === 0) {
+    section += `✅ <i>${emptyText}</i>\n\n`;
+    return section;
+  }
+
+  // Nhóm đơn theo mốc giờ
+  const groupsMap = new Map<string, { group: LcAgingGroup; list: BacklogLcRecord[] }>();
+
+  orders.forEach(item => {
+    const grp = getLcAgingGroup(item.thoiGianTonDong) || {
+      key: 'other',
+      title: `⏱️ Nhóm ${item.thoiGianTonDong || '≥ 12h'}`,
+      sortOrder: 5,
+      isWarning: false
+    };
+    if (!groupsMap.has(grp.key)) {
+      groupsMap.set(grp.key, { group: grp, list: [] });
+    }
+    groupsMap.get(grp.key)!.list.push(item);
   });
 
+  // Sắp xếp các nhóm: 36-48h và >48h ưu tiên trước
+  const sortedGroups = Array.from(groupsMap.values()).sort(
+    (a, b) => a.group.sortOrder - b.group.sortOrder
+  );
+
+  sortedGroups.forEach(g => {
+    section += `<b>• ${g.group.title} (${g.list.length} đơn):</b>\n`;
+    g.list.forEach((item, idx) => {
+      // Loại bỏ "Chưa đóng kiện", "Không cần đóng kiện", in rõ: STT. Mã đơn | Khách hàng
+      section += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'}\n`;
+    });
+  });
+
+  section += `\n`;
+  return section;
+}
+
+/**
+ * Xây dựng báo cáo Telegram TỒN ĐỌNG LUÂN CHUYỂN (LC) cho từng bưu cục riêng biệt
+ * - Chỉ lấy đơn từ nhóm 12-24h trở đi
+ * - Phân nhóm theo mốc giờ và loại LC (LC giao, LC trả)
+ * - Cảnh báo đặc biệt đối với đơn thuộc nhóm 36-48h
+ * - Loại bỏ "Chưa đóng kiện", "Không cần đóng kiện"
+ */
+export function buildLcTelegramReports(tonDongLc: BacklogLcRecord[]): LcBranchReport[] {
   return LONG_AN_POST_OFFICES.map(po => {
     // Lọc theo bưu cục
     const branchRecords = tonDongLc.filter(d => {
@@ -451,48 +537,48 @@ export function buildLcTelegramReports(tonDongLc: BacklogLcRecord[]): LcBranchRe
       return normalized === po.name;
     });
 
-    const ordersGiao = branchRecords.filter(d => 
+    // Chỉ lấy đơn thuộc nhóm từ 12-24h trở đi
+    const eligibleRecords = branchRecords.filter(d => getLcAgingGroup(d.thoiGianTonDong) !== null);
+
+    const ordersGiao = eligibleRecords.filter(d => 
       (d.loaiDon || '').toLowerCase().includes('giao')
     );
-    const ordersTra = branchRecords.filter(d => 
+    const ordersTra = eligibleRecords.filter(d => 
       (d.loaiDon || '').toLowerCase().includes('trả')
     );
 
-    const totalLc = branchRecords.length;
+    const count36_48 = eligibleRecords.filter(d => {
+      const grp = getLcAgingGroup(d.thoiGianTonDong);
+      return grp?.key === '36_48';
+    }).length;
 
-    let msg = `🚚 <b>BÁO CÁO TỒN ĐỌNG LUÂN CHUYỂN KHO (LC)</b>\n`;
+    const totalLc = eligibleRecords.length;
+
+    let msg = `🚚 <b>BÁO CÁO TỒN ĐỌNG LUÂN CHUYỂN (LC)</b>\n`;
     msg += `🏢 <b>Bưu cục:</b> <code>${po.name}</code> (Mã: <code>${po.code}</code>)\n`;
-    msg += `📍 <b>Khu vực:</b> Long An (ĐNB) - <b>Quản trị:</b> AM Huy (ĐNB)\n`;
-    msg += `⏰ <b>Thời gian realtime:</b> ${nowStr}\n`;
-    msg += `📊 <b>Tổng đơn LC tồn kho:</b> <b>${totalLc} đơn</b> (Giao: ${ordersGiao.length} | Trả: ${ordersTra.length})\n`;
-    msg += `----------------------------------------\n\n`;
-
-    // 1. NHÓM LUÂN CHUYỂN GIAO
-    msg += `📦 <b>I. DANH SÁCH LUÂN CHUYỂN GIAO (${ordersGiao.length} đơn):</b>\n`;
-    if (ordersGiao.length === 0) {
-      msg += `✅ <i>Không có đơn luân chuyển giao</i>\n\n`;
-    } else {
-      ordersGiao.forEach((item, idx) => {
-        msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.trangThai || 'Chưa đóng kiện'}\n`;
-      });
-      msg += `\n`;
-    }
-
-    // 2. NHÓM LUÂN CHUYỂN TRẢ
-    msg += `🔄 <b>II. DANH SÁCH LUÂN CHUYỂN TRẢ (${ordersTra.length} đơn):</b>\n`;
-    if (ordersTra.length === 0) {
-      msg += `✅ <i>Không có đơn luân chuyển trả</i>\n\n`;
-    } else {
-      ordersTra.forEach((item, idx) => {
-        msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.trangThai || 'Chưa đóng kiện'}\n`;
-      });
-      msg += `\n`;
-    }
-
-    // CHỈ ĐẠO CỦA AM HUY
+    msg += `📊 <b>Số lượng đơn:</b> <b>${totalLc} đơn</b> (Giao: ${ordersGiao.length} | Trả: ${ordersTra.length})\n`;
     msg += `----------------------------------------\n`;
-    msg += `⚠️ <b>CHỈ ĐẠO CỦA AM HUY (ĐNB):</b>\n`;
-    msg += `Yêu cầu Bưu cục trưởng kiểm tra phân loại, đóng kiện và bàn giao xe tải chuyến kế tiếp để giải phóng kho tồn.`;
+
+    // 1. LUÂN CHUYỂN GIAO
+    msg += renderLcOrderSection(
+      `📦 <b>I. LUÂN CHUYỂN GIAO (${ordersGiao.length} đơn)</b>`,
+      `Không có đơn luân chuyển giao (≥ 12h)`,
+      ordersGiao
+    );
+
+    // 2. LUÂN CHUYỂN TRẢ
+    msg += renderLcOrderSection(
+      `🔄 <b>II. LUÂN CHUYỂN TRẢ (${ordersTra.length} đơn)</b>`,
+      `Không có đơn luân chuyển trả (≥ 12h)`,
+      ordersTra
+    );
+
+    // CHỈ ĐẠO CỦA AM ĐỐI VỚI NVXL
+    msg += `----------------------------------------\n`;
+    msg += `⚠️ <b>CHỈ ĐẠO CỦA AM ĐỐI VỚI NVXL:</b>\n`;
+    msg += `1. Rà soát từng đơn cao giờ. Đặc biệt đơn thuộc nhóm từ 24h trở lên.\n`;
+    msg += `2. Kiểm soát đơn &gt;36h có hàng thực tế không. Nếu không còn dựa theo log thao tác để xử lý trách nhiệm.\n`;
+    msg += `3. Đảm bảo 100% các đơn thuộc nhóm 36-48h phải được LC (Backlog = 0).`;
 
     return {
       buuCuc: po.name,
@@ -500,6 +586,7 @@ export function buildLcTelegramReports(tonDongLc: BacklogLcRecord[]): LcBranchRe
       totalLcOrders: totalLc,
       countGiao: ordersGiao.length,
       countTra: ordersTra.length,
+      count36_48,
       ordersGiao,
       ordersTra,
       message: msg
