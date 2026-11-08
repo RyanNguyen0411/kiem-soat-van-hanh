@@ -350,7 +350,7 @@ export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBran
     // Xây dựng nội dung tin nhắn HTML gửi Telegram chuẩn nghiệp vụ AM Huy
     let msg = `🚨 <b>BÁO CÁO TỒN ĐỌNG 120H &amp; 192H</b>\n`;
     msg += `🏢 <b>Bưu cục:</b> <code>${po.name}</code> (Mã: <code>${po.code}</code>)\n`;
-    msg += `📊 <b>Tổng đơn cần xử lý:</b> <b>${totalAlert} đơn</b> (192h: ${rec192.length} | 120h: ${rec120.length})\n`;
+    msg += `📊 <b>Số lượng đơn:</b> <b>${totalAlert} đơn</b> (192h: ${rec192.length} | 120h: ${rec120.length})\n`;
     msg += `----------------------------------------\n`;
 
     // 1. NHÓM CẢNH BÁO XỬ LÝ 192H (NGHIÊM TRỌNG)
@@ -397,8 +397,8 @@ export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBran
     msg += `----------------------------------------\n`;
     msg += `⚠️ <b>CHỈ ĐẠO CỦA AM ĐỐI VỚI NVXL:</b>\n`;
     msg += `1. NVXL tập trung Gán và Push giao gấp đối với đơn 192h.\n`;
-    msg += `2. Đối với đơn 120h thì theo dõi và gửi riêng mã đơncho từng NVPTTT và dí họ giao.\n`;
-    msg += `3. Tất cả phải đủ Log gọi và Đúng POD =&gt; Nếu sai khi quá hạn sẽ tick theo log thao tác gần nhất`;
+    msg += `2. Đối với đơn 120h thì theo dõi và gửi riêng mã đơn cho từng NVPTTT và dí họ giao.\n`;
+    msg += `3. Tất cả phải đủ Log gọi và Đúng POD =&gt; Nếu làm sai quy định sẽ xử lý theo log thao tác của NV làm sai.`;
 
     return {
       buuCuc: po.name,
