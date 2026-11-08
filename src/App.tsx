@@ -11,6 +11,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import { GlobalSpotlightSearch } from './components/common/GlobalSpotlightSearch';
 import { GeminiAiDrawer } from './components/common/GeminiAiDrawer';
+import { OperationalCalendarDrawer } from './components/common/OperationalCalendarDrawer';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -141,6 +142,9 @@ const DashboardContent: React.FC = () => {
 
       {/* GHN Gemini AI Copilot */}
       <GeminiAiDrawer />
+
+      {/* GHN Operational Calendar & E-commerce Forecast */}
+      <OperationalCalendarDrawer />
     </div>
   );
 };

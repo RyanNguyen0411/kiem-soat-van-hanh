@@ -231,8 +231,13 @@ AM Huy cần tôi đưa ra góc nhìn phân tích điểm nghẽn, kế hoạch 
   }, [messages, isOpen]);
 
   useEffect(() => {
-    const handleCustomOpen = () => setIsOpen(true);
-    window.addEventListener('open-gemini-ai', handleCustomOpen);
+    const handleCustomOpen = (e: any) => {
+      setIsOpen(true);
+      if (e?.detail?.prompt) {
+        setInputPrompt(e.detail.prompt);
+      }
+    };
+    window.addEventListener('open-gemini-ai', handleCustomOpen as EventListener);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
