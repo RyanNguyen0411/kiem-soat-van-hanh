@@ -87,6 +87,19 @@ export const GlobalSpotlightSearch: React.FC = () => {
     const items: SearchItem[] = [
       // A. Tính năng & Báo cáo chiến lược
       {
+        id: 'feat-data-quality',
+        category: 'feature',
+        categoryLabel: 'Kiểm Định & Audit',
+        title: 'Trung Tâm Kiểm Định Dữ Liệu & Đối Chiếu Vận Hành (DQ Center)',
+        subTitle: 'Kiểm toán tính toàn vẹn 8 sheet nguồn, đối chiếu công thức %GTC chuẩn SUM/SUM vs AVERAGE, phát hiện dị biệt dữ liệu',
+        tag: 'Data Quality',
+        tagColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
+        targetTab: 'overview',
+        targetElementId: 'open-data-quality-modal',
+        destinationLabel: 'Modal: Kiểm Định Dữ Liệu & Đối Chiếu KPI',
+        rawText: removeVietnameseAccents('kiem dinh du lieu doi chieu kpi data quality audit suc khoe sheet loi bat thuong dq')
+      },
+      {
         id: 'feat-tts',
         category: 'feature',
         categoryLabel: 'Báo Cáo Trọng Tâm',
@@ -526,6 +539,11 @@ export const GlobalSpotlightSearch: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
 
     // Scroll tới element đích nếu có
+    if (item.targetElementId === 'open-data-quality-modal') {
+      window.dispatchEvent(new CustomEvent('open-data-quality-modal'));
+      return;
+    }
+
     if (item.targetElementId) {
       setTimeout(() => {
         const el = document.getElementById(item.targetElementId!);

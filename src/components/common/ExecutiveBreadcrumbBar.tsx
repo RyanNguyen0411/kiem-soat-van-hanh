@@ -12,7 +12,8 @@ import {
   UserCheck, 
   UserMinus, 
   Coins,
-  Send 
+  Send,
+  ShieldCheck 
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import type { TabType } from '../../types/dashboard';
@@ -262,6 +263,16 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
                 <span>{activeTab === 'ton_dong_glt' ? 'Báo Cáo Telegram' : 'Báo Cáo Telegram LC'}</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-data-quality-modal'))}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shadow-xs transition-all cursor-pointer border border-slate-700 hover:border-emerald-500/50 group"
+              title="Mở Trung Tâm Kiểm Định & Đối Chiếu Dữ Liệu (DQ Audit Center)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span>Kiểm Định DQ</span>
+            </button>
 
             <button
               type="button"

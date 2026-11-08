@@ -15,6 +15,15 @@ export const safeDivide = (numerator: number, denominator: number): number => {
   return numerator / denominator;
 };
 
+/**
+ * Tính tỷ lệ % KPI theo chuẩn AM Huy: SUM(SLĐ GTC) / SUM(Volume)
+ * Nếu mẫu số = 0 trả về 'N/A' thay vì 0% để tránh gây hiểu nhầm
+ */
+export const formatKpiPercentage = (numerator: number, denominator: number, decimals = 1): string => {
+  if (!denominator || denominator === 0) return 'N/A';
+  return ((numerator / denominator) * 100).toFixed(decimals) + '%';
+};
+
 export const calculateGrowth = (current: number, previous: number): number => {
   if (!previous || previous === 0) return 0;
   return (current - previous) / previous;

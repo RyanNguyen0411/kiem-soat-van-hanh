@@ -67,8 +67,13 @@ export const Header: React.FC = () => {
 
         {/* Right: Sync Status & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Connection Status Badge */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs">
+          {/* Connection Status Badge (Bấm để mở Trung Tâm Kiểm Định Dữ Liệu) */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-data-quality-modal'))}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs transition-colors cursor-pointer"
+            title="Bấm để xem Báo Cáo Kiểm Định & Đối Chiếu Dữ Liệu 8 Sheets (Data Quality)"
+          >
             <span className="relative flex h-2 w-2">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                 syncStatus.source === 'LIVE_SHEETS' ? 'bg-emerald-400' : 'bg-amber-400'
@@ -83,7 +88,7 @@ export const Header: React.FC = () => {
             <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">
               ({syncStatus.lastUpdated})
             </span>
-          </div>
+          </button>
 
           {/* Sync / Refresh Button */}
           <button

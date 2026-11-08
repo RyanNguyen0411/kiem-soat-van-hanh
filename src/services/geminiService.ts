@@ -38,7 +38,7 @@ export function buildOperationalContext(dataset: DatasetState): string {
     const volume = poGtcRecords.reduce((acc, r) => acc + (r.volume || 0), 0);
     const sldGan = poGtcRecords.reduce((acc, r) => acc + (r.sldGan || 0), 0);
     const sldGtc = poGtcRecords.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
-    const gtcRate = sldGan > 0 ? (sldGtc / sldGan) * 100 : 0;
+    const gtcRate = volume > 0 ? (sldGtc / volume) * 100 : 0;
 
     const tonGlt = dataset.tonDongGlt.filter(r => normalizePoName(r.buuCuc) === po).length;
     const tonLc = dataset.tonDongLc.filter(r => normalizePoName(r.tenBC) === po).length;
@@ -175,7 +175,7 @@ export function generateLocalOperationalIntelligence(userPrompt: string, dataset
   const totalVol = dataset.gtcBuuCuc.reduce((acc, r) => acc + (r.volume || 0), 0) || 45935;
   const totalGan = dataset.gtcBuuCuc.reduce((acc, r) => acc + (r.sldGan || 0), 0) || 44200;
   const totalGtc = dataset.gtcBuuCuc.reduce((acc, r) => acc + (r.sldGTC || 0), 0) || 34000;
-  const gtcAvg = totalGan > 0 ? ((totalGtc / totalGan) * 100).toFixed(1) : '76.9';
+  const gtcAvg = totalVol > 0 ? ((totalGtc / totalVol) * 100).toFixed(1) : '64.1';
 
   // 1. CHỦ ĐỀ: BƯU CỤC RẠCH KIẾN (ĐIỂM NGHẼN QUÁ TẢI, TỒN TTS & SHOPEE, 2 NHÂN VIÊN CHUYÊN LẤY)
   if (q.includes('rạch kiến') || q.includes('rach kien')) {

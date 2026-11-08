@@ -15,6 +15,7 @@ import { OperationalCalendarDrawer } from './components/common/OperationalCalend
 import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryModal';
 import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
 import { TelegramReportModal } from './components/common/TelegramReportModal';
+import { DataQualityModal } from './components/common/DataQualityModal';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -157,6 +158,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Báo Cáo Telegram Tồn Đọng GLT (120h & 192h) và Tồn LC */}
       <TelegramReportModal />
+
+      {/* Trung Tâm Kiểm Định Dữ Liệu & Đối Chiếu Vận Hành (DQ Audit Center) */}
+      <DataQualityModal />
     </div>
   );
 };
