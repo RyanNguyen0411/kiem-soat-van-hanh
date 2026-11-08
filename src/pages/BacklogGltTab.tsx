@@ -1118,10 +1118,10 @@ export const BacklogGltTab: React.FC = () => {
               <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-amber-100 dark:border-amber-950 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1 font-bold text-amber-600">
                   <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span>Tồn Kho Lưu Cữu: (LAN) Cần Đước</span>
+                  <span>Tồn Kho Lưu Cữu: (LAN) Cần Đước 1</span>
                 </div>
                 <p>
-                  Mặc dù số lượng đơn không lớn (535 đơn), nhưng <strong>100% đơn tại Cần Đước là hàng tồn lưu cữu từ các ca trước</strong> (449 đơn tồn 12-48h, 76 đơn cảnh báo và 10 đơn khẩn cấp), <strong>0 đơn mới trong ngày</strong>. Cần giải phóng dứt điểm các ca giao lại lần 2-3 và đơn hẹn khách kéo dài.
+                  Mặc dù số lượng đơn không lớn (535 đơn), nhưng <strong>100% đơn tại Cần Đước 1 là hàng tồn lưu cữu từ các ca trước</strong> (449 đơn tồn 12-48h, 76 đơn cảnh báo và 10 đơn khẩn cấp), <strong>0 đơn mới trong ngày</strong>. Cần giải phóng dứt điểm các ca giao lại lần 2-3 và đơn hẹn khách kéo dài.
                 </p>
               </div>
 
@@ -1231,7 +1231,7 @@ export const BacklogGltTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Bảng Ma Trận Cảnh Báo SLA TikTok Shop Theo 6 Bưu Cục (Fit 100%, không thanh trượt ngang, số in đậm) */}
+          {/* Bảng Ma Trận Cảnh Báo SLA TikTok Shop Theo 5 Bưu Cục (Fit 100%, không thanh trượt ngang, số in đậm) */}
           <div className="overflow-hidden rounded-xl border border-purple-200 dark:border-purple-800/80 bg-white dark:bg-slate-800 shadow-2xs">
             <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
               <thead className="bg-purple-100/70 dark:bg-purple-950/60 text-purple-950 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800 font-bold">
@@ -1565,7 +1565,7 @@ export const BacklogGltTab: React.FC = () => {
                   <span>Tăng Trưởng Nóng Từ TikTok Shop (TTS)</span>
                 </div>
                 <p>
-                  <strong>TikTok Shop (TTS: 4.485 đơn - 41.0%)</strong> chiếm tỷ trọng lớn nhất tại Tầm Vu (50%), Cần Đước (51.4%), Phước Lý (43.1%). Đơn hàng TTS có tần suất hủy đơn (Cancel Rate) cao nếu giao trễ trên 72h. Khuyến nghị bưu cục liên hệ người nhận qua ZNS trước khi phát để đảm bảo tỷ lệ giao thành công (GTC).
+                  <strong>TikTok Shop (TTS: 4.485 đơn - 41.0%)</strong> chiếm tỷ trọng lớn nhất tại Tầm Vu (50%), Cần Đước 1 (51.4%), Phước Lý (43.1%). Đơn hàng TTS có tần suất hủy đơn (Cancel Rate) cao nếu giao trễ trên 72h. Khuyến nghị bưu cục liên hệ người nhận qua ZNS trước khi phát để đảm bảo tỷ lệ giao thành công (GTC).
                 </p>
               </div>
 

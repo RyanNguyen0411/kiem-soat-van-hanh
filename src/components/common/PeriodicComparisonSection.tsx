@@ -411,7 +411,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
               onChange={e => setFilterBuuCuc(e.target.value)}
               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
             >
-              <option value="all">Tất cả bưu cục (6 BC)</option>
+              <option value="all">Tất cả bưu cục (5 BC)</option>
               {buuCucOptions.map(bc => (
                 <option key={bc} value={bc}>{bc}</option>
               ))}

@@ -23,14 +23,37 @@ export const SPREADSHEET_ID = '1nolP_Se1J5Cbj7A1CwcqFvau88FrWYVF8aiFM0lGSUY';
 // Danh sách nhân sự không còn là bưu tá - loại bỏ khỏi toàn bộ báo cáo và tính toán
 export const EXCLUDED_STAFF_IDS = new Set(['3175777']);
 
-// Chuẩn hóa tên Bưu cục khu vực Long An (ĐNB) - Hợp nhất '(LAN) Cần Đước' vào '(LAN) Cần Đước 1'
+// Chuẩn hóa tên Bưu cục khu vực Long An (ĐNB) - Đồng nhất hoàn toàn '(LAN) Cần Đước' vào '(LAN) Cần Đước 1'
 export function normalizePostOfficeName(bc?: string): string {
   if (!bc) return '';
   const trimmed = bc.trim();
-  if (trimmed === '(LAN) Cần Đước' || trimmed === 'Cần Đước') {
+  // (LAN) Cần Đước 1 tên trước đây là (LAN) Cần Đước, mã bưu cục là 23220000
+  if (
+    trimmed === '(LAN) Cần Đước' || 
+    trimmed === 'Cần Đước' ||
+    trimmed === '(LAN) Cần Đước 1' ||
+    trimmed === 'Cần Đước 1' ||
+    trimmed.includes('Cần Đước') ||
+    trimmed === '2278' ||
+    trimmed === '23220000'
+  ) {
     return '(LAN) Cần Đước 1';
   }
   return trimmed;
+}
+
+// Chuẩn hóa mã bưu cục - (LAN) Cần Đước 1 có mã bưu cục chuẩn duy nhất là 23220000
+export function normalizePostOfficeCode(code?: string, bcName?: string): string {
+  const trimmedCode = (code || '').trim();
+  const trimmedName = (bcName || '').trim();
+  if (
+    trimmedCode === '2278' || 
+    trimmedCode === '23220000' || 
+    trimmedName.includes('Cần Đước')
+  ) {
+    return '23220000';
+  }
+  return trimmedCode;
 }
 
 export const SHEET_NAMES = {
@@ -205,13 +228,17 @@ export async function loadDataset(): Promise<{
         const nvParts = nvRaw.split('-');
         const bcRaw = r[1] || '';
         const bcParts = bcRaw.split('-');
+        const rawBc = bcParts.slice(1).join('-').trim() || bcRaw;
+        const tenBC = normalizePostOfficeName(rawBc);
+        const maBC = normalizePostOfficeCode(bcParts[0]?.trim() || '', tenBC);
+        const buuCucRaw = tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : bcRaw;
         return {
           nhanVienRaw: nvRaw,
           maNV: nvParts[0]?.trim() || '',
           tenNV: nvParts.slice(1).join('-').trim() || nvRaw,
-          buuCucRaw: bcRaw,
-          maBC: bcParts[0]?.trim() || '',
-          tenBC: normalizePostOfficeName(bcParts.slice(1).join('-').trim() || bcRaw),
+          buuCucRaw,
+          maBC,
+          tenBC,
           vung: r[2] || '',
           ngayVaoLam: r[3] || '',
           thamNien: r[4] || '',
@@ -235,32 +262,40 @@ export async function loadDataset(): Promise<{
     const gltRows = parseCSV(gltText).slice(1);
     const tonDongGlt: BacklogGltRecord[] = gltRows
       .filter(r => r[0] && r[2] && r[0].trim() !== '')
-      .map(r => ({
-        buuCuc: normalizePostOfficeName(r[0]),
-        maBC: r[1] || '',
-        maDonHang: r[2],
-        loaiDon: r[3] || 'Khác',
-        khachHang: r[4] || 'OTHER',
-        phuongXa: r[5] || '',
-        trangThai: r[6] || '',
-        thoiGianTonDong: r[7] || '',
-        canhBao: r[8] || ''
-      }));
+      .map(r => {
+        const buuCuc = normalizePostOfficeName(r[0]);
+        const maBC = normalizePostOfficeCode(r[1] || '', buuCuc);
+        return {
+          buuCuc,
+          maBC,
+          maDonHang: r[2],
+          loaiDon: r[3] || 'Khác',
+          khachHang: r[4] || 'OTHER',
+          phuongXa: r[5] || '',
+          trangThai: r[6] || '',
+          thoiGianTonDong: r[7] || '',
+          canhBao: r[8] || ''
+        };
+      });
 
     // 5. Parse Tồn đọng LC
     const lcRows = parseCSV(lcText).slice(1);
     const tonDongLc: BacklogLcRecord[] = lcRows
       .filter(r => r[0] && r[2] && r[0].trim() !== '')
-      .map(r => ({
-        tenBC: normalizePostOfficeName(r[0]),
-        maBC: r[1] || '',
-        maDonHang: r[2],
-        loaiDon: r[3] || 'Luân chuyển',
-        khachHang: r[4] || 'OTHER',
-        trangThai: r[5] || '',
-        thoiGianTonDong: r[6] || '',
-        canhBao: r[7] || ''
-      }));
+      .map(r => {
+        const tenBC = normalizePostOfficeName(r[0]);
+        const maBC = normalizePostOfficeCode(r[1] || '', tenBC);
+        return {
+          tenBC,
+          maBC,
+          maDonHang: r[2],
+          loaiDon: r[3] || 'Luân chuyển',
+          khachHang: r[4] || 'OTHER',
+          trangThai: r[5] || '',
+          thoiGianTonDong: r[6] || '',
+          canhBao: r[7] || ''
+        };
+      });
 
     // 6. Parse Nhân sự: Sheet 'Nhân sự' (bao gồm 3175777 Trần Trọng Phú đảm nhiệm vị trí NVXL Tầm Vu)
     const nhanSuRows = parseCSV(nhanSuText).slice(1);
@@ -276,6 +311,7 @@ export async function loadDataset(): Promise<{
         const buuCucRaw = (r[6] || '').trim();
         const rawBcName = buuCucRaw.includes('-') ? buuCucRaw.split('-').slice(1).join('-').trim() : buuCucRaw;
         const buuCuc = normalizePostOfficeName(rawBcName);
+        const stdBuuCucRaw = buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
         const zone = (r[7] || '').trim();
         const am = (r[8] || '').trim();
         const loaiHD = (r[9] || '').trim();
@@ -291,7 +327,7 @@ export async function loadDataset(): Promise<{
           ngayVaoLamText,
           ngayNghiViecText,
           trangThai,
-          buuCucRaw,
+          buuCucRaw: stdBuuCucRaw,
           buuCuc,
           zone,
           am,
@@ -334,23 +370,40 @@ export async function loadDataset(): Promise<{
           })),
         hoaHongNgay: (hoaHongNgaySnapshot as DailySalaryRecord[])
           .filter(r => !EXCLUDED_STAFF_IDS.has(r.maNV))
-          .map(r => ({
-            ...r,
-            tenBC: normalizePostOfficeName(r.tenBC)
-          })),
+          .map(r => {
+            const tenBC = normalizePostOfficeName(r.tenBC);
+            return {
+              ...r,
+              tenBC,
+              maBC: normalizePostOfficeCode(r.maBC, tenBC),
+              buuCucRaw: tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+            };
+          }),
         tyLeTraHang: tyLeTraHangSnapshot as any[],
-        tonDongGlt: (tonDongGltSnapshot as BacklogGltRecord[]).map(r => ({
-          ...r,
-          buuCuc: normalizePostOfficeName(r.buuCuc)
-        })),
-        tonDongLc: (tonDongLcSnapshot as BacklogLcRecord[]).map(r => ({
-          ...r,
-          tenBC: normalizePostOfficeName(r.tenBC)
-        })),
-        nhanSu: (nhanSuSnapshot as NhanSuRecord[]).map(r => ({
-          ...r,
-          buuCuc: normalizePostOfficeName(r.buuCuc)
-        }))
+        tonDongGlt: (tonDongGltSnapshot as BacklogGltRecord[]).map(r => {
+          const buuCuc = normalizePostOfficeName(r.buuCuc);
+          return {
+            ...r,
+            buuCuc,
+            maBC: normalizePostOfficeCode(r.maBC, buuCuc)
+          };
+        }),
+        tonDongLc: (tonDongLcSnapshot as BacklogLcRecord[]).map(r => {
+          const tenBC = normalizePostOfficeName(r.tenBC);
+          return {
+            ...r,
+            tenBC,
+            maBC: normalizePostOfficeCode(r.maBC, tenBC)
+          };
+        }),
+        nhanSu: (nhanSuSnapshot as NhanSuRecord[]).map(r => {
+          const buuCuc = normalizePostOfficeName(r.buuCuc);
+          return {
+            ...r,
+            buuCuc,
+            buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+          };
+        })
       },
       source: 'CACHED_SNAPSHOT',
       error: `Không thể kết nối trực tiếp đến Google Sheets (${err.message}). Hệ thống đang hiển thị dữ liệu kiểm toán snapshot gần nhất.`

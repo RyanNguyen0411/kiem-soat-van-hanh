@@ -169,7 +169,7 @@ export const ReturnRateTab: React.FC = () => {
             và <b>chưa có bản ghi số liệu (0 dòng dữ liệu)</b>.
           </p>
           <p className="text-emerald-700 dark:text-emerald-300 font-medium pt-0.5">
-            ✓ <b>Giải pháp hỗ trợ vận hành:</b> Hệ thống tự động trích xuất trường <b>"% Chuyển trả"</b> từ Sheet <b>"GTC Bưu cục"</b> để Area Manager theo dõi liên tục tỷ lệ chuyển trả của 6 bưu cục mà không bị gián đoạn công tác điều hành.
+            ✓ <b>Giải pháp hỗ trợ vận hành:</b> Hệ thống tự động trích xuất trường <b>"% Chuyển trả"</b> từ Sheet <b>"GTC Bưu cục"</b> để Area Manager theo dõi liên tục tỷ lệ chuyển trả của 5 bưu cục mà không bị gián đoạn công tác điều hành.
           </p>
         </div>
       </div>
@@ -229,7 +229,7 @@ export const ReturnRateTab: React.FC = () => {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              So Sánh Tỷ Lệ Chuyển Trả Giữa 6 Bưu Cục
+              So Sánh Tỷ Lệ Chuyển Trả Giữa 5 Bưu Cục
             </h3>
             <p className="text-[11px] text-slate-400">Xếp hạng bưu cục theo tỷ lệ hoàn hàng</p>
           </div>

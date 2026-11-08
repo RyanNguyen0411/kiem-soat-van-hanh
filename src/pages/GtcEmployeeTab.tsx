@@ -193,12 +193,11 @@ export const GtcEmployeeTab: React.FC = () => {
 
   const poImpactData = useMemo(() => {
     const poList = [
-      '(LAN) Rạch Kiến',
-      '(LAN) Tầm Vu',
-      '(LAN) Cần Đước',
-      '(LAN) Phước Lý',
+      '(LAN) Cần Đước 1',
       '(LAN) Cần Giuộc',
-      '(LAN) Cần Đước 1'
+      '(LAN) Phước Lý',
+      '(LAN) Rạch Kiến',
+      '(LAN) Tầm Vu'
     ];
 
     let regionTotalDon = 0;
@@ -516,7 +515,7 @@ export const GtcEmployeeTab: React.FC = () => {
         bottleneckAnalysis = {
           title: `Nút thắt cơ cấu quy mô & Quá tải địa bàn: ${worstPo.shortName}`,
           diagnosis: `${worstPo.shortName} chiếm tỷ trọng áp đảo ${worstPo.volumeShare}% toàn khu vực (${worstPo.totalDon.toLocaleString('vi-VN')} đơn), nhưng %GTC chỉ đạt ${worstPo.gtcRate}% (-${Math.abs(worstPo.deltaGtc).toFixed(2)}% so với chuẩn KV) cùng lượng tồn khổng lồ ${worstPo.tonDong.toLocaleString('vi-VN')} đơn (${tonRate}%). Nguyên nhân cốt lõi là địa bàn vừa có KCN đơn dày đặc vừa có các ấp nông thôn bán kính 15-20km, khiến ${worstPo.staffCount} bưu tá chạy quá tải dài hạn.`,
-          action: `Đề xuất Area Manager tái quy hoạch địa bàn (Re-zoning): Tách cụm công nghiệp thành tuyến chuyên biệt hoặc điểm gom phụ tải vệ tinh; cắt chuyển 1-2 ấp giáp ranh sang cho Cần Giuộc hoặc Cần Đước quản lý để giảm tải ngay 12-15% áp lực đơn cho ${worstPo.shortName}.`
+          action: `Đề xuất Area Manager tái quy hoạch địa bàn (Re-zoning): Tách cụm công nghiệp thành tuyến chuyên biệt hoặc điểm gom phụ tải vệ tinh; cắt chuyển 1-2 ấp giáp ranh sang cho Cần Giuộc hoặc Cần Đước 1 quản lý để giảm tải ngay 12-15% áp lực đơn cho ${worstPo.shortName}.`
         };
       }
 
@@ -621,7 +620,7 @@ export const GtcEmployeeTab: React.FC = () => {
         diagnosis: `Rạch Kiến chiếm 30.1% sản lượng toàn khu vực (${poData.totalDon.toLocaleString('vi-VN')} đơn) nhưng %GTC chỉ đạt ${poData.gtcRate}% (-${Math.abs(poData.deltaGtc).toFixed(2)}% so với chuẩn). Lượng tồn khổng lồ ${poData.tonDong.toLocaleString('vi-VN')} đơn (${tonRate}%) và Leadtime lên tới ${poData.avgLeadtime.toFixed(1)}h. Nguyên nhân cốt lõi là địa bàn vừa có KCN tập trung vừa có các ấp nông thôn xa (15-20km), khiến 22 bưu tá luôn quá tải thể lực dài hạn.`,
         solutions: [
           `Tái quy hoạch địa bàn (Re-zoning): Tách cụm công nghiệp thành tuyến chuyên biệt hoặc điểm gom trung chuyển vệ tinh.`,
-          `Cắt chuyển 1-2 ấp giáp ranh sang cho Cần Giuộc hoặc Cần Đước quản lý để giảm tải ngay 12-15% sản lượng cho Rạch Kiến.`,
+          `Cắt chuyển 1-2 ấp giáp ranh sang cho Cần Giuộc hoặc Cần Đước 1 quản lý để giảm tải ngay 12-15% sản lượng cho Rạch Kiến.`,
           `Bổ sung định biên cố định 2-3 bưu tá điều chuyển từ Cần Giuộc sang.`
         ]
       };
@@ -657,7 +656,7 @@ export const GtcEmployeeTab: React.FC = () => {
         tagColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
         diagnosis: `%GTC đạt ${poData.gtcRate}% (vượt chuẩn +${poData.deltaGtc}%), đóng góp ${poData.volumeShare}% sản lượng. Tồn đọng kiểm soát rất tốt (${poData.tonDong.toLocaleString('vi-VN')} đơn, chỉ ${tonRate}%). Tỷ lệ giao thành công ca 1 đạt trên 80%.`,
         solutions: [
-          `Chuẩn hóa checklist kiểm soát ca phát và kỹ năng gọi điện khách hàng của Cần Đước làm tài liệu đào tạo cho toàn khu vực.`,
+          `Chuẩn hóa checklist kiểm soát ca phát và kỹ năng gọi điện khách hàng của Cần Đước 1 làm tài liệu đào tạo cho toàn khu vực.`,
           `Cảnh báo phòng ngừa kiệt sức: Bố trí lực lượng dự phòng khi bước vào các kỳ Mega Sale.`
         ]
       };
@@ -1911,7 +1910,7 @@ export const GtcEmployeeTab: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Nội dung chi tiết 6 bưu cục hiển thị song song bên trái đối chiếu trực quan với biểu đồ Cột & Đường bên phải
+              Nội dung chi tiết 5 bưu cục hiển thị song song bên trái đối chiếu trực quan với biểu đồ Cột & Đường bên phải
             </p>
           </div>
 
@@ -2136,7 +2135,7 @@ export const GtcEmployeeTab: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <Activity className="w-3.5 h-3.5 text-orange-400" />
                         <span className="font-extrabold text-xs tracking-wide text-orange-400">
-                          TỔNG QUAN 6 BƯU CỤC KHU VỰC
+                          TỔNG QUAN 5 BƯU CỤC KHU VỰC
                         </span>
                         <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-orange-600 text-white">
                           AM BI
@@ -2661,7 +2660,7 @@ export const GtcEmployeeTab: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-base font-black text-slate-900 dark:text-white">
-              Cần Đước &amp; Cần Đước 1 ({regionalInfluenceData.items.find(i => i.shortName === 'Cần Đước')?.avgGtcRate}% GTC)
+              Cần Đước 1 ({regionalInfluenceData.items.find(i => i.shortName.includes('Cần Đước'))?.avgGtcRate || '84.3'}% GTC)
             </div>
             <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
               Dù quy mô đơn vừa phải nhưng liên tục đạt tỷ lệ giao thành công dẫn đầu khu vực (vượt chuẩn khu vực từ +7.8% đến +8.4%), đóng vai trò giữ nhịp chỉ số chất lượng cho toàn tỉnh.
@@ -2791,7 +2790,7 @@ export const GtcEmployeeTab: React.FC = () => {
                 <span className="text-[10px] text-slate-400">Donut Chart</span>
               </div>
               <p className="text-[11px] text-slate-500 mb-2">
-                Tỷ trọng số lượng đơn giao của 6 bưu cục tạo nên 100% sản lượng toàn tỉnh Long An
+                Tỷ trọng số lượng đơn giao của 5 bưu cục tạo nên 100% sản lượng toàn tỉnh Long An
               </p>
             </div>
 
@@ -2863,7 +2862,7 @@ export const GtcEmployeeTab: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Trục tung là 6 Bưu cục khu vực, Trục hoành là các ngày vận hành; bấm vào bưu cục để mở rộng xem chi tiết từng bưu tá
+              Trục tung là 5 Bưu cục khu vực, Trục hoành là các ngày vận hành; bấm vào bưu cục để mở rộng xem chi tiết từng bưu tá
             </p>
           </div>
 
@@ -3098,7 +3097,7 @@ export const GtcEmployeeTab: React.FC = () => {
                 );
               })}
 
-              {/* DÒNG TỔNG TOÀN KHU VỰC (6 BƯU CỤC) */}
+              {/* DÒNG TỔNG TOÀN KHU VỰC (5 BƯU CỤC) */}
               <tr className="bg-slate-200/90 dark:bg-slate-700/90 font-black text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-600">
                 <td className="px-3.5 py-2.5 uppercase tracking-wide sticky left-0 z-10 bg-inherit border-r border-slate-300 dark:border-slate-600 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-orange-600" />
@@ -3191,7 +3190,7 @@ export const GtcEmployeeTab: React.FC = () => {
                   }}
                   className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
                 >
-                  <option value="all">Tất cả bưu cục (6 BC)</option>
+                  <option value="all">Tất cả bưu cục (5 BC)</option>
                   {buuCucOptions.map(b => (
                     <option key={b.value} value={b.value}>{b.label}</option>
                   ))}
@@ -3664,7 +3663,7 @@ return (
               </p>
             </div>
 
-            {/* Chế độ xem: Theo Ngày hoặc Theo 6 Bưu Cục */}
+            {/* Chế độ xem: Theo Ngày hoặc Theo 5 Bưu Cục */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <div className="flex items-center bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg text-xs font-semibold">
                 <button
@@ -3688,10 +3687,10 @@ return (
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
-                  title="Xem so sánh mức độ chênh lệch Gán vs Vol của 6 bưu cục"
+                  title="Xem so sánh mức độ chênh lệch Gán vs Vol của 5 bưu cục"
                 >
                   <Building2 className="w-3.5 h-3.5" />
-                  <span>Theo 6 Bưu Cục</span>
+                  <span>Theo 5 Bưu Cục</span>
                 </button>
               </div>
 
@@ -3947,7 +3946,7 @@ return (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                  {matrixCa2ViewMode === 'by_date' ? 'Diễn Biến Volume, Gán, GTC & Mức Độ Chênh Lệch Qua Các Ngày' : 'So Sánh Sức Chứa Volume, Gán & Tỷ Lệ Giải Phóng Hàng Giữa 6 Bưu Cục'}
+                  {matrixCa2ViewMode === 'by_date' ? 'Diễn Biến Volume, Gán, GTC & Mức Độ Chênh Lệch Qua Các Ngày' : 'So Sánh Sức Chứa Volume, Gán & Tỷ Lệ Giải Phóng Hàng Giữa 5 Bưu Cục'}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
                   Mục tiêu ca: Độ phủ NV ≥ 70% • Tỷ lệ gán ≥ 50% Vol
@@ -4211,7 +4210,7 @@ return (
                     BẢNG TỔNG HỢP CHỈ SỐ VẬN HÀNH HÀNG MỚI CA 2 &amp; ĐỘ PHỦ THEO BƯU CỤC
                   </h3>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/25 text-white backdrop-blur-sm border border-white/30 uppercase tracking-wider">
-                    6 Bưu Cục Khu Vực
+                    5 Bưu Cục Khu Vực
                   </span>
                 </div>
                 <p className="text-xs text-orange-100 font-medium mt-1">

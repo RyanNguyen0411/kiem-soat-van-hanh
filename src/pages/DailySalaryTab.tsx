@@ -46,23 +46,21 @@ import type { Column } from '../components/common/DataTable';
 import { sortDatesDesc, extractMonths, extractWeeks } from '../utils/dateEngine';
 import type { MonthFilterOption, WeekFilterOption } from '../utils/dateEngine';
 
-// Danh sách bưu cục chuẩn & mã màu nhận diện
+// Danh sách bưu cục chuẩn & mã màu nhận diện (5 bưu cục chính thức khu vực Long An)
 const PO_ORDER = [
-  '(LAN) Rạch Kiến',
-  '(LAN) Phước Lý',
+  '(LAN) Cần Đước 1',
   '(LAN) Cần Giuộc',
-  '(LAN) Cần Đước',
-  '(LAN) Tầm Vu',
-  '(LAN) Cần Đước 1'
+  '(LAN) Phước Lý',
+  '(LAN) Rạch Kiến',
+  '(LAN) Tầm Vu'
 ];
 
 const PO_COLOR_MAP: Record<string, { stroke: string; fill: string; short: string }> = {
-  '(LAN) Rạch Kiến': { stroke: '#F97316', fill: '#FED7AA', short: 'Rạch Kiến' }, // Cam GHN
-  '(LAN) Phước Lý': { stroke: '#8B5CF6', fill: '#DDD6FE', short: 'Phước Lý' },   // Tím
-  '(LAN) Cần Giuộc': { stroke: '#10B981', fill: '#A7F3D0', short: 'Cần Giuộc' }, // Xanh lục
-  '(LAN) Cần Đước': { stroke: '#3B82F6', fill: '#BFDBFE', short: 'Cần Đước' },   // Xanh dương
-  '(LAN) Tầm Vu': { stroke: '#EC4899', fill: '#FBCFE8', short: 'Tầm Vu' },       // Hồng
-  '(LAN) Cần Đước 1': { stroke: '#EAB308', fill: '#FEF08A', short: 'Cần Đước 1' } // Vàng
+  '(LAN) Cần Đước 1': { stroke: '#3B82F6', fill: '#BFDBFE', short: 'Cần Đước 1' }, // Xanh dương
+  '(LAN) Cần Giuộc': { stroke: '#10B981', fill: '#A7F3D0', short: 'Cần Giuộc' },   // Xanh lục
+  '(LAN) Phước Lý': { stroke: '#8B5CF6', fill: '#DDD6FE', short: 'Phước Lý' },     // Tím
+  '(LAN) Rạch Kiến': { stroke: '#F97316', fill: '#FED7AA', short: 'Rạch Kiến' },   // Cam GHN
+  '(LAN) Tầm Vu': { stroke: '#EC4899', fill: '#FBCFE8', short: 'Tầm Vu' }          // Hồng
 };
 
 // =========================================================================
@@ -909,7 +907,7 @@ export const DailySalaryTab: React.FC = () => {
         {/* Breakdown từng bưu cục */}
         <div className="space-y-1">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Chi tiết 6 Bưu Cục trong ngày:
+            Chi tiết 5 Bưu Cục trong ngày:
           </div>
           {PO_ORDER.map(po => {
             const val = d[po] || 0;
@@ -1465,7 +1463,7 @@ export const DailySalaryTab: React.FC = () => {
               </h2>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xl hidden md:block">
-              Quản trị quỹ lương, năng lực lấy hàng LTC, chi phí đơn và thâm niên nhân sự 6 bưu cục khu vực
+              Quản trị quỹ lương, năng lực lấy hàng LTC, chi phí đơn và thâm niên nhân sự 5 bưu cục khu vực
             </p>
           </div>
 
@@ -1602,7 +1600,7 @@ export const DailySalaryTab: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Trục tung là 6 Bưu cục khu vực, Trục hoành là các ngày vận hành; bấm vào bưu cục để mở rộng xem thu nhập từng bưu tá
+              Trục tung là 5 Bưu cục khu vực, Trục hoành là các ngày vận hành; bấm vào bưu cục để mở rộng xem thu nhập từng bưu tá
             </p>
           </div>
 
@@ -1677,7 +1675,7 @@ export const DailySalaryTab: React.FC = () => {
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-850/50 space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
               {/* ================================================================ */}
-              {/* CỘT TRÁI (4 cols): TỔNG QUAN QUỸ LƯƠNG & CƠ CẤU 6 BƯU CỤC */}
+              {/* CỘT TRÁI (4 cols): TỔNG QUAN QUỸ LƯƠNG & CƠ CẤU 5 BƯU CỤC */}
               {/* ================================================================ */}
               <div className="lg:col-span-4 bg-slate-900 text-white rounded-xl p-4 border border-slate-800 shadow-md flex flex-col justify-between space-y-3.5">
                 {/* Header Card */}
@@ -1706,7 +1704,7 @@ export const DailySalaryTab: React.FC = () => {
                     <div className="text-base sm:text-lg font-black text-orange-400 mt-0.5 truncate" title={`${(regionalMatrixSummary?.totalRegionSalary || 0).toLocaleString('vi-VN')} đ`}>
                       {((regionalMatrixSummary?.totalRegionSalary || 0) / 1e6).toFixed(1)} tr đ
                     </div>
-                    <div className="text-[9.5px] text-slate-400">Toàn bộ 6 Bưu cục</div>
+                    <div className="text-[9.5px] text-slate-400">Toàn bộ 5 Bưu cục</div>
                   </div>
 
                   <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60">
@@ -1722,7 +1720,7 @@ export const DailySalaryTab: React.FC = () => {
                     <div className="text-base sm:text-lg font-black text-blue-400 mt-0.5 truncate">
                       {(regionalMatrixSummary?.totalRegionCong || 0).toLocaleString('vi-VN')} công
                     </div>
-                    <div className="text-[9.5px] text-slate-400">Toàn lực lượng 6 BC</div>
+                    <div className="text-[9.5px] text-slate-400">Toàn lực lượng 5 BC</div>
                   </div>
 
                   <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60">
@@ -1734,12 +1732,12 @@ export const DailySalaryTab: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Thanh Tỷ Trọng Phân Bổ 6 Bưu Cục */}
+                {/* Thanh Tỷ Trọng Phân Bổ 5 Bưu Cục */}
                 <div className="space-y-1.5 pt-1 border-t border-slate-800">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px] flex items-center gap-1">
                       <Layers className="w-3 h-3 text-orange-400" />
-                      Tỷ Trọng Quỹ Lương 6 Bưu Cục
+                      Tỷ Trọng Quỹ Lương 5 Bưu Cục
                     </span>
                     {focusedMatrixPo !== 'all' && (
                       <button
@@ -1843,9 +1841,9 @@ export const DailySalaryTab: React.FC = () => {
                             ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-xs font-bold'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
-                        title="Xem đường xu hướng biến động của 6 bưu cục qua các ngày"
+                        title="Xem đường xu hướng biến động của 5 bưu cục qua các ngày"
                       >
-                        <span>6 Bưu cục</span>
+                        <span>5 Bưu cục</span>
                       </button>
                       <button
                         type="button"
@@ -1855,7 +1853,7 @@ export const DailySalaryTab: React.FC = () => {
                             ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-xs font-bold'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                         }`}
-                        title="Xem cơ cấu đóng góp quỹ lương của 6 bưu cục từng ngày"
+                        title="Xem cơ cấu đóng góp quỹ lương của 5 bưu cục từng ngày"
                       >
                         <span>Cơ cấu ngày</span>
                       </button>
@@ -1865,9 +1863,9 @@ export const DailySalaryTab: React.FC = () => {
                     <select
                       value={focusedMatrixPo}
                       onChange={e => setFocusedMatrixPo(e.target.value)}
-                      className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 text-[11px]"
+                      className="bg-slate-50 dark:bg-slate-755 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 text-[11px]"
                     >
-                      <option value="all">Tất cả 6 Bưu cục</option>
+                      <option value="all">Tất cả 5 Bưu cục</option>
                       {PO_ORDER.map(po => (
                         <option key={po} value={po}>
                           {po.replace('(LAN) ', '')}
@@ -1936,7 +1934,7 @@ export const DailySalaryTab: React.FC = () => {
                         />
                       </ComposedChart>
                     ) : matrixChartView === 'lines' ? (
-                      /* CHẾ ĐỘ 2: XU HƯỚNG 6 BƯU CỤC */
+                      /* CHẾ ĐỘ 2: XU HƯỚNG 5 BƯU CỤC */
                       <LineChart data={matrixChartData} margin={{ top: 10, right: 15, left: 5, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
                         <XAxis 
@@ -2742,7 +2740,7 @@ export const DailySalaryTab: React.FC = () => {
               2. Đòn Bẩy Thu Nhập Từ Đơn Lấy Hàng (LTC)
             </div>
             <p className="text-slate-300 text-[11px]">
-              Toàn khu vực phát sinh tới <strong>139.031 đơn lấy tính lương</strong>, đóng góp gần 45% tổng sản lượng tính lương. <strong>Tầm Vu</strong> xuất sắc đạt tỷ lệ lấy <strong>93.2%</strong> mang lại nguồn thu ổn định 551k/công. Ngược lại, <strong>Cần Đước</strong> tỷ lệ lấy chỉ đạt <strong>57.7%</strong> (gán 38k nhưng chỉ lấy được 22k đơn), làm mất đi 30% dư địa thu nhập của bưu tá.
+              Toàn khu vực phát sinh tới <strong>139.031 đơn lấy tính lương</strong>, đóng góp gần 45% tổng sản lượng tính lương. <strong>Tầm Vu</strong> xuất sắc đạt tỷ lệ lấy <strong>93.2%</strong> mang lại nguồn thu ổn định 551k/công. Ngược lại, <strong>Cần Đước 1</strong> tỷ lệ lấy chỉ đạt <strong>57.7%</strong> (gán 38k nhưng chỉ lấy được 22k đơn), làm mất đi 30% dư địa thu nhập của bưu tá.
             </p>
           </div>
 

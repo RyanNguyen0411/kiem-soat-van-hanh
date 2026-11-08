@@ -91,7 +91,7 @@ export const GlobalSpotlightSearch: React.FC = () => {
         category: 'feature',
         categoryLabel: 'Báo Cáo Trọng Tâm',
         title: 'Trung Tâm Giám Sát & Bảo Vệ SLA TikTok Shop (TTS)',
-        subTitle: 'Quản trị 4.485 đơn sàn TTS (chiếm 41.0% tồn GLT), ma trận 6 bưu cục và quy trình dọn dẹp đơn khẩn',
+        subTitle: 'Quản trị 4.485 đơn sàn TTS (chiếm 41.0% tồn GLT), ma trận 5 bưu cục và quy trình dọn dẹp đơn khẩn',
         tag: 'Ưu Tiên Số 1',
         tagColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
         targetTab: 'ton_dong_glt',
@@ -169,7 +169,7 @@ export const GlobalSpotlightSearch: React.FC = () => {
         category: 'feature',
         categoryLabel: 'Ma Trận Hiệu Suất',
         title: 'Ma Trận Hiệu Suất GTC Bưu Cục & Chi Tiết Nhân Viên Theo Ngày',
-        subTitle: 'Trục tung 6 bưu cục, trục hoành các ngày vận hành, click mở rộng để xem chi tiết từng bưu tá',
+        subTitle: 'Trục tung 5 bưu cục, trục hoành các ngày vận hành, click mở rộng để xem chi tiết từng bưu tá',
         tag: 'Năng Suất Bưu Tá',
         tagColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
         targetTab: 'gtc_nhan_vien',
@@ -193,13 +193,13 @@ export const GlobalSpotlightSearch: React.FC = () => {
         id: 'feat-gtc-po',
         category: 'feature',
         categoryLabel: 'Phân Hệ Bưu Cục',
-        title: 'Phân Hệ GTC Bưu Cục (6 Bưu Cục Long An)',
+        title: 'Phân Hệ GTC Bưu Cục (5 Bưu Cục Long An)',
         subTitle: 'Quản trị sản lượng Volume, SLĐ Gán, GTC, tỷ lệ chuyển trả, Hàng mới ca 1, ca 2 và hàng tồn',
-        tag: '6 Bưu Cục',
+        tag: '5 Bưu Cục',
         tagColor: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border-orange-300',
         targetTab: 'gtc_buu_cuc',
         destinationLabel: 'Tab: GTC Bưu Cục',
-        rawText: removeVietnameseAccents('phan he gtc buu cuc volume gan gtc chuyen tra leadtime 6 buu cuc')
+        rawText: removeVietnameseAccents('phan he gtc buu cuc volume gan gtc chuyen tra leadtime 5 buu cuc')
       },
       {
         id: 'feat-salary',
@@ -242,7 +242,7 @@ export const GlobalSpotlightSearch: React.FC = () => {
         category: 'feature',
         categoryLabel: 'Executive Dashboard',
         title: 'Phân Hệ Tổng Quan Điều Hành Khu Vực (Overview BI)',
-        subTitle: 'Bức tranh toàn cảnh KPIs, Radar cảnh báo rủi ro, phân bổ sản lượng 6 bưu cục khu vực Long An',
+        subTitle: 'Bức tranh toàn cảnh KPIs, Radar cảnh báo rủi ro, phân bổ sản lượng 5 bưu cục khu vực Long An',
         tag: 'Executive BI',
         tagColor: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border-orange-300',
         targetTab: 'overview',
@@ -250,7 +250,7 @@ export const GlobalSpotlightSearch: React.FC = () => {
         rawText: removeVietnameseAccents('tong quan overview bi executive kpis radar canh bao dieu hanh')
       },
 
-      // B. 6 Bưu cục trọng điểm
+      // B. 5 Bưu cục trọng điểm
       {
         id: 'po-rk',
         category: 'post_office',
@@ -300,28 +300,16 @@ export const GlobalSpotlightSearch: React.FC = () => {
         rawText: removeVietnameseAccents('lan tam vu tam vu tv buu cuc tam vu 12 bue ta')
       },
       {
-        id: 'po-cd',
-        category: 'post_office',
-        categoryLabel: 'Bưu Cục',
-        title: 'Bưu Cục: (LAN) Cần Đước',
-        subTitle: '9 Bưu tá • Volume 6.478 đơn • GTC 84.7% • Tồn GLT 535 đơn (TTS 275, Shopee 142) • Ca 2 đạt 68.8%',
-        tag: 'GTC Tốt 84.7%',
-        tagColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        targetTab: 'gtc_buu_cuc',
-        destinationLabel: 'Tab: GTC Bưu Cục ➔ (LAN) Cần Đước',
-        rawText: removeVietnameseAccents('lan can duoc can duoc cd buu cuc can duoc 9 bue ta')
-      },
-      {
         id: 'po-cd1',
         category: 'post_office',
         categoryLabel: 'Bưu Cục',
         title: 'Bưu Cục: (LAN) Cần Đước 1',
-        subTitle: '9 Bưu tá • Volume 1.010 đơn • GTC 85.3% • Tồn GLT 791 đơn • ĐẠT CHUẨN 100% bưu tá tham gia Ca 2',
-        tag: '100% Ca 2 Mẫu',
+        subTitle: '12 Bưu tá • Mã BC: 23220000 (Trước đây là Cần Đước) • GTC Dẫn Đầu 69.2% • Tồn GLT 1.415 đơn',
+        tag: 'Khu Vực Dẫn Đầu',
         tagColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
         targetTab: 'gtc_buu_cuc',
         destinationLabel: 'Tab: GTC Bưu Cục ➔ (LAN) Cần Đước 1',
-        rawText: removeVietnameseAccents('lan can duoc 1 can duoc 1 cd1 buu cuc can duoc 1 100% ca 2')
+        rawText: removeVietnameseAccents('lan can duoc 1 can duoc cd cd1 23220000 2278 buu cuc can duoc 1')
       },
 
       // C. Sàn TMĐT & Nhóm Khách Hàng
@@ -626,7 +614,7 @@ export const GlobalSpotlightSearch: React.FC = () => {
                 { key: 'all', label: 'Tất cả' },
                 { key: 'feature', label: 'Báo cáo & Tính năng' },
                 { key: 'employee', label: 'Bưu tá (73 NV)' },
-                { key: 'post_office', label: 'Bưu cục (6 BC)' },
+                { key: 'post_office', label: 'Bưu cục (5 BC)' },
                 { key: 'customer', label: 'Sàn & Khách hàng' },
                 { key: 'order', label: 'Mã Vận Đơn' }
               ].map(cat => (

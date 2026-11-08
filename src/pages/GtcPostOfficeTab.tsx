@@ -289,7 +289,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       weightedReturnUnits: number;
     }> = {};
 
-    const allOffices = ['(LAN) Cần Đước', '(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
+    const allOffices = ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
     allOffices.forEach(b => {
       if (compFilterBuuCuc === 'all' || compFilterBuuCuc === b) {
         map[b] = {
@@ -1088,7 +1088,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                 Phân Hệ GTC Bưu Cục
               </h2>
               <span className="px-2 py-0.5 text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 rounded">
-                6 Bưu cục Long An
+                5 Bưu cục Long An
               </span>
             </div>
           </div>
@@ -1212,7 +1212,7 @@ export const GtcPostOfficeTab: React.FC = () => {
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-orange-600" />
-              <span>Biểu Đồ Cột & Đường: Volume, Gán, GTC, %Gán, %GTC, %Trả & Tồn Đọng (6 Bưu Cục)</span>
+              <span>Biểu Đồ Cột & Đường: Volume, Gán, GTC, %Gán, %GTC, %Trả & Tồn Đọng (5 Bưu Cục)</span>
             </h3>
             <p className="text-[11px] text-slate-400">
               Trục trái: Số lượng đơn &bull; Trục phải: Tỷ lệ % (%Gán, %GTC, %Trả)
@@ -1296,7 +1296,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                   onChange={e => setCompFilterBuuCuc(e.target.value)}
                   className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none"
                 >
-                  <option value="all">Tất cả 6 bưu cục</option>
+                  <option value="all">Tất cả 5 bưu cục</option>
                   {buuCucOptions.map(b => (
                     <option key={b.value} value={b.value}>{b.label}</option>
                   ))}
@@ -1849,7 +1849,7 @@ export const GtcPostOfficeTab: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Theo dõi gán giao 8 ngày vận hành gần nhất của 6 bưu cục. Khi nhấn vào từng dòng sẽ mở rộng chi tiết danh sách từng nhân viên bưu tá.
+              Theo dõi gán giao 8 ngày vận hành gần nhất của 5 bưu cục. Khi nhấn vào từng dòng sẽ mở rộng chi tiết danh sách từng nhân viên bưu tá.
             </p>
           </div>
 
@@ -2591,7 +2591,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                     onChange={e => setDtFilterBuuCuc(e.target.value)}
                     className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
                   >
-                    <option value="all">Tất cả bưu cục (6 BC)</option>
+                    <option value="all">Tất cả bưu cục (5 BC)</option>
                     {buuCucOptions.map(b => (
                       <option key={b.value} value={b.value}>{b.label}</option>
                     ))}
