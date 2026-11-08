@@ -173,10 +173,10 @@ export default function NghiViecTab() {
   }, [rawList]);
 
   // =========================================================================
-  // DỮ LIỆU ĐÃ LỌC
+  // DỮ LIỆU ĐÃ LỌC (SẮP XẾP TỪ NGÀY GẦN NHẤT ĐẾN NGÀY XA NHẤT)
   // =========================================================================
   const filteredList = useMemo(() => {
-    return rawList.filter(r => {
+    const list = rawList.filter(r => {
       if (selectedPostOffice !== 'all' && r.buuCuc !== selectedPostOffice) return false;
       if (timeFilterMode === 'month' && selectedMonth !== 'all' && r.thangNghiViec !== selectedMonth) return false;
       if (timeFilterMode === 'week' && selectedWeek !== 'all' && r.tuanNghiViec !== selectedWeek) return false;
@@ -194,6 +194,14 @@ export default function NghiViecTab() {
       }
       return true;
     });
+
+    // Sắp xếp chuẩn xác từ ngày gần nhất đến ngày xa nhất (Newest -> Oldest)
+    const parseDate = (dStr: string) => {
+      if (!dStr) return 0;
+      const [d, m, y] = dStr.split('/').map(Number);
+      return new Date(y, m - 1, d).getTime();
+    };
+    return list.sort((a, b) => parseDate(b.ngayNghiViec) - parseDate(a.ngayNghiViec));
   }, [rawList, selectedPostOffice, timeFilterMode, selectedMonth, selectedWeek, selectedTenure, selectedReasonGroup, searchQuery]);
 
   // =========================================================================
@@ -305,6 +313,7 @@ export default function NghiViecTab() {
 
   // =========================================================================
   // DỮ LIỆU MA TRẬN THEO THỜI GIAN (THÁNG/TUẦN/NGÀY) & SỨC ẢNH HƯỞNG BƯU CỤC
+  // Sắp xếp từ ngày/chu kỳ gần nhất đến xa nhất (Newest -> Oldest)
   // =========================================================================
   const timePeriods = useMemo(() => {
     if (matrixGranularity === 'month') {
@@ -313,7 +322,7 @@ export default function NghiViecTab() {
       return Array.from(set).sort((a, b) => {
         const [m1, y1] = a.split('/').map(Number);
         const [m2, y2] = b.split('/').map(Number);
-        return y1 !== y2 ? y1 - y2 : m1 - m2;
+        return y2 !== y1 ? y2 - y1 : m2 - m1;
       });
     } else if (matrixGranularity === 'week') {
       const set = new Set<string>();
@@ -321,7 +330,7 @@ export default function NghiViecTab() {
       return Array.from(set).sort((a, b) => {
         const n1 = parseInt(a.replace('Tuần ', ''), 10) || 0;
         const n2 = parseInt(b.replace('Tuần ', ''), 10) || 0;
-        return n1 - n2;
+        return n2 - n1;
       });
     } else {
       const set = new Set<string>();
@@ -331,20 +340,25 @@ export default function NghiViecTab() {
         const [d2, m2, y2] = b.split('/').map(Number);
         const time1 = new Date(y1, m1 - 1, d1).getTime();
         const time2 = new Date(y2, m2 - 1, d2).getTime();
-        return time1 - time2;
+        return time2 - time1;
       });
     }
   }, [rawList, matrixGranularity]);
 
   const timeMatrixRows = useMemo(() => {
     const grandTotal = rawList.length || 1;
+    const parseDate = (dStr: string) => {
+      if (!dStr) return 0;
+      const [d, m, y] = dStr.split('/').map(Number);
+      return new Date(y, m - 1, d).getTime();
+    };
 
     return timePeriods.map(period => {
       const items = rawList.filter(r => {
         if (matrixGranularity === 'month') return r.thangNghiViec === period;
         if (matrixGranularity === 'week') return r.tuanNghiViec === period;
         return r.ngayNghiViec === period;
-      });
+      }).sort((a, b) => parseDate(b.ngayNghiViec) - parseDate(a.ngayNghiViec));
 
       const periodAreaTotal = items.length;
       const poCounts: Record<string, number> = {};
@@ -735,50 +749,35 @@ export default function NghiViecTab() {
     <div className="p-3 sm:p-5 lg:p-6 space-y-4 max-w-7xl mx-auto text-slate-800 dark:text-slate-100">
       
       {/* =========================================================================
-          1. HEADER GỘP THU GỌN VỚI TÌM KIẾM & BỘ LỌC ĐIỀU HÀNH
+          1. HEADER GỘP THU GỌN VỚI TÌM KIẾM & BỘ LỌC ĐIỀU HÀNH (TỐI ƯU SIÊU NHỎ GỌN)
           ========================================================================= */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800/90 rounded-2xl p-3 sm:p-4 shadow-sm transition-all space-y-2.5">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800/90 rounded-xl p-2 sm:p-2.5 shadow-xs transition-all space-y-1.5">
         
-        {/* Dòng 1: Tiêu đề, Badge, Search thu gọn & Buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="p-1.5 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg">
-              <UserMinus className="w-4 h-4 stroke-[2.2]" />
+        {/* Hàng 1: Tiêu đề, Badges và Các nút thao tác nhanh */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="p-1 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-md shrink-0">
+              <UserMinus className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
-            <h1 className="text-xs sm:text-sm lg:text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[220px] sm:max-w-none">
+            <h1 className="text-xs sm:text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">
               PHÂN HỆ QUẢN TRỊ NHÂN SỰ NGHỈ VIỆC KHU VỰC LONG AN
             </h1>
-            <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white shadow-xs">
-              {rawList.length} Nhân Sự Đã Nghỉ
+            <span className="px-1.5 py-0.2 text-[9.5px] font-black rounded-full bg-rose-600 text-white shadow-2xs shrink-0">
+              {rawList.length} Đã Nghỉ
             </span>
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
+            <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9.5px] font-bold rounded bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 shrink-0">
               AM Huy (ĐNB)
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Search thu gọn */}
-            <div className="relative w-36 sm:w-48 lg:w-56">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm bưu tá, mã NV..."
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-8 pr-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-1 focus:ring-orange-500 focus:outline-none"
-              />
-            </div>
-
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('nhan_su')}
-              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5 whitespace-nowrap"
+              className="h-7 px-2 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer"
               title="Chuyển sang xem danh sách bưu tá đang làm việc"
             >
-              <Users className="w-3.5 h-3.5 text-indigo-500" />
+              <Users className="w-3 h-3 text-indigo-500" />
               <span className="hidden sm:inline">Nhân Sự Hiện Hữu ({dataset.nhanSu.length || 81} NV)</span>
               <span className="sm:hidden">Hiện Hữu</span>
             </button>
@@ -786,28 +785,46 @@ export default function NghiViecTab() {
             <button
               type="button"
               onClick={handleExport}
-              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1 transition-all whitespace-nowrap cursor-pointer"
+              className="h-7 px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs flex items-center gap-1 transition-all whitespace-nowrap cursor-pointer"
               title="Xuất file Excel / CSV danh sách nhân sự nghỉ việc đã lọc"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Xuất Báo Cáo</span>
+              <Download className="w-3 h-3" />
+              <span className="hidden sm:inline">Xuất Báo Cáo</span>
+              <span className="sm:hidden">Xuất</span>
             </button>
           </div>
         </div>
 
-        {/* Dòng 2: Bộ lọc linh hoạt (Chu kỳ Ngày, Tuần, Tháng, Bưu cục, Thâm niên, Lý do) */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+        {/* Hàng 2: Thanh tìm kiếm gộp chung cùng Bộ lọc điều hành (Tối ưu nhỏ gọn trên 1 dòng) */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11px]">
           
-          {/* Lọc Bưu Cục */}
-          <div className="flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+          {/* 1. Ô tìm kiếm thu nhỏ */}
+          <div className="relative w-36 sm:w-44 shrink-0">
+            <Search className="w-3 h-3 absolute left-2 top-2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm bưu tá, mã NV..."
+              value={searchQuery}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-7 pl-6 pr-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md text-[11px] focus:ring-1 focus:ring-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block shrink-0" />
+
+          {/* 2. Lọc Bưu Cục */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Building2 className="w-3 h-3 text-orange-600 shrink-0" />
             <select
               value={selectedPostOffice}
               onChange={e => {
                 setSelectedPostOffice(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-bold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 font-bold text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
             >
               <option value="all">Tất cả 5 bưu cục ({rawList.length} ca)</option>
               {OFFICIAL_POST_OFFICES.map(bc => {
@@ -819,16 +836,16 @@ export default function NghiViecTab() {
             </select>
           </div>
 
-          {/* Lọc Chu Kỳ */}
-          <div className="flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="text-slate-400 text-[11px] font-bold">Chu Kỳ:</span>
+          {/* 3. Lọc Chu Kỳ */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Calendar className="w-3 h-3 text-indigo-500 shrink-0" />
+            <span className="text-slate-400 text-[10.5px] font-bold hidden sm:inline">Chu Kỳ:</span>
             
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-md font-semibold text-[11px]">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-md font-semibold text-[10.5px]">
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('all')}
-                className={`px-2 py-0.5 rounded transition-all ${
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
                   timeFilterMode === 'all'
                     ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
                     : 'text-slate-600 dark:text-slate-400'
@@ -839,24 +856,24 @@ export default function NghiViecTab() {
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('month')}
-                className={`px-2 py-0.5 rounded transition-all ${
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
                   timeFilterMode === 'month'
                     ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
-                Theo Tháng
+                Tháng
               </button>
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('week')}
-                className={`px-2 py-0.5 rounded transition-all ${
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
                   timeFilterMode === 'week'
                     ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
-                Theo Tuần
+                Tuần
               </button>
             </div>
 
@@ -867,9 +884,9 @@ export default function NghiViecTab() {
                   setSelectedMonth(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
+                className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none cursor-pointer"
               >
-                <option value="all">Tất cả các tháng ({availableMonths.length})</option>
+                <option value="all">Tất cả tháng ({availableMonths.length})</option>
                 {availableMonths.map(m => (
                   <option key={m} value={m}>Tháng {m}</option>
                 ))}
@@ -883,9 +900,9 @@ export default function NghiViecTab() {
                   setSelectedWeek(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
+                className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none cursor-pointer"
               >
-                <option value="all">Tất cả các tuần ({availableWeeks.length})</option>
+                <option value="all">Tất cả tuần ({availableWeeks.length})</option>
                 {availableWeeks.map(w => (
                   <option key={w} value={w}>{w}</option>
                 ))}
@@ -893,34 +910,34 @@ export default function NghiViecTab() {
             )}
           </div>
 
-          {/* Lọc Thâm Niên */}
-          <div className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          {/* 4. Lọc Thâm Niên */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Clock className="w-3 h-3 text-amber-500 shrink-0" />
             <select
               value={selectedTenure}
               onChange={e => {
                 setSelectedTenure(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 font-medium text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
             >
-              <option value="all">Tất cả 10 nhóm (G01 - G10)</option>
+              <option value="all">10 nhóm (G01 - G10)</option>
               {TENURE_LABELS.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
 
-          {/* Lọc Nhóm Lý Do */}
-          <div className="flex items-center gap-1">
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+          {/* 5. Lọc Nhóm Lý Do */}
+          <div className="flex items-center gap-1 shrink-0">
+            <ShieldAlert className="w-3 h-3 text-rose-500 shrink-0" />
             <select
               value={selectedReasonGroup}
               onChange={e => {
                 setSelectedReasonGroup(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 font-medium text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
             >
               <option value="all">Tất cả nguyên nhân</option>
               {Object.keys(REASON_COLORS).map(r => (
@@ -929,14 +946,15 @@ export default function NghiViecTab() {
             </select>
           </div>
 
-          {/* Reset lọc */}
+          {/* 6. Reset lọc */}
           {(selectedPostOffice !== 'all' || timeFilterMode !== 'all' || selectedTenure !== 'all' || selectedReasonGroup !== 'all' || searchQuery || activeKpiCard) && (
             <button
               type="button"
               onClick={resetFilters}
-              className="ml-auto px-2 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-md flex items-center gap-1 transition-all"
+              className="h-7 ml-auto px-2 text-[10.5px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-md flex items-center gap-1 transition-all cursor-pointer shrink-0"
+              title="Đặt lại toàn bộ bộ lọc"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-2.5 h-2.5" />
               <span>Xóa lọc</span>
             </button>
           )}
