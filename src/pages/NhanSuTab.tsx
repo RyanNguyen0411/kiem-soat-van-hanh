@@ -14,6 +14,7 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   ChevronDown,
+  ChevronUp,
   Target
 } from 'lucide-react';
 import { 
@@ -55,22 +56,95 @@ function calcSeniorityDays(ngayVaoLamStr: string, refDateStr: string = '07/11/20
   return 0;
 }
 
-// 10 Nhóm thâm niên chuẩn hóa
+// 10 Nhóm thâm niên chuẩn hóa kèm định hướng quản trị giữ chân nhân sự cho AM Huy
 const SENIORITY_GROUPS_DEF = [
-  { code: 'G01', name: 'G01: Dưới 1 tháng', range: '< 30 ngày', risk: 'Rất cao (Tân binh)', color: '#ef4444' },
-  { code: 'G02', name: 'G02: Trên 1 - 3 tháng', range: '30 - 90 ngày', risk: 'Cao (Hòa nhập)', color: '#f97316' },
-  { code: 'G03', name: 'G03: Trên 3 - 6 tháng', range: '91 - 180 ngày', risk: 'Trung bình (Thử thách)', color: '#eab308' },
-  { code: 'G04', name: 'G04: Trên 6 tháng - 1 năm', range: '181 - 365 ngày', risk: 'Thấp (Cứng tay nghề)', color: '#84cc16' },
-  { code: 'G05', name: 'G05: Trên 1 - 1,5 năm', range: '1 - 1.5 năm', risk: 'Rất thấp (Vững vàng)', color: '#10b981' },
-  { code: 'G06', name: 'G06: Trên 1,5 - 2 năm', range: '1.5 - 2 năm', risk: 'Rất thấp (Nòng cốt)', color: '#06b6d4' },
-  { code: 'G07', name: 'G07: Trên 2 - 3 năm', range: '2 - 3 năm', risk: 'An toàn (Kỳ cựu)', color: '#3b82f6' },
-  { code: 'G08', name: 'G08: Trên 3 - 4 năm', range: '3 - 4 năm', risk: 'An toàn (Trụ cột)', color: '#6366f1' },
-  { code: 'G09', name: 'G09: Trên 4 - 5 năm', range: '4 - 5 năm', risk: 'Cực kỳ trung thành', color: '#8b5cf6' },
-  { code: 'G10', name: 'G10: Trên 5 năm', range: '> 5 năm', risk: 'Cây cao bóng cả', color: '#a855f7' }
+  { 
+    code: 'G01', 
+    name: 'G01: Dưới 1 tháng', 
+    range: '< 30 ngày', 
+    risk: 'Rất cao (Tân binh)', 
+    color: '#ef4444',
+    guidance: 'Tân binh mới tuyển dụng. AM Huy chỉ đạo Bưu cục trưởng tổ chức kèm cặp 1-1, kiểm tra tỷ lệ kết nối người nhận và hỗ trợ san tải trong 14 ngày đầu để ngăn ngừa tỷ lệ nghỉ việc sớm.' 
+  },
+  { 
+    code: 'G02', 
+    name: 'G02: Trên 1 - 3 tháng', 
+    range: '30 - 90 ngày', 
+    risk: 'Cao (Hòa nhập)', 
+    color: '#f97316',
+    guidance: 'Giai đoạn hòa nhập văn hóa và quy trình giao nhận. Đo lường tỷ lệ hoàn tất hàng Ca 2, kiểm soát chuyên cần và tháo gỡ điểm nghẽn địa bàn tuyến.' 
+  },
+  { 
+    code: 'G03', 
+    name: 'G03: Trên 3 - 6 tháng', 
+    range: '91 - 180 ngày', 
+    risk: 'Trung bình (Thử thách)', 
+    color: '#eab308',
+    guidance: 'Vượt mốc thử việc 90 ngày. Cần rà soát mức thu nhập hoa hồng ngày, động viên bứt phá năng suất để nhân sự yên tâm gắn bó lâu dài.' 
+  },
+  { 
+    code: 'G04', 
+    name: 'G04: Trên 6 tháng - 1 năm', 
+    range: '181 - 365 ngày', 
+    risk: 'Thấp (Cứng tay nghề)', 
+    color: '#84cc16',
+    guidance: 'Tay nghề giao phát đã vững vàng. Đào tạo thêm kỹ năng xử lý khiếu nại và giao hàng cồng kềnh/tuyến nặng, chuẩn bị quy hoạch nòng cốt.' 
+  },
+  { 
+    code: 'G05', 
+    name: 'G05: Trên 1 - 1,5 năm', 
+    range: '1 - 1.5 năm', 
+    risk: 'Rất thấp (Vững vàng)', 
+    color: '#10b981',
+    guidance: 'Lực lượng ổn định trụ cột. Ghi nhận đóng góp, duy trì chính sách thu nhập tốt và tạo điều kiện tham gia các khóa đào tạo dự nguồn Bưu cục phó/trưởng.' 
+  },
+  { 
+    code: 'G06', 
+    name: 'G06: Trên 1,5 - 2 năm', 
+    range: '1.5 - 2 năm', 
+    risk: 'Rất thấp (Nòng cốt)', 
+    color: '#06b6d4',
+    guidance: 'Nhân sự nòng cốt địa phương, am hiểu tường tận địa bàn phát. Sẵn sàng điều động san tải hoặc hỗ trợ các bưu cục lân cận khi quá tải.' 
+  },
+  { 
+    code: 'G07', 
+    name: 'G07: Trên 2 - 3 năm', 
+    range: '2 - 3 năm', 
+    risk: 'An toàn (Kỳ cựu)', 
+    color: '#3b82f6',
+    guidance: 'Bưu tá kỳ cựu dày dạn kinh nghiệm. Phân công phụ trách tuyến khách hàng VIP hoặc tuyến phát trọng điểm có độ phức tạp cao.' 
+  },
+  { 
+    code: 'G08', 
+    name: 'G08: Trên 3 - 4 năm', 
+    range: '3 - 4 năm', 
+    risk: 'An toàn (Trụ cột)', 
+    color: '#6366f1',
+    guidance: 'Trụ cột vận hành bưu cục. Đóng vai trò Mentor dẫn dắt, hỗ trợ Bưu cục trưởng điều phối ca và kèm cặp tân binh.' 
+  },
+  { 
+    code: 'G09', 
+    name: 'G09: Trên 4 - 5 năm', 
+    range: '4 - 5 năm', 
+    risk: 'Cực kỳ trung thành', 
+    color: '#8b5cf6',
+    guidance: 'Nhân sự cực kỳ trung thành, gắn bó bền chặt với GHN. Gương mẫu về kỷ luật và tỷ lệ GTC, vinh danh thâm niên định kỳ.' 
+  },
+  { 
+    code: 'G10', 
+    name: 'G10: Trên 5 năm', 
+    range: '> 5 năm', 
+    risk: 'Cây cao bóng cả', 
+    color: '#a855f7',
+    guidance: 'Cây cao bóng cả (> 5 năm cống hiến). Linh hồn kinh nghiệm của bưu cục, biểu dương gương sáng toàn khu vực Long An.' 
+  }
 ];
 
 export const NhanSuTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { dataset, selectedBuuCucGlobal, navigateToTab } = useDashboard();
+  
+  // State quản lý xem chi tiết nhóm thâm niên
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   
   // Staff list (ID 3175777 Trần Trọng Phú là NVXL tại Tầm Vu)
   const staffList = useMemo(() => {
@@ -775,18 +849,25 @@ export const NhanSuTab: React.FC = () => {
 
       </div>
 
-      {/* 5. BẢNG PHÂN LOẠI 10 NHÓM THÂM NIÊN (G01 - G10) */}
+      {/* 5. BẢNG PHÂN LOẠI 10 NHÓM THÂM NIÊN (G01 - G10) & DRILLDOWN BẢNG KÊ CHI TIẾT */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-              Bảng Phân Tầng 10 Nhóm Thâm Niên (G01 - G10) & Rủi Ro Nghỉ Việc
-            </h2>
+            <div>
+              <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                Bảng Phân Tầng 10 Nhóm Thâm Niên (G01 - G10) &amp; Rủi Ro Nghỉ Việc
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Nhấn vào bất kỳ nhóm nào để xem <b>bảng kê chi tiết nhân sự</b> &amp; khuyến nghị giữ chân
+              </p>
+            </div>
           </div>
-          <span className="text-xs text-slate-500">
-            Khung phân cấp thâm niên chuẩn GHN Express
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg">
+              {selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -799,14 +880,17 @@ export const NhanSuTab: React.FC = () => {
                 <th className="py-2.5 px-3 text-center font-bold">Số Lượng NV</th>
                 <th className="py-2.5 px-3 text-center font-bold">Tỷ Lệ (%)</th>
                 <th className="py-2.5 px-4 text-left font-bold">Bưu Cục Tập Trung Nhiều Nhất</th>
-                <th className="py-2.5 px-4 text-center font-bold">Đánh Giá Mức Độ Ổn Định & Rủi Ro</th>
+                <th className="py-2.5 px-4 text-center font-bold">Đánh Giá Mức Độ Ổn Định &amp; Rủi Ro</th>
+                <th className="py-2.5 px-3 text-center font-bold">Chi Tiết</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-700 dark:text-slate-200">
               {SENIORITY_GROUPS_DEF.map((g) => {
-                const members = enrichedStaff.filter(r => r.nhomThamNien.startsWith(g.code));
+                const members = activeEnrichedScope.filter(r => r.nhomThamNien.startsWith(g.code));
                 const count = members.length;
-                const pct = kpis.total > 0 ? ((count / kpis.total) * 100).toFixed(1) : '0';
+                const totalInScope = activeEnrichedScope.length;
+                const pct = totalInScope > 0 ? ((count / totalInScope) * 100).toFixed(1) : '0';
+                const isExpanded = expandedGroup === g.code;
                 
                 // Find top post office for this group
                 const poMap: Record<string, number> = {};
@@ -825,33 +909,257 @@ export const NhanSuTab: React.FC = () => {
                 else riskBadgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800';
 
                 return (
-                  <tr key={g.code} className="hover:bg-slate-50/70 dark:hover:bg-slate-700/30">
-                    <td className="py-2.5 px-3 text-center font-black">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-black text-white" style={{ backgroundColor: g.color }}>
-                        {g.code}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
-                      {g.name}
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-medium text-slate-600 dark:text-slate-300">
-                      {g.range}
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-black text-sm text-slate-800 dark:text-slate-100">
-                      {count}
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-extrabold text-indigo-600 dark:text-indigo-400">
-                      {pct}%
-                    </td>
-                    <td className="py-2.5 px-4 text-left font-medium text-slate-600 dark:text-slate-300">
-                      {topPoText}
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${riskBadgeClass}`}>
-                        {g.risk}
-                      </span>
-                    </td>
-                  </tr>
+                  <React.Fragment key={g.code}>
+                    <tr 
+                      onClick={() => setExpandedGroup(prev => prev === g.code ? null : g.code)}
+                      className={`cursor-pointer transition-all duration-150 select-none ${
+                        isExpanded 
+                          ? 'bg-purple-50/90 dark:bg-purple-950/40 border-l-4 border-purple-600 font-semibold' 
+                          : 'hover:bg-slate-50/80 dark:hover:bg-slate-750/50'
+                      }`}
+                      title="Nhấn để xem bảng kê chi tiết nhân sự nhóm này"
+                    >
+                      <td className="py-2.5 px-3 text-center font-black">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-black text-white shadow-2xs" style={{ backgroundColor: g.color }}>
+                          {g.code}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <span>{g.name}</span>
+                          {isExpanded && (
+                            <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold bg-purple-100 dark:bg-purple-900/60 px-1.5 py-0.2 rounded">
+                              Đang mở
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-medium text-slate-600 dark:text-slate-300">
+                        {g.range}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-black text-sm text-slate-900 dark:text-white">
+                        {count}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-extrabold text-indigo-600 dark:text-indigo-400">
+                        {pct}%
+                      </td>
+                      <td className="py-2.5 px-4 text-left font-medium text-slate-600 dark:text-slate-300">
+                        {topPoText}
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${riskBadgeClass}`}>
+                          {g.risk}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedGroup(prev => prev === g.code ? null : g.code);
+                          }}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-2xs ${
+                            isExpanded
+                              ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                              : 'bg-slate-100 hover:bg-purple-100 text-slate-700 hover:text-purple-700 dark:bg-slate-750 dark:hover:bg-purple-950/60 dark:text-slate-300'
+                          }`}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <span>Thu gọn</span>
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Xem {count} NV</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* =========================================================================
+                        BẢNG KÊ CHI TIẾT NHÂN SỰ THEO NHÓM THÂM NIÊN (DRILLDOWN VIEW)
+                        ========================================================================= */}
+                    {isExpanded && (
+                      <tr className="bg-slate-50/95 dark:bg-slate-900/90 border-b-2 border-purple-500/50">
+                        <td colSpan={8} className="p-3 sm:p-5">
+                          <div className="bg-white dark:bg-slate-800 rounded-xl border border-purple-200 dark:border-purple-900/60 shadow-md p-4 space-y-3.5">
+                            {/* Panel Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700">
+                              <div className="flex items-start sm:items-center gap-2.5">
+                                <span className="px-2.5 py-1 rounded-md text-xs font-black text-white shadow-2xs" style={{ backgroundColor: g.color }}>
+                                  {g.code}
+                                </span>
+                                <div>
+                                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span>Bảng Kê Chi Tiết Nhân Sự Nhóm {g.name}</span>
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                                      {members.length} nhân sự
+                                    </span>
+                                  </h4>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Khung thâm niên: <b>{g.range}</b> &bull; Mức độ ổn định: <b className="text-purple-600 dark:text-purple-400">{g.risk}</b> &bull; Phạm vi: <b>{selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc}</b>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                                {/* Nút Xuất Excel nhóm */}
+                                {members.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const headers = ['Mã NV', 'Họ Tên', 'Bưu Cục', 'Chức Vụ', 'Loại HĐ', 'Ngày Vào Làm', 'Thâm Niên (Ngày)', 'Nhóm Thâm Niên', 'Trạng Thái'];
+                                      const rows = members.map(m => [
+                                        m.maNV,
+                                        m.tenNV,
+                                        m.buuCuc,
+                                        m.chucVu,
+                                        m.loaiHD,
+                                        m.ngayVaoLam,
+                                        m.thamNienNgay || 0,
+                                        m.nhomThamNien,
+                                        m.trangThai
+                                      ]);
+                                      exportToCSV(`Danh_sach_nhan_su_${g.code}_${selectedBuuCuc}.csv`, headers, rows);
+                                    }}
+                                    className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-lg flex items-center gap-1 shadow-2xs transition-all"
+                                    title="Xuất file CSV danh sách nhân sự nhóm này"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Xuất Excel</span>
+                                  </button>
+                                )}
+
+                                {/* Nút đóng panel */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedGroup(null);
+                                  }}
+                                  className="px-2 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-650 dark:text-slate-300 rounded-lg transition-all"
+                                >
+                                  Đóng ✕
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Chỉ đạo quản trị nhân sự dành riêng cho AM Huy */}
+                            <div className="p-2.5 rounded-lg bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 flex items-start gap-2 text-[11px] text-purple-900 dark:text-purple-200">
+                              <Target className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                              <div className="leading-relaxed">
+                                <span className="font-extrabold uppercase tracking-wide">Định hướng quản trị &amp; Giữ chân của AM: </span>
+                                {g.guidance}
+                              </div>
+                            </div>
+
+                            {/* Bảng kê nhân sự */}
+                            {members.length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-400">
+                                Chưa có nhân sự nào thuộc nhóm <b>{g.name}</b> tại {selectedBuuCuc === 'all' ? 'khu vực này' : selectedBuuCuc}.
+                              </div>
+                            ) : (
+                              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                      <th className="py-2 px-3 text-center w-10">STT</th>
+                                      <th className="py-2 px-3 text-center">Mã NV</th>
+                                      <th className="py-2 px-4">Họ &amp; Tên</th>
+                                      <th className="py-2 px-3">Bưu Cục</th>
+                                      <th className="py-2 px-3">Chức Vụ</th>
+                                      <th className="py-2 px-3 text-center">Loại HĐ</th>
+                                      <th className="py-2 px-3 text-center">Ngày Vào Làm</th>
+                                      <th className="py-2 px-3 text-center">Thâm Niên Thực Tế</th>
+                                      <th className="py-2 px-3 text-center">Trạng Thái</th>
+                                      <th className="py-2 px-3 text-center">Điều Hướng</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-200">
+                                    {members.map((staff, idx) => {
+                                      const days = staff.thamNienNgay || 0;
+                                      const months = (days / 30.4).toFixed(1);
+
+                                      return (
+                                        <tr key={staff.maNV} className="hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
+                                          <td className="py-2 px-3 text-center text-slate-400 font-medium">
+                                            {idx + 1}
+                                          </td>
+                                          <td className="py-2 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-100">
+                                            {staff.maNV}
+                                          </td>
+                                          <td className="py-2 px-4 font-bold text-slate-900 dark:text-white">
+                                            {staff.tenNV}
+                                          </td>
+                                          <td className="py-2 px-3 font-medium text-slate-700 dark:text-slate-300">
+                                            {staff.buuCuc}
+                                          </td>
+                                          <td className="py-2 px-3">
+                                            <span className={`px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                                              staff.chucVu === 'Business Development Field Executive'
+                                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300'
+                                                : staff.chucVu === 'Operations Executive'
+                                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                                                  : 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300'
+                                            }`}>
+                                              {staff.chucVu === 'Business Development Field Executive' 
+                                                ? 'NVPTTT (Bưu tá)' 
+                                                : staff.chucVu === 'Operations Executive' 
+                                                  ? 'NVXL' 
+                                                  : staff.chucVu}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 px-3 text-center">
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                              {staff.loaiHD || 'HĐLĐ'}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 px-3 text-center font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                                            {staff.ngayVaoLam}
+                                          </td>
+                                          <td className="py-2 px-3 text-center">
+                                            <span className="font-bold text-slate-900 dark:text-white">
+                                              {days} ngày
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block">
+                                              (~{months} tháng)
+                                            </span>
+                                          </td>
+                                          <td className="py-2 px-3 text-center">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                              {staff.trangThai || 'Đang làm việc'}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 px-3 text-center">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigateToTab('gtc_nhan_vien', { buuCuc: staff.buuCuc });
+                                              }}
+                                              className="px-2 py-0.8 rounded text-[10.5px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all inline-flex items-center gap-1 cursor-pointer"
+                                              title="Xem số liệu giao hàng GTC của nhân sự này"
+                                            >
+                                              <span>Xem GTC</span>
+                                              <span>&rarr;</span>
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
