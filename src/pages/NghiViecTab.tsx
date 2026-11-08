@@ -9,16 +9,17 @@ import {
   Search, 
   Clock, 
   ShieldAlert, 
-  BarChart3, 
-  ChevronDown, 
-  ChevronUp, 
   RotateCcw, 
   FileText, 
   Sparkles, 
-  CheckCircle2
+  CheckCircle2,
+  TrendingDown,
+  BarChart3,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
+  BarChart,
   Bar, 
   XAxis, 
   YAxis, 
@@ -27,11 +28,9 @@ import {
   Legend, 
   PieChart, 
   Pie, 
-  Cell,
-  AreaChart,
-  Area,
-  ComposedChart,
-  Line
+  Cell, 
+  ComposedChart, 
+  Line 
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
 import { exportToCSV } from '../services/excelExportService';
@@ -49,16 +48,16 @@ const PO_COLORS: Record<string, string> = {
   '(LAN) Cần Đước 1': '#10B981', // Emerald
   '(LAN) Cần Giuộc': '#F59E0B',  // Amber
   '(LAN) Phước Lý': '#6366F1',   // Indigo
-  '(LAN) Rạch Kiến': '#EF4444',  // Rose / Red (Hotspot)
+  '(LAN) Rạch Kiến': '#EF4444',  // Red / Hotspot
   '(LAN) Tầm Vu': '#3B82F6'      // Blue
 };
 
 const REASON_COLORS: Record<string, string> = {
-  'Vi phạm kỷ luật & COD': '#DC2626',    // Đỏ đậm
+  'Vi phạm kỷ luật & COD': '#DC2626',     // Đỏ đậm
   'Không phù hợp / Nghỉ ngang': '#EA580C', // Cam đậm
   'Cộng tác viên (Thời vụ)': '#8B5CF6',   // Tím
   'Việc gia đình / Cá nhân': '#3B82F6',   // Xanh dương
-  'Sức khỏe & Lý do thể lực': '#10B981'  // Xanh lục
+  'Sức khỏe & Lý do thể lực': '#10B981'   // Xanh lục
 };
 
 const TENURE_LABELS = [
@@ -74,15 +73,28 @@ const TENURE_LABELS = [
   'G10: Trên 5 năm'
 ];
 
-type ViewSubTab = 'overview' | 'charts' | 'tenure_matrix' | 'detail_table';
-type TimeFilterMode = 'month' | 'week' | 'all';
+const TENURE_COLORS: Record<string, string> = {
+  'G01: Dưới 1 tháng': '#DC2626',
+  'G02: Trên 1 - 3 tháng': '#EA580C',
+  'G03: Trên 3 - 6 tháng': '#F59E0B',
+  'G04: Trên 6 tháng - 1 năm': '#10B981',
+  'G05: Trên 1 - 1,5 năm': '#06B6D4',
+  'G06: Trên 1,5 -2 năm': '#3B82F6',
+  'G07: Trên 2 - 3 năm': '#6366F1',
+  'G08: Trên 3 - 4 năm': '#8B5CF6',
+  'G09: Trên 4 - 5 năm': '#A855F7',
+  'G10: Trên 5 năm': '#475569'
+};
+
+type TimeFilterMode = 'all' | 'month' | 'week';
+type ActiveKpiType = 'all' | 'early' | 'days' | 'cod' | 'hotspot' | null;
 
 export default function NghiViecTab() {
   const { dataset, setActiveTab } = useDashboard();
   const rawList = dataset.nghiViec || [];
 
   // =========================================================================
-  // STATE: BỘ LỌC ĐIỀU HÀNH CHO AM HUY (ĐNB)
+  // STATE: BỘ LỌC ĐIỀU HÀNH
   // =========================================================================
   const [selectedPostOffice, setSelectedPostOffice] = useState<string>('all');
   const [timeFilterMode, setTimeFilterMode] = useState<TimeFilterMode>('all');
@@ -91,9 +103,9 @@ export default function NghiViecTab() {
   const [selectedTenure, setSelectedTenure] = useState<string>('all');
   const [selectedReasonGroup, setSelectedReasonGroup] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
-  // Navigation sub-tab
-  const [activeSubTab, setActiveSubTab] = useState<ViewSubTab>('overview');
+
+  // Active KPI card interact
+  const [activeKpiCard, setActiveKpiCard] = useState<ActiveKpiType>(null);
 
   // Accordion mở rộng nhóm thâm niên
   const [expandedTenureGroup, setExpandedTenureGroup] = useState<string | null>('G01: Dưới 1 tháng');
@@ -130,30 +142,15 @@ export default function NghiViecTab() {
   }, [rawList]);
 
   // =========================================================================
-  // DỮ LIỆU ĐÃ LỌC (FILTERED DATASET)
+  // DỮ LIỆU ĐÃ LỌC
   // =========================================================================
   const filteredList = useMemo(() => {
     return rawList.filter(r => {
-      // 1. Lọc bưu cục
-      if (selectedPostOffice !== 'all' && r.buuCuc !== selectedPostOffice) {
-        return false;
-      }
-      // 2. Lọc thời gian theo mode
-      if (timeFilterMode === 'month' && selectedMonth !== 'all') {
-        if (r.thangNghiViec !== selectedMonth) return false;
-      }
-      if (timeFilterMode === 'week' && selectedWeek !== 'all') {
-        if (r.tuanNghiViec !== selectedWeek) return false;
-      }
-      // 3. Lọc nhóm thâm niên
-      if (selectedTenure !== 'all' && r.nhomThamNien !== selectedTenure) {
-        return false;
-      }
-      // 4. Lọc nhóm lý do
-      if (selectedReasonGroup !== 'all' && r.nhomLyDo !== selectedReasonGroup) {
-        return false;
-      }
-      // 5. Tìm kiếm tự do (Tên, Mã NV, Chức vụ, Lý do)
+      if (selectedPostOffice !== 'all' && r.buuCuc !== selectedPostOffice) return false;
+      if (timeFilterMode === 'month' && selectedMonth !== 'all' && r.thangNghiViec !== selectedMonth) return false;
+      if (timeFilterMode === 'week' && selectedWeek !== 'all' && r.tuanNghiViec !== selectedWeek) return false;
+      if (selectedTenure !== 'all' && r.nhomThamNien !== selectedTenure) return false;
+      if (selectedReasonGroup !== 'all' && r.nhomLyDo !== selectedReasonGroup) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const match = 
@@ -169,7 +166,7 @@ export default function NghiViecTab() {
   }, [rawList, selectedPostOffice, timeFilterMode, selectedMonth, selectedWeek, selectedTenure, selectedReasonGroup, searchQuery]);
 
   // =========================================================================
-  // TỔNG HỢP CHỈ SỐ CỐT LÕI (CORE KPIS)
+  // CHỈ SỐ CỐT LÕI (KPIS)
   // =========================================================================
   const metrics = useMemo(() => {
     const total = filteredList.length;
@@ -227,7 +224,7 @@ export default function NghiViecTab() {
   }, [filteredList]);
 
   // =========================================================================
-  // MA TRẬN TỔNG HỢP THEO 5 BƯU CỤC
+  // 1. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ 5 BƯU CỤC
   // =========================================================================
   const postOfficeMatrix = useMemo(() => {
     return OFFICIAL_POST_OFFICES.map(bc => {
@@ -235,7 +232,7 @@ export default function NghiViecTab() {
       const total = items.length;
       const g01 = items.filter(r => r.nhomThamNien.includes('G01')).length;
       const g02 = items.filter(r => r.nhomThamNien.includes('G02')).length;
-      const g03Plus = total - (g01 + g02);
+      const under3M = g01 + g02;
       const cod = items.filter(r => r.nhomLyDo === 'Vi phạm kỷ luật & COD').length;
       const unfit = items.filter(r => r.nhomLyDo === 'Không phù hợp / Nghỉ ngang').length;
       const ctv = items.filter(r => r.nhomLyDo === 'Cộng tác viên (Thời vụ)').length;
@@ -254,10 +251,8 @@ export default function NghiViecTab() {
         total,
         share: filteredList.length > 0 ? ((total / filteredList.length) * 100).toFixed(1) : '0',
         g01,
-        g02,
-        under3M: g01 + g02,
-        under3MRate: total > 0 ? (((g01 + g02) / total) * 100).toFixed(1) : '0',
-        g03Plus,
+        under3M,
+        under3MRate: total > 0 ? ((under3M / total) * 100).toFixed(1) : '0',
         cod,
         unfit,
         ctv,
@@ -268,8 +263,17 @@ export default function NghiViecTab() {
     }).sort((a, b) => b.total - a.total);
   }, [filteredList]);
 
+  const poChartData = useMemo(() => {
+    return postOfficeMatrix.map(p => ({
+      name: p.buuCuc.replace('(LAN) ', ''),
+      'Tổng Nghỉ': p.total,
+      'Nghỉ Sớm <3T': p.under3M,
+      '% Nghỉ Sớm': parseFloat(p.under3MRate)
+    }));
+  }, [postOfficeMatrix]);
+
   // =========================================================================
-  // THỐNG KÊ 10 NHÓM THÂM NIÊN (G01 - G10)
+  // 2. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ NHÓM THÂM NIÊN (G01 - G10)
   // =========================================================================
   const tenureSummary = useMemo(() => {
     return TENURE_LABELS.map(tenure => {
@@ -290,6 +294,7 @@ export default function NghiViecTab() {
 
       return {
         tenure,
+        shortCode: tenure.split(':')[0],
         count,
         share,
         avgDays,
@@ -302,54 +307,60 @@ export default function NghiViecTab() {
     });
   }, [filteredList]);
 
-  // =========================================================================
-  // DỮ LIỆU BIỂU ĐỒ (CHARTS DATA)
-  // =========================================================================
-  // 1. Phân bổ theo 5 Bưu cục (Bar Chart)
-  const poChartData = useMemo(() => {
-    return postOfficeMatrix.map(p => ({
-      name: p.buuCuc.replace('(LAN) ', ''),
-      'Tổng Nghỉ': p.total,
-      'Nghỉ Sớm <3 Tháng': p.under3M,
-      '% Nghỉ Sớm': parseFloat(p.under3MRate)
+  const tenureChartData = useMemo(() => {
+    return tenureSummary.map(t => ({
+      name: t.shortCode,
+      fullName: t.tenure,
+      'Số Ca Nghỉ': t.count,
+      'Số Ngày Làm TB': t.avgDays,
+      fill: TENURE_COLORS[t.tenure] || '#64748B'
     }));
-  }, [postOfficeMatrix]);
+  }, [tenureSummary]);
 
-  // 2. Cơ cấu Nhóm Lý Do (Donut Chart)
-  const reasonChartData = useMemo(() => {
-    const map: Record<string, number> = {};
-    filteredList.forEach(r => {
-      map[r.nhomLyDo] = (map[r.nhomLyDo] || 0) + 1;
-    });
-    return Object.entries(map).map(([name, value]) => ({
-      name,
-      value,
-      color: REASON_COLORS[name] || '#94A3B8'
-    })).sort((a, b) => b.value - a.value);
+  // =========================================================================
+  // 3. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ NHÓM LÝ DO NGHỈ
+  // =========================================================================
+  const reasonSummary = useMemo(() => {
+    const groups = Object.keys(REASON_COLORS);
+    return groups.map(groupName => {
+      const items = filteredList.filter(r => r.nhomLyDo === groupName);
+      const count = items.length;
+      const share = filteredList.length > 0 ? ((count / filteredList.length) * 100).toFixed(1) : '0';
+
+      const totalDays = items.reduce((s, r) => s + r.soNgayLam, 0);
+      const avgDays = count > 0 ? Math.round(totalDays / count) : 0;
+
+      const poCountMap: Record<string, number> = {};
+      items.forEach(r => {
+        poCountMap[r.buuCuc] = (poCountMap[r.buuCuc] || 0) + 1;
+      });
+      let topPo = '-';
+      let maxPoCount = 0;
+      Object.entries(poCountMap).forEach(([bc, c]) => {
+        if (c > maxPoCount) {
+          maxPoCount = c;
+          topPo = `${bc.replace('(LAN) ', '')} (${c})`;
+        }
+      });
+
+      return {
+        groupName,
+        count,
+        share,
+        avgDays,
+        topPo,
+        color: REASON_COLORS[groupName] || '#94A3B8'
+      };
+    }).sort((a, b) => b.count - a.count);
   }, [filteredList]);
 
-  // 3. Diễn biến theo các tháng (Timeline Area Chart)
-  const monthlyTimelineData = useMemo(() => {
-    const map: Record<string, { count: number; cod: number; early: number }> = {};
-    availableMonths.slice().reverse().forEach(m => {
-      map[m] = { count: 0, cod: 0, early: 0 };
-    });
-    filteredList.forEach(r => {
-      if (r.thangNghiViec && map[r.thangNghiViec]) {
-        map[r.thangNghiViec].count++;
-        if (r.nhomLyDo === 'Vi phạm kỷ luật & COD') map[r.thangNghiViec].cod++;
-        if (r.nhomThamNien.includes('G01') || r.nhomThamNien.includes('G02')) {
-          map[r.thangNghiViec].early++;
-        }
-      }
-    });
-    return Object.entries(map).map(([month, data]) => ({
-      month,
-      'Tổng Nghỉ': data.count,
-      'Nghỉ Sớm (<3T)': data.early,
-      'Vi Phạm COD': data.cod
+  const reasonChartData = useMemo(() => {
+    return reasonSummary.filter(r => r.count > 0).map(r => ({
+      name: r.groupName,
+      value: r.count,
+      color: r.color
     }));
-  }, [filteredList, availableMonths]);
+  }, [reasonSummary]);
 
   // =========================================================================
   // PHÂN TRANG BẢNG CHI TIẾT
@@ -361,7 +372,6 @@ export default function NghiViecTab() {
 
   const totalPages = Math.ceil(filteredList.length / pageSize) || 1;
 
-  // Reset trang về 1 khi đổi bộ lọc
   const resetFilters = () => {
     setSelectedPostOffice('all');
     setTimeFilterMode('all');
@@ -370,7 +380,38 @@ export default function NghiViecTab() {
     setSelectedTenure('all');
     setSelectedReasonGroup('all');
     setSearchQuery('');
+    setActiveKpiCard(null);
     setCurrentPage(1);
+  };
+
+  // =========================================================================
+  // TƯƠNG TÁC THẺ KPI: NỔI LÊN & CUỘN ĐẾN BẢNG LIÊN QUAN
+  // =========================================================================
+  const handleKpiClick = (type: ActiveKpiType, targetId: string) => {
+    setActiveKpiCard(type);
+    setCurrentPage(1);
+
+    if (type === 'all') {
+      setSelectedPostOffice('all');
+      setSelectedTenure('all');
+      setSelectedReasonGroup('all');
+    } else if (type === 'early') {
+      setSelectedTenure('G01: Dưới 1 tháng');
+      setExpandedTenureGroup('G01: Dưới 1 tháng');
+    } else if (type === 'days') {
+      setSelectedTenure('all');
+    } else if (type === 'cod') {
+      setSelectedReasonGroup('Vi phạm kỷ luật & COD');
+    } else if (type === 'hotspot') {
+      if (metrics.topPo && metrics.topPo !== 'Chưa có') {
+        setSelectedPostOffice(metrics.topPo);
+      }
+    }
+
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   // =========================================================================
@@ -418,7 +459,7 @@ export default function NghiViecTab() {
   };
 
   // =========================================================================
-  // EXECUTIVE OPERATIONAL ADVICE (ĐÁNH GIÁ SÂU SÁT DÀNH CHO AM HUY)
+  // EXECUTIVE OPERATIONAL ADVICE (ĐẶT Ở CUỐI TRANG)
   // =========================================================================
   const executiveAdvice = useMemo(() => {
     const isSinglePo = selectedPostOffice !== 'all';
@@ -488,7 +529,6 @@ export default function NghiViecTab() {
           `Nhân rộng mô hình quản trị nhân sự gắn kết của Bưu cục trưởng Tầm Vu sang Phước Lý và Rạch Kiến.`
         ];
       } else {
-        // Cần Đước 1
         findings = [
           `Cần Đước 1 (Mã BC: 23220000, trước đây là Cần Đước) có tỷ lệ biến động nhân sự cực thấp, chỉ ghi nhận 1 ca nghỉ việc do vi phạm COD.`,
           `Tỷ lệ chuyên cần và độ phủ Ca 2 của Cần Đước 1 hiện đang dẫn đầu toàn tỉnh Long An.`
@@ -503,52 +543,64 @@ export default function NghiViecTab() {
   }, [selectedPostOffice, timeFilterMode, selectedMonth, metrics, postOfficeMatrix]);
 
   // =========================================================================
-  // RENDER GIAO DIỆN CHÍNH
+  // RENDER
   // =========================================================================
   return (
     <div className="p-3 sm:p-5 lg:p-6 space-y-4 max-w-7xl mx-auto text-slate-800 dark:text-slate-100">
       
       {/* =========================================================================
-          1. HEADER & CHUYỂN ĐỔI TAB NHÂN SỰ
+          1. HEADER GỘP THU GỌN VỚI TÌM KIẾM & BỘ LỌC ĐIỀU HÀNH
           ========================================================================= */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="p-2 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-xl">
-                <UserMinus className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <h1 className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">
-                Phân Hệ Quản Trị Nhân Sự Nghỉ Việc Khu Vực Long An
-              </h1>
-              <span className="px-2.5 py-0.5 text-[11px] font-black rounded-full bg-rose-600 text-white shadow-xs">
-                {rawList.length} Nhân Sự Đã Nghỉ
-              </span>
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
-                AM Huy (ĐNB)
-              </span>
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800/90 rounded-2xl p-3 sm:p-4 shadow-sm transition-all space-y-2.5">
+        
+        {/* Dòng 1: Tiêu đề, Badge, Search thu gọn & Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="p-1.5 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg">
+              <UserMinus className="w-4 h-4 stroke-[2.2]" />
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Phân tích thực trạng, ma trận thâm niên (G01 - G10), cơ cấu lý do thôi việc và năng suất bình quân của lực lượng lao động qua các giai đoạn
-            </p>
+            <h1 className="text-xs sm:text-sm lg:text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[220px] sm:max-w-none">
+              PHÂN HỆ QUẢN TRỊ NHÂN SỰ NGHỈ VIỆC KHU VỰC LONG AN
+            </h1>
+            <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white shadow-xs">
+              {rawList.length} Nhân Sự Đã Nghỉ
+            </span>
+            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
+              AM Huy (ĐNB)
+            </span>
           </div>
 
-          {/* Cụm điều hướng nhanh giữa 2 Task Nhân sự */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Search thu gọn */}
+            <div className="relative w-36 sm:w-48 lg:w-56">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm bưu tá, mã NV..."
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-8 pr-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-1 focus:ring-orange-500 focus:outline-none"
+              />
+            </div>
+
             <button
               type="button"
               onClick={() => setActiveTab('nhan_su')}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5"
+              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5 whitespace-nowrap"
               title="Chuyển sang xem danh sách bưu tá đang làm việc"
             >
               <Users className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Nhân Sự Hiện Hữu ({dataset.nhanSu.length || 81} NV)</span>
+              <span className="hidden sm:inline">Nhân Sự Hiện Hữu ({dataset.nhanSu.length || 81} NV)</span>
+              <span className="sm:hidden">Hiện Hữu</span>
             </button>
 
             <button
               type="button"
               onClick={handleExport}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1 transition-all whitespace-nowrap cursor-pointer"
               title="Xuất file Excel / CSV danh sách nhân sự nghỉ việc đã lọc"
             >
               <Download className="w-3.5 h-3.5" />
@@ -556,54 +608,44 @@ export default function NghiViecTab() {
             </button>
           </div>
         </div>
-      </div>
 
-      {/* =========================================================================
-          2. CỤM BỘ LỌC TOÀN DIỆN (TICK NGÀY, TICK TUẦN, TICK THÁNG, BƯU CỤC, THÂM NIÊN)
-          ========================================================================= */}
-      <div className="sticky top-0 z-20 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/90 rounded-2xl p-3 sm:p-4 shadow-sm transition-all space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
+        {/* Dòng 2: Bộ lọc linh hoạt (Chu kỳ Ngày, Tuần, Tháng, Bưu cục, Thâm niên, Lý do) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
           
-          {/* A. BỘ LỌC BƯU CỤC */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <label className="text-slate-500 font-bold text-[11px] flex items-center gap-1">
-              <Building2 className="w-3.5 h-3.5 text-orange-600" /> Bưu Cục:
-            </label>
+          {/* Lọc Bưu Cục */}
+          <div className="flex items-center gap-1">
+            <Building2 className="w-3.5 h-3.5 text-orange-600 shrink-0" />
             <select
               value={selectedPostOffice}
               onChange={e => {
                 setSelectedPostOffice(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 font-bold text-xs text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-bold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
             >
               <option value="all">Tất cả 5 bưu cục ({rawList.length} ca)</option>
               {OFFICIAL_POST_OFFICES.map(bc => {
                 const cnt = rawList.filter(r => r.buuCuc === bc).length;
                 return (
-                  <option key={bc} value={bc}>
-                    {bc} ({cnt} ca)
-                  </option>
+                  <option key={bc} value={bc}>{bc} ({cnt} ca)</option>
                 );
               })}
             </select>
           </div>
 
-          {/* B. BỘ LỌC CHU KỲ THỜI GIAN: THÁNG / TUẦN / TOÀN BỘ */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <label className="text-slate-500 font-bold text-[11px] flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Chu Kỳ:
-            </label>
+          {/* Lọc Chu Kỳ */}
+          <div className="flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="text-slate-400 text-[11px] font-bold">Chu Kỳ:</span>
             
-            {/* Segmented Control Mode */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg font-semibold text-[11px]">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-md font-semibold text-[11px]">
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('all')}
-                className={`px-2 py-1 rounded-md transition-all ${
+                className={`px-2 py-0.5 rounded transition-all ${
                   timeFilterMode === 'all'
-                    ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-300'
+                    ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 Toàn Bộ
@@ -611,10 +653,10 @@ export default function NghiViecTab() {
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('month')}
-                className={`px-2 py-1 rounded-md transition-all ${
+                className={`px-2 py-0.5 rounded transition-all ${
                   timeFilterMode === 'month'
-                    ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-300'
+                    ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 Theo Tháng
@@ -622,17 +664,16 @@ export default function NghiViecTab() {
               <button
                 type="button"
                 onClick={() => setTimeFilterMode('week')}
-                className={`px-2 py-1 rounded-md transition-all ${
+                className={`px-2 py-0.5 rounded transition-all ${
                   timeFilterMode === 'week'
-                    ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-300'
+                    ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 Theo Tuần
               </button>
             </div>
 
-            {/* Dropdown Tháng */}
             {timeFilterMode === 'month' && (
               <select
                 value={selectedMonth}
@@ -640,16 +681,15 @@ export default function NghiViecTab() {
                   setSelectedMonth(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
               >
-                <option value="all">Tất cả các tháng ({availableMonths.length} tháng)</option>
+                <option value="all">Tất cả các tháng ({availableMonths.length})</option>
                 {availableMonths.map(m => (
                   <option key={m} value={m}>Tháng {m}</option>
                 ))}
               </select>
             )}
 
-            {/* Dropdown Tuần */}
             {timeFilterMode === 'week' && (
               <select
                 value={selectedWeek}
@@ -657,9 +697,9 @@ export default function NghiViecTab() {
                   setSelectedWeek(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
               >
-                <option value="all">Tất cả các tuần ({availableWeeks.length} tuần)</option>
+                <option value="all">Tất cả các tuần ({availableWeeks.length})</option>
                 {availableWeeks.map(w => (
                   <option key={w} value={w}>{w}</option>
                 ))}
@@ -667,18 +707,16 @@ export default function NghiViecTab() {
             )}
           </div>
 
-          {/* C. BỘ LỌC NHÓM THÂM NIÊN */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <label className="text-slate-500 font-bold text-[11px] flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-500" /> Thâm Niên:
-            </label>
+          {/* Lọc Thâm Niên */}
+          <div className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <select
               value={selectedTenure}
               onChange={e => {
                 setSelectedTenure(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
             >
               <option value="all">Tất cả 10 nhóm (G01 - G10)</option>
               {TENURE_LABELS.map(t => (
@@ -687,18 +725,16 @@ export default function NghiViecTab() {
             </select>
           </div>
 
-          {/* D. BỘ LỌC NHÓM LÝ DO */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <label className="text-slate-500 font-bold text-[11px] flex items-center gap-1">
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-500" /> Nhóm Lý Do:
-            </label>
+          {/* Lọc Nhóm Lý Do */}
+          <div className="flex items-center gap-1">
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <select
               value={selectedReasonGroup}
               onChange={e => {
                 setSelectedReasonGroup(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
             >
               <option value="all">Tất cả nguyên nhân</option>
               {Object.keys(REASON_COLORS).map(r => (
@@ -707,12 +743,12 @@ export default function NghiViecTab() {
             </select>
           </div>
 
-          {/* Nút reset bộ lọc */}
-          {(selectedPostOffice !== 'all' || timeFilterMode !== 'all' || selectedTenure !== 'all' || selectedReasonGroup !== 'all' || searchQuery) && (
+          {/* Reset lọc */}
+          {(selectedPostOffice !== 'all' || timeFilterMode !== 'all' || selectedTenure !== 'all' || selectedReasonGroup !== 'all' || searchQuery || activeKpiCard) && (
             <button
               type="button"
               onClick={resetFilters}
-              className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-lg flex items-center gap-1 transition-all"
+              className="ml-auto px-2 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-md flex items-center gap-1 transition-all"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Xóa lọc</span>
@@ -723,11 +759,20 @@ export default function NghiViecTab() {
       </div>
 
       {/* =========================================================================
-          3. 5 THẺ CHỈ SỐ CỐT LÕI (EXECUTIVE KPI CARDS)
+          2. 5 THẺ CHỈ SỐ CỐT LÕI (INTERACTIVE: NHẤN VÀO NỔI LÊN & CUỘN ĐẾN BẢNG LIÊN QUAN)
           ========================================================================= */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Card 1: Tổng số ca nghỉ */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-1">
+        
+        {/* Card 1: Tổng ca nghỉ */}
+        <div 
+          onClick={() => handleKpiClick('all', 'section-overview-po')}
+          className={`bg-white dark:bg-slate-800 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer space-y-1 ${
+            activeKpiCard === 'all'
+              ? 'ring-2 ring-orange-500 border-orange-400 shadow-md -translate-y-1 bg-orange-50/20 dark:bg-slate-750'
+              : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:-translate-y-0.5 hover:shadow-xs'
+          }`}
+          title="Nhấn để xem bảng kê và đồ thị tổng quan 5 bưu cục"
+        >
           <div className="flex items-center justify-between text-slate-500 text-[11px] font-bold">
             <span className="flex items-center gap-1">
               <UserMinus className="w-3.5 h-3.5 text-rose-500" /> TỔNG CA NGHỈ
@@ -744,8 +789,16 @@ export default function NghiViecTab() {
           </div>
         </div>
 
-        {/* Card 2: Báo động thử việc (<1 tháng) */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-amber-200 dark:border-amber-800/80 shadow-2xs space-y-1">
+        {/* Card 2: Nghỉ sớm G01 (<1T) */}
+        <div 
+          onClick={() => handleKpiClick('early', 'section-tenure')}
+          className={`bg-white dark:bg-slate-800 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer space-y-1 ${
+            activeKpiCard === 'early'
+              ? 'ring-2 ring-amber-500 border-amber-400 shadow-md -translate-y-1 bg-amber-50/20 dark:bg-slate-750'
+              : 'border-amber-200 dark:border-amber-800/80 shadow-2xs hover:-translate-y-0.5 hover:shadow-xs'
+          }`}
+          title="Nhấn để xem bảng kê nhóm thâm niên G01 và danh sách bưu tá nghỉ sớm"
+        >
           <div className="flex items-center justify-between text-amber-700 dark:text-amber-400 text-[11px] font-bold">
             <span className="flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> NGHỈ SỚM G01 (&lt;1T)
@@ -762,8 +815,16 @@ export default function NghiViecTab() {
           </div>
         </div>
 
-        {/* Card 3: Số ngày làm trung bình */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-1">
+        {/* Card 3: Ngày làm TB */}
+        <div 
+          onClick={() => handleKpiClick('days', 'section-tenure')}
+          className={`bg-white dark:bg-slate-800 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer space-y-1 ${
+            activeKpiCard === 'days'
+              ? 'ring-2 ring-indigo-500 border-indigo-400 shadow-md -translate-y-1 bg-indigo-50/20 dark:bg-slate-750'
+              : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:-translate-y-0.5 hover:shadow-xs'
+          }`}
+          title="Nhấn để xem phân tầng số ngày làm việc theo nhóm thâm niên"
+        >
           <div className="flex items-center justify-between text-slate-500 text-[11px] font-bold">
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-indigo-500" /> NGÀY LÀM TB
@@ -780,8 +841,16 @@ export default function NghiViecTab() {
           </div>
         </div>
 
-        {/* Card 4: Vi phạm kỷ luật & COD */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-2xs space-y-1">
+        {/* Card 4: Kỷ luật & COD */}
+        <div 
+          onClick={() => handleKpiClick('cod', 'section-reasons')}
+          className={`bg-white dark:bg-slate-800 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer space-y-1 ${
+            activeKpiCard === 'cod'
+              ? 'ring-2 ring-rose-500 border-rose-400 shadow-md -translate-y-1 bg-rose-50/20 dark:bg-slate-750'
+              : 'border-rose-200 dark:border-rose-900/60 shadow-2xs hover:-translate-y-0.5 hover:shadow-xs'
+          }`}
+          title="Nhấn để xem bảng kê nhóm lý do nghỉ và danh sách vi phạm COD"
+        >
           <div className="flex items-center justify-between text-rose-700 dark:text-rose-400 text-[11px] font-bold">
             <span className="flex items-center gap-1">
               <ShieldAlert className="w-3.5 h-3.5 text-rose-600" /> KỶ LUẬT &amp; COD
@@ -798,8 +867,16 @@ export default function NghiViecTab() {
           </div>
         </div>
 
-        {/* Card 5: Điểm nóng bưu cục */}
-        <div className="col-span-2 sm:col-span-1 bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-1">
+        {/* Card 5: Điểm nóng nhất */}
+        <div 
+          onClick={() => handleKpiClick('hotspot', 'section-overview-po')}
+          className={`col-span-2 sm:col-span-1 bg-white dark:bg-slate-800 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer space-y-1 ${
+            activeKpiCard === 'hotspot'
+              ? 'ring-2 ring-orange-500 border-orange-400 shadow-md -translate-y-1 bg-orange-50/20 dark:bg-slate-750'
+              : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:-translate-y-0.5 hover:shadow-xs'
+          }`}
+          title="Nhấn để xem bảng kê và đồ thị của bưu cục điểm nóng biến động"
+        >
           <div className="flex items-center justify-between text-slate-500 text-[11px] font-bold">
             <span className="flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-orange-500" /> ĐIỂM NÓNG NHẤT
@@ -815,10 +892,600 @@ export default function NghiViecTab() {
             Chiếm {metrics.total > 0 ? ((metrics.topPoCount / metrics.total) * 100).toFixed(1) : 0}% tổng ca nghỉ
           </div>
         </div>
+
       </div>
 
       {/* =========================================================================
-          4. NHẬN ĐỊNH ĐIỀU HÀNH THỰC TẾ DÀNH RIÊNG CHO AM HUY (ĐNB)
+          KHỐI 1: BẢNG KÊ TỔNG QUAN BÊN TRÁI & SONG SONG BÊN PHẢI ĐỒ THỊ MA TRẬN 5 BƯU CỤC
+          ========================================================================= */}
+      <div id="section-overview-po" className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch scroll-mt-28">
+        
+        {/* BÊN TRÁI: BẢNG KÊ TỔNG QUAN 5 BƯU CỤC */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-orange-600" />
+                <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                  BẢNG KÊ TỔNG QUAN 5 BƯU CỤC LONG AN
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold">
+                Click hàng để lọc
+              </span>
+            </div>
+
+            <div className="overflow-x-auto mt-2">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
+                  <tr>
+                    <th className="p-2 w-[30%]">Bưu Cục</th>
+                    <th className="p-2 text-right w-[14%]">Tổng Nghỉ</th>
+                    <th className="p-2 text-right w-[14%]">Tỷ Trọng</th>
+                    <th className="p-2 text-right w-[14%]">&lt;1T (G01)</th>
+                    <th className="p-2 text-right w-[14%]">&lt;3 Tháng</th>
+                    <th className="p-2 text-right w-[14%]">Vi Phạm COD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                  {postOfficeMatrix.map((item) => {
+                    const isSelected = selectedPostOffice === item.buuCuc;
+                    return (
+                      <tr
+                        key={item.buuCuc}
+                        onClick={() => {
+                          setSelectedPostOffice(isSelected ? 'all' : item.buuCuc);
+                          setCurrentPage(1);
+                        }}
+                        className={`hover:bg-orange-50/60 dark:hover:bg-slate-750/70 transition-all cursor-pointer ${
+                          isSelected ? 'bg-orange-50/90 dark:bg-orange-950/40 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full shrink-0" 
+                              style={{ backgroundColor: PO_COLORS[item.buuCuc] || '#94A3B8' }} 
+                            />
+                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                              {item.buuCuc}
+                            </span>
+                            {isSelected && (
+                              <span className="px-1 py-0.2 rounded text-[8.5px] font-bold bg-orange-600 text-white shrink-0">
+                                Đang chọn
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2 text-right font-black text-rose-600 dark:text-rose-400 font-mono">
+                          {item.total}
+                        </td>
+                        <td className="p-2 text-right font-semibold font-mono text-slate-600 dark:text-slate-300">
+                          {item.share}%
+                        </td>
+                        <td className="p-2 text-right font-bold text-amber-600 dark:text-amber-400 font-mono">
+                          {item.g01} ca
+                        </td>
+                        <td className="p-2 text-right font-mono">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{item.under3M}</span>
+                          <span className="text-[10px] text-slate-400 ml-0.5">({item.under3MRate}%)</span>
+                        </td>
+                        <td className="p-2 text-right font-mono">
+                          {item.cod > 0 ? (
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
+                              {item.cod} ca
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">0</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-slate-100/90 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t border-slate-300 dark:border-slate-600">
+                  <tr>
+                    <td className="p-2 uppercase text-[11px]">TỔNG TOÀN KHU VỰC</td>
+                    <td className="p-2 text-right text-rose-600 font-mono text-xs">{metrics.total}</td>
+                    <td className="p-2 text-right font-mono text-[11px]">100%</td>
+                    <td className="p-2 text-right text-amber-600 font-mono text-[11px]">{metrics.g01Count} ca</td>
+                    <td className="p-2 text-right font-mono text-[11px]">{metrics.under3MCount} ca ({metrics.under3MRate}%)</td>
+                    <td className="p-2 text-right text-red-600 font-mono text-[11px]">{metrics.codViolations} ca</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+          
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400 flex items-center justify-between">
+            <span>Bình quân ngày làm: <strong>{metrics.avgDaysWorked} ngày</strong></span>
+            <span>Sản lượng TB: <strong>{metrics.avgVol} đơn/ngày</strong></span>
+          </div>
+        </div>
+
+        {/* BÊN PHẢI: ĐỒ THỊ MA TRẬN TOÀN KHU VỰC */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+            <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-indigo-500" />
+              ĐỒ THỊ MA TRẬN 5 BƯU CỤC KHU VỰC
+            </h4>
+            <span className="text-[10px] text-slate-400">
+              Cột: Tổng nghỉ &bull; Đường: % Nghỉ sớm
+            </span>
+          </div>
+
+          <div className="h-64 sm:h-72 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={poChartData} margin={{ top: 10, right: 15, bottom: 10, left: -10 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 10.5, fontWeight: 600 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10.5 }} />
+                <YAxis yAxisId="right" orientation="right" unit="%" tick={{ fontSize: 10.5 }} domain={[0, 100]} />
+                <Tooltip 
+                  formatter={(val, name) => [
+                    name === '% Nghỉ Sớm' ? `${val}%` : `${val} ca`,
+                    name
+                  ]}
+                />
+                <Legend wrapperStyle={{ fontSize: '10.5px', paddingTop: '6px' }} />
+                <Bar yAxisId="left" dataKey="Tổng Nghỉ" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar yAxisId="left" dataKey="Nghỉ Sớm <3T" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={20} />
+                <Line yAxisId="right" type="monotone" dataKey="% Nghỉ Sớm" stroke="#6366F1" strokeWidth={2.2} dot={{ r: 3.5 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400">
+            * Phước Lý &amp; Rạch Kiến là 2 bưu cục có tỷ trọng nghỉ cao nhất toàn khu vực.
+          </div>
+        </div>
+
+      </div>
+
+      {/* =========================================================================
+          KHỐI 2: BẢNG KÊ NHÓM THÂM NIÊN BÊN TRÁI & SONG SONG BÊN PHẢI ĐỒ THỊ MA TRẬN
+          ========================================================================= */}
+      <div id="section-tenure" className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch scroll-mt-28">
+        
+        {/* BÊN TRÁI: BẢNG KÊ 10 NHÓM THÂM NIÊN (G01 - G10) */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-orange-600" />
+                <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                  BẢNG KÊ 10 NHÓM THÂM NIÊN (G01 - G10)
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold">
+                Click nhóm để xem chi tiết
+              </span>
+            </div>
+
+            <div className="overflow-x-auto mt-2">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
+                  <tr>
+                    <th className="p-2 w-[34%]">Nhóm Thâm Niên</th>
+                    <th className="p-2 text-right w-[15%]">Số Ca Nghỉ</th>
+                    <th className="p-2 text-right w-[15%]">Tỷ Trọng</th>
+                    <th className="p-2 text-right w-[18%]">Ngày Làm TB</th>
+                    <th className="p-2 text-right w-[18%]">Lương TB/Ngày</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                  {tenureSummary.map((t) => {
+                    const isExpanded = expandedTenureGroup === t.tenure;
+                    const isHigh = t.shortCode === 'G01' || t.shortCode === 'G02';
+
+                    return (
+                      <tr
+                        key={t.tenure}
+                        onClick={() => setExpandedTenureGroup(isExpanded ? null : t.tenure)}
+                        className={`hover:bg-orange-50/60 dark:hover:bg-slate-750/70 transition-all cursor-pointer ${
+                          isExpanded ? 'bg-orange-50/90 dark:bg-orange-950/40 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            <span 
+                              className={`w-4 h-4 rounded text-[9.5px] font-black text-white flex items-center justify-center shrink-0 ${
+                                isHigh ? 'bg-rose-600' : 'bg-slate-700'
+                              }`}
+                            >
+                              {t.shortCode.replace('G', '')}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                              {t.tenure}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-2 text-right font-black text-rose-600 dark:text-rose-400 font-mono">
+                          {t.count} ca
+                        </td>
+                        <td className="p-2 text-right font-semibold font-mono text-slate-600 dark:text-slate-300">
+                          {t.share}%
+                        </td>
+                        <td className="p-2 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                          {t.avgDays} ngày
+                        </td>
+                        <td className="p-2 text-right font-mono font-bold text-emerald-600">
+                          {t.avgSalary.toLocaleString('vi-VN')} đ
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Khối hiển thị chi tiết nhóm thâm niên đang được mở */}
+            {expandedTenureGroup && (
+              <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-orange-200 dark:border-orange-800/60 text-xs space-y-1.5">
+                <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white pb-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-orange-600 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    Chi tiết nhóm: {expandedTenureGroup} ({tenureSummary.find(t => t.tenure === expandedTenureGroup)?.count || 0} nhân sự)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedTenureGroup(null)}
+                    className="text-slate-400 hover:text-slate-600 text-[10px]"
+                  >
+                    Đóng
+                  </button>
+                </div>
+                <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                  {tenureSummary.find(t => t.tenure === expandedTenureGroup)?.items.map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                      <div>
+                        <strong className="text-slate-900 dark:text-white">{p.ten}</strong>
+                        <span className="text-slate-400 font-mono ml-1.5">({p.id})</span>
+                        <span className="text-slate-500 ml-1.5">&bull; {p.buuCuc}</span>
+                      </div>
+                      <div className="font-mono text-indigo-600 font-bold">
+                        {p.soNgayLam} ngày
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400">
+            * Nhóm G01 + G02 chiếm tới {metrics.under3MRate}% tổng ca nghỉ toàn khu vực.
+          </div>
+        </div>
+
+        {/* BÊN PHẢI: ĐỒ THỊ MA TRẬN THÂM NIÊN (G01 - G10) */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+            <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <TrendingDown className="w-4 h-4 text-rose-500" />
+              ĐỒ THỊ MA TRẬN PHÂN BỔ THÂM NIÊN (G01 - G10)
+            </h4>
+            <span className="text-[10px] text-slate-400">
+              Phát hiện điểm đứt gãy giữ chân bưu tá
+            </span>
+          </div>
+
+          <div className="h-64 sm:h-72 mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={tenureChartData} margin={{ top: 10, right: 15, bottom: 10, left: -10 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 10.5, fontWeight: 700 }} />
+                <YAxis tick={{ fontSize: 10.5 }} />
+                <Tooltip 
+                  formatter={(val, _name, props) => [
+                    `${val} nhân sự`,
+                    props.payload.fullName
+                  ]}
+                />
+                <Bar dataKey="Số Ca Nghỉ" radius={[4, 4, 0, 0]} barSize={22}>
+                  {tenureChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400">
+            * Cột đỏ (G01) thể hiện số lượng nghỉ việc cao nhất ngay trong 30 ngày đầu công tác.
+          </div>
+        </div>
+
+      </div>
+
+      {/* =========================================================================
+          KHỐI 3: BẢNG KÊ NHÓM LÝ DO NGHỈ BÊN TRÁI & SONG SONG BÊN PHẢI ĐỒ THỊ MA TRẬN
+          ========================================================================= */}
+      <div id="section-reasons" className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch scroll-mt-28">
+        
+        {/* BÊN TRÁI: BẢNG KÊ 5 NHÓM LÝ DO THÔI VIỆC */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-orange-600" />
+                <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                  BẢNG KÊ 5 NHÓM LÝ DO THÔI VIỆC
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold">
+                Click nhóm để lọc
+              </span>
+            </div>
+
+            <div className="overflow-x-auto mt-2">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
+                  <tr>
+                    <th className="p-2 w-[34%]">Nhóm Lý Do</th>
+                    <th className="p-2 text-right w-[15%]">Số Ca Nghỉ</th>
+                    <th className="p-2 text-right w-[15%]">Tỷ Trọng</th>
+                    <th className="p-2 text-right w-[18%]">Ngày Làm TB</th>
+                    <th className="p-2 w-[18%]">Điểm Nóng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                  {reasonSummary.map((item) => {
+                    const isSelected = selectedReasonGroup === item.groupName;
+                    return (
+                      <tr
+                        key={item.groupName}
+                        onClick={() => {
+                          setSelectedReasonGroup(isSelected ? 'all' : item.groupName);
+                          setCurrentPage(1);
+                        }}
+                        className={`hover:bg-orange-50/60 dark:hover:bg-slate-750/70 transition-all cursor-pointer ${
+                          isSelected ? 'bg-orange-50/90 dark:bg-orange-950/40 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full shrink-0" 
+                              style={{ backgroundColor: item.color }} 
+                            />
+                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                              {item.groupName}
+                            </span>
+                            {isSelected && (
+                              <span className="px-1 py-0.2 rounded text-[8.5px] font-bold bg-orange-600 text-white shrink-0">
+                                Đang chọn
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2 text-right font-black text-rose-600 dark:text-rose-400 font-mono">
+                          {item.count} ca
+                        </td>
+                        <td className="p-2 text-right font-semibold font-mono text-slate-600 dark:text-slate-300">
+                          {item.share}%
+                        </td>
+                        <td className="p-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          {item.avgDays} ngày
+                        </td>
+                        <td className="p-2 text-[10.5px] text-slate-500 dark:text-slate-400 truncate">
+                          {item.topPo}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400">
+            * Nhóm "Vi phạm kỷ luật &amp; COD" chiếm 24.7% (20 ca) cần theo dõi chặt chẽ dòng tiền COD.
+          </div>
+        </div>
+
+        {/* BÊN PHẢI: ĐỒ THỊ MA TRẬN CƠ CẤU LÝ DO */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+            <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <PieChartIcon className="w-4 h-4 text-emerald-500" />
+              ĐỒ THỊ MA TRẬN CƠ CẤU LÝ DO NGHỈ VIỆC
+            </h4>
+            <span className="text-[10px] text-slate-400">
+              Biểu đồ phân bổ tỷ trọng %
+            </span>
+          </div>
+
+          <div className="h-64 sm:h-72 relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={reasonChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                >
+                  {reasonChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(val, name) => [`${val} ca (${((Number(val)/metrics.total)*100).toFixed(1)}%)`, name]} />
+              </PieChart>
+            </ResponsiveContainer>
+            
+            <div className="absolute text-center pointer-events-none">
+              <span className="text-[9.5px] uppercase font-bold text-slate-400 block">Tổng Nghỉ</span>
+              <span className="text-xl font-black text-slate-900 dark:text-white block font-mono">
+                {metrics.total}
+              </span>
+              <span className="text-[9px] text-rose-600 font-bold block">nhân sự</span>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10.5px] text-slate-400">
+            * Tỷ lệ nghỉ do "Không phù hợp" và "Vi phạm COD" chiếm đa số nguyên nhân thôi việc.
+          </div>
+        </div>
+
+      </div>
+
+      {/* =========================================================================
+          KHỐI 4: BẢNG KÊ CHI TIẾT 100% NHÂN SỰ NGHỈ VIỆC
+          ========================================================================= */}
+      <div id="section-detail-table" className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 sm:p-5 space-y-3.5 scroll-mt-28">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-orange-600" />
+            <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+              BẢNG KÊ CHI TIẾT NHÂN SỰ NGHỈ VIỆC ({filteredList.length} Bản Ghi)
+            </h3>
+            {filteredList.length !== rawList.length && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                Đang lọc {filteredList.length}/{rawList.length}
+              </span>
+            )}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Hiển thị ngày vào, ngày nghỉ, số ngày làm cụ thể, sản lượng &amp; mức lương TB
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
+              <tr>
+                <th className="p-2.5 text-center w-[4%]">STT</th>
+                <th className="p-2.5 w-[8%]">Mã NV</th>
+                <th className="p-2.5 w-[14%]">Họ và Tên</th>
+                <th className="p-2.5 w-[13%]">Bưu Cục</th>
+                <th className="p-2.5 w-[10%]">Thâm Niên</th>
+                <th className="p-2.5 text-center w-[9%]">Ngày Vào</th>
+                <th className="p-2.5 text-center w-[9%]">Ngày Nghỉ</th>
+                <th className="p-2.5 text-right w-[9%]">Số Ngày Làm</th>
+                <th className="p-2.5 text-right w-[8%]">Sản Lượng TB</th>
+                <th className="p-2.5 text-right w-[9%]">Mức Lương TB</th>
+                <th className="p-2.5 w-[16%]">Lý Do Nghỉ Việc</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+              {paginatedList.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="text-center py-8 text-xs text-slate-400 italic">
+                    Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại.
+                  </td>
+                </tr>
+              ) : (
+                paginatedList.map((person, idx) => {
+                  const stt = (currentPage - 1) * pageSize + idx + 1;
+                  const isCod = person.nhomLyDo === 'Vi phạm kỷ luật & COD';
+                  return (
+                    <tr 
+                      key={person.id} 
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-750/70 transition-colors ${
+                        isCod ? 'bg-red-50/30 dark:bg-red-950/20' : ''
+                      }`}
+                    >
+                      <td className="p-2.5 text-center font-mono text-slate-400 font-bold">{stt}</td>
+                      <td className="p-2.5 font-mono font-bold text-orange-600 dark:text-orange-400">{person.id}</td>
+                      <td className="p-2.5">
+                        <div className="font-extrabold text-slate-900 dark:text-white">{person.ten}</div>
+                        <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{person.chucVu}</div>
+                      </td>
+                      <td className="p-2.5">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {person.buuCuc}
+                        </span>
+                      </td>
+                      <td className="p-2.5 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                        {person.nhomThamNien.split(':')[0]}
+                      </td>
+                      <td className="p-2.5 text-center font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                        {person.ngayVaoLam}
+                      </td>
+                      <td className="p-2.5 text-center font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                        {person.ngayNghiViec}
+                      </td>
+                      <td className="p-2.5 text-right font-mono font-bold">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                          {person.soNgayLam} ngày
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {person.sanLuongTb} <span className="text-[10px] text-slate-400 font-normal">đơn</span>
+                      </td>
+                      <td className="p-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {person.mucLuongTb.toLocaleString('vi-VN')} đ
+                      </td>
+                      <td className="p-2.5">
+                        <div className={`text-[11px] font-medium line-clamp-2 ${
+                          isCod ? 'text-red-700 dark:text-red-400 font-bold' : 'text-slate-700 dark:text-slate-300'
+                        }`}>
+                          {person.lyDoNghiViec}
+                        </div>
+                        <div className="text-[9.5px] text-slate-400 mt-0.5">
+                          {person.nhomLyDo}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs">
+            <div className="text-slate-400 font-medium">
+              Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong> - <strong>{Math.min(currentPage * pageSize, filteredList.length)}</strong> trên tổng số <strong>{filteredList.length}</strong> nhân sự
+            </div>
+
+            <div className="flex items-center gap-1.5 self-center">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-750 font-bold"
+              >
+                Trước
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                    currentPage === page
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-750 font-bold"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* =========================================================================
+          KHỐI 5: "NHẬN ĐỊNH ĐIỀU HÀNH BIẾN ĐỘNG NHÂN SỰ TOÀN KHU VỰC LONG AN" (Ở VỊ TRÍ CUỐI CÙNG!)
           ========================================================================= */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white rounded-2xl p-4 sm:p-5 border border-slate-800 shadow-md space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
@@ -870,641 +1537,6 @@ export default function NghiViecTab() {
           </div>
         </div>
       </div>
-
-      {/* =========================================================================
-          5. SUB-TABS NAVIGATION (4 PHÂN HỆ TƯƠNG TÁC)
-          ========================================================================= */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('overview')}
-          className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'overview'
-              ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>1. Tổng Thể 5 Bưu Cục ({postOfficeMatrix.length} BC)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('charts')}
-          className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'charts'
-              ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>2. Ma Trận Biểu Đồ Trực Quan</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('tenure_matrix')}
-          className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'tenure_matrix'
-              ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span>3. Phân Tầng 10 Nhóm Thâm Niên (G01 - G10)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('detail_table')}
-          className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'detail_table'
-              ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>4. Bảng Kê Chi Tiết 100% Nhân Sự ({filteredList.length})</span>
-        </button>
-      </div>
-
-      {/* =========================================================================
-          TAB 1: MA TRẬN TỔNG THỂ 5 BƯU CỤC
-          ========================================================================= */}
-      {activeSubTab === 'overview' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden space-y-4 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <div>
-              <h3 className="font-extrabold text-sm uppercase tracking-wider flex items-center gap-2 text-slate-900 dark:text-white">
-                <Building2 className="w-4 h-4 text-orange-600" />
-                Bảng Ma Trận Tổng Hợp Tình Hình Nghỉ Việc Theo 5 Bưu Cục
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Nhấn vào bất kỳ dòng nào để lọc ngay báo cáo chi tiết của bưu cục đó
-              </p>
-            </div>
-            <div className="text-[11px] text-slate-500 font-semibold">
-              Khu vực Long An &bull; AM Nguyễn Hoàng Huy
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
-                <tr>
-                  <th className="p-3 w-[22%]">Bưu Cục</th>
-                  <th className="p-3 text-right w-[10%]">Tổng Nghỉ</th>
-                  <th className="p-3 text-right w-[10%]">Tỷ Trọng %</th>
-                  <th className="p-3 text-right w-[13%]">Nghỉ &lt;1 Tháng (G01)</th>
-                  <th className="p-3 text-right w-[13%]">Nghỉ &lt;3 Tháng</th>
-                  <th className="p-3 text-right w-[11%]">Số Ngày Làm TB</th>
-                  <th className="p-3 text-right w-[10%]">Sản Lượng TB</th>
-                  <th className="p-3 text-right w-[11%]">Vi Phạm COD</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                {postOfficeMatrix.map((item) => {
-                  const isSelected = selectedPostOffice === item.buuCuc;
-                  return (
-                    <tr
-                      key={item.buuCuc}
-                      onClick={() => {
-                        setSelectedPostOffice(isSelected ? 'all' : item.buuCuc);
-                        setCurrentPage(1);
-                      }}
-                      className={`hover:bg-orange-50/50 dark:hover:bg-slate-750/70 transition-all cursor-pointer ${
-                        isSelected ? 'bg-orange-50/90 dark:bg-orange-950/40 font-semibold' : ''
-                      }`}
-                    >
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="w-2.5 h-2.5 rounded-full shrink-0" 
-                            style={{ backgroundColor: PO_COLORS[item.buuCuc] || '#94A3B8' }} 
-                          />
-                          <span className="font-extrabold text-slate-900 dark:text-white">
-                            {item.buuCuc}
-                          </span>
-                          {isSelected && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-orange-600 text-white">
-                              Đang lọc
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-black text-rose-600 dark:text-rose-400 font-mono text-sm">
-                        {item.total}
-                      </td>
-                      <td className="p-3 text-right font-semibold font-mono">
-                        {item.share}%
-                      </td>
-                      <td className="p-3 text-right font-bold text-amber-600 dark:text-amber-400 font-mono">
-                        {item.g01} ca
-                      </td>
-                      <td className="p-3 text-right font-mono">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{item.under3M} ca</span>
-                        <span className="text-[10px] text-slate-400 ml-1">({item.under3MRate}%)</span>
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                        {item.avgDays} ngày
-                      </td>
-                      <td className="p-3 text-right font-mono">
-                        {item.avgVol} đơn/d
-                      </td>
-                      <td className="p-3 text-right font-mono">
-                        {item.cod > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
-                            {item.cod} ca
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 font-medium">0</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-slate-100 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-600">
-                <tr>
-                  <td className="p-3 uppercase">TỔNG TOÀN KHU VỰC</td>
-                  <td className="p-3 text-right text-rose-600 font-mono text-sm">
-                    {metrics.total}
-                  </td>
-                  <td className="p-3 text-right font-mono">100%</td>
-                  <td className="p-3 text-right text-amber-600 font-mono">
-                    {metrics.g01Count} ca
-                  </td>
-                  <td className="p-3 text-right font-mono">
-                    {metrics.under3MCount} ca ({metrics.under3MRate}%)
-                  </td>
-                  <td className="p-3 text-right text-indigo-600 font-mono">
-                    {metrics.avgDaysWorked} ngày
-                  </td>
-                  <td className="p-3 text-right font-mono">
-                    {metrics.avgVol} đơn/d
-                  </td>
-                  <td className="p-3 text-right text-red-600 font-mono">
-                    {metrics.codViolations} ca
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 2: MA TRẬN BIỂU ĐỒ TRỰC QUAN (CHARTS)
-          ========================================================================= */}
-      {activeSubTab === 'charts' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          
-          {/* Biểu đồ 1: Số lượng nghỉ & % nghỉ sớm theo 5 Bưu cục */}
-          <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
-                  So Sánh Tình Hình Nghỉ Việc Giữa 5 Bưu Cục
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Cột: Tổng số ca nghỉ &bull; Đường: Tỷ lệ nghỉ sớm (&lt;3 tháng)
-                </p>
-              </div>
-            </div>
-            <div className="h-64 sm:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={poChartData} margin={{ top: 15, right: 20, bottom: 20, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="right" orientation="right" unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} />
-                  <Tooltip 
-                    formatter={(val, name) => [
-                      name === '% Nghỉ Sớm' ? `${val}%` : `${val} nhân sự`,
-                      name
-                    ]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Bar yAxisId="left" dataKey="Tổng Nghỉ" fill="#EF4444" radius={[6, 6, 0, 0]} barSize={24} />
-                  <Bar yAxisId="left" dataKey="Nghỉ Sớm <3 Tháng" fill="#F59E0B" radius={[6, 6, 0, 0]} barSize={24} />
-                  <Line yAxisId="right" type="monotone" dataKey="% Nghỉ Sớm" stroke="#6366F1" strokeWidth={2.5} dot={{ r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Biểu đồ 2: Cơ cấu Nhóm Lý Do Nghỉ Việc */}
-          <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
-            <div>
-              <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
-                Cơ Cấu Lý Do Thôi Việc Toàn Khu Vực
-              </h4>
-              <p className="text-[11px] text-slate-400">
-                Phân loại theo mức độ rủi ro quản trị nhân sự
-              </p>
-            </div>
-            <div className="h-64 sm:h-72 relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={reasonChartData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                  >
-                    {reasonChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(val, name) => [`${val} ca (${((Number(val)/metrics.total)*100).toFixed(1)}%)`, name]} />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center text */}
-              <div className="absolute text-center pointer-events-none">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Tổng Nghỉ</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white block font-mono">
-                  {metrics.total}
-                </span>
-                <span className="text-[9px] text-rose-600 font-bold block">ca thôi việc</span>
-              </div>
-            </div>
-            {/* Chú thích lý do */}
-            <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700 text-xs">
-              {reasonChartData.map(r => (
-                <div key={r.name} className="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-750">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                    <span className="truncate font-medium text-slate-700 dark:text-slate-300">{r.name}</span>
-                  </div>
-                  <span className="font-bold font-mono text-slate-900 dark:text-white shrink-0 ml-1">
-                    {r.value} ca
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Biểu đồ 3: Diễn biến nghỉ việc qua các tháng */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
-                  Diễn Biến Nhân Sự Nghỉ Việc Qua Các Tháng (Timeline 2026)
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Theo dõi xu hướng biến động và các đợt bùng phát nghỉ việc theo chu kỳ
-                </p>
-              </div>
-            </div>
-            <div className="h-64 sm:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyTimelineData} margin={{ top: 15, right: 20, bottom: 20, left: 0 }}>
-                  <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="colorEarly" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748B" opacity={0.2} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fontWeight: 600 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Area type="monotone" dataKey="Tổng Nghỉ" stroke="#EF4444" fillOpacity={1} fill="url(#colorTotal)" />
-                  <Area type="monotone" dataKey="Nghỉ Sớm (<3T)" stroke="#F59E0B" fillOpacity={1} fill="url(#colorEarly)" />
-                  <Line type="monotone" dataKey="Vi Phạm COD" stroke="#7C3AED" strokeWidth={2.5} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 3: BẢNG PHÂN TẦNG 10 NHÓM THÂM NIÊN (G01 - G10)
-          ========================================================================= */}
-      {activeSubTab === 'tenure_matrix' && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3 mb-3">
-              <div>
-                <h3 className="font-extrabold text-sm uppercase tracking-wider flex items-center gap-2 text-slate-900 dark:text-white">
-                  <Clock className="w-4 h-4 text-orange-600" />
-                  Bảng Phân Tầng 10 Nhóm Thâm Niên (G01 - G10) &amp; Rủi Ro Nghỉ Việc
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Nhấn vào từng nhóm để mở rộng danh sách chi tiết nhân sự tương ứng
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              {tenureSummary.map((t, idx) => {
-                const isExpanded = expandedTenureGroup === t.tenure;
-                const isHighRisk = t.tenure.includes('G01') || t.tenure.includes('G02');
-
-                return (
-                  <div
-                    key={t.tenure}
-                    className={`border rounded-xl transition-all overflow-hidden ${
-                      isExpanded 
-                        ? 'border-orange-400 dark:border-orange-600 shadow-sm' 
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    {/* Header Row Accordion */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTenureGroup(isExpanded ? null : t.tenure)}
-                      className={`w-full p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2 text-left transition-all ${
-                        isExpanded ? 'bg-orange-50/70 dark:bg-slate-750' : 'bg-white dark:bg-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-[200px]">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black text-white ${
-                          isHighRisk ? 'bg-rose-600' : 'bg-indigo-600'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <div className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                            {t.tenure}
-                          </div>
-                          <div className="text-[11px] text-slate-400">
-                            Số ngày làm TB: <strong className="text-slate-700 dark:text-slate-300 font-bold">{t.avgDays} ngày</strong> (Từ {t.minDays} - {t.maxDays} ngày)
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 sm:gap-6 text-xs font-mono">
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Số Ca Nghỉ</span>
-                          <span className="font-black text-rose-600 dark:text-rose-400 text-sm">
-                            {t.count} ca ({t.share}%)
-                          </span>
-                        </div>
-
-                        <div className="text-right hidden sm:block">
-                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Sản Lượng TB</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-200">
-                            {t.avgVol} đơn/ngày
-                          </span>
-                        </div>
-
-                        <div className="text-right hidden md:block">
-                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Mức Lương TB</span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                            {t.avgSalary.toLocaleString('vi-VN')} đ/ngày
-                          </span>
-                        </div>
-
-                        <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Danh Sách Mở Rộng Khi Click */}
-                    {isExpanded && (
-                      <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-850/50 space-y-2">
-                        {t.items.length === 0 ? (
-                          <div className="text-center py-4 text-xs text-slate-400 italic">
-                            Không có nhân sự nào thuộc nhóm này theo bộ lọc hiện tại.
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse text-[11px]">
-                              <thead className="bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
-                                <tr>
-                                  <th className="p-2">Mã NV</th>
-                                  <th className="p-2">Họ và Tên</th>
-                                  <th className="p-2">Bưu Cục</th>
-                                  <th className="p-2">Ngày Vào Làm</th>
-                                  <th className="p-2">Ngày Nghỉ Việc</th>
-                                  <th className="p-2 text-right">Số Ngày Làm</th>
-                                  <th className="p-2 text-right">Sản Lượng TB</th>
-                                  <th className="p-2 text-right">Mức Lương TB</th>
-                                  <th className="p-2">Lý Do Nghỉ Việc</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
-                                {t.items.map(person => (
-                                  <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-750">
-                                    <td className="p-2 font-mono font-bold text-orange-600">{person.id}</td>
-                                    <td className="p-2 font-bold text-slate-900 dark:text-white">{person.ten}</td>
-                                    <td className="p-2">
-                                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {person.buuCuc}
-                                      </span>
-                                    </td>
-                                    <td className="p-2 font-mono text-slate-600 dark:text-slate-400">{person.ngayVaoLam}</td>
-                                    <td className="p-2 font-mono text-slate-600 dark:text-slate-400">{person.ngayNghiViec}</td>
-                                    <td className="p-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                                      {person.soNgayLam} ngày
-                                    </td>
-                                    <td className="p-2 text-right font-mono font-semibold">
-                                      {person.sanLuongTb} đơn/d
-                                    </td>
-                                    <td className="p-2 text-right font-mono font-bold text-emerald-600">
-                                      {person.mucLuongTb.toLocaleString('vi-VN')} đ
-                                    </td>
-                                    <td className="p-2">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                        person.nhomLyDo === 'Vi phạm kỷ luật & COD'
-                                          ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-                                          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                                      }`}>
-                                        {person.lyDoNghiViec}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 4: BẢNG KÊ CHI TIẾT 100% NHÂN SỰ NGHỈ VIỆC
-          ========================================================================= */}
-      {activeSubTab === 'detail_table' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 sm:p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <div>
-              <h3 className="font-extrabold text-sm uppercase tracking-wider flex items-center gap-2 text-slate-900 dark:text-white">
-                <FileText className="w-4 h-4 text-orange-600" />
-                Bảng Kê Chi Tiết Nhân Sự Nghỉ Việc ({filteredList.length} Bản Ghi)
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Hiển thị đầy đủ ngày vào làm, ngày kết thúc, số ngày làm cụ thể, sản lượng và mức lương bình quân
-              </p>
-            </div>
-
-            {/* Ô tìm kiếm nhanh */}
-            <div className="relative w-full sm:w-72">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm tên, mã NV, chức vụ, lý do..."
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-xl text-xs focus:ring-1 focus:ring-orange-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Table Container */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
-                <tr>
-                  <th className="p-2.5 text-center w-[4%]">STT</th>
-                  <th className="p-2.5 w-[8%]">Mã NV</th>
-                  <th className="p-2.5 w-[14%]">Họ và Tên</th>
-                  <th className="p-2.5 w-[13%]">Bưu Cục</th>
-                  <th className="p-2.5 w-[11%]">Thâm Niên</th>
-                  <th className="p-2.5 text-center w-[9%]">Ngày Vào</th>
-                  <th className="p-2.5 text-center w-[9%]">Ngày Nghỉ</th>
-                  <th className="p-2.5 text-right w-[9%]">Số Ngày Làm</th>
-                  <th className="p-2.5 text-right w-[8%]">Sản Lượng TB</th>
-                  <th className="p-2.5 text-right w-[9%]">Mức Lương TB</th>
-                  <th className="p-2.5 w-[15%]">Lý Do Nghỉ Việc</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                {paginatedList.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-8 text-xs text-slate-400 italic">
-                      Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedList.map((person, idx) => {
-                    const stt = (currentPage - 1) * pageSize + idx + 1;
-                    const isCod = person.nhomLyDo === 'Vi phạm kỷ luật & COD';
-                    return (
-                      <tr 
-                        key={person.id} 
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-750/70 transition-colors ${
-                          isCod ? 'bg-red-50/30 dark:bg-red-950/20' : ''
-                        }`}
-                      >
-                        <td className="p-2.5 text-center font-mono text-slate-400 font-bold">{stt}</td>
-                        <td className="p-2.5 font-mono font-bold text-orange-600 dark:text-orange-400">{person.id}</td>
-                        <td className="p-2.5">
-                          <div className="font-extrabold text-slate-900 dark:text-white">{person.ten}</div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{person.chucVu}</div>
-                        </td>
-                        <td className="p-2.5">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {person.buuCuc}
-                          </span>
-                        </td>
-                        <td className="p-2.5 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                          {person.nhomThamNien.split(':')[0]}
-                        </td>
-                        <td className="p-2.5 text-center font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                          {person.ngayVaoLam}
-                        </td>
-                        <td className="p-2.5 text-center font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                          {person.ngayNghiViec}
-                        </td>
-                        <td className="p-2.5 text-right font-mono font-bold">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                            {person.soNgayLam} ngày
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                          {person.sanLuongTb} <span className="text-[10px] text-slate-400 font-normal">đơn</span>
-                        </td>
-                        <td className="p-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          {person.mucLuongTb.toLocaleString('vi-VN')} đ
-                        </td>
-                        <td className="p-2.5">
-                          <div className={`text-[11px] font-medium line-clamp-2 ${
-                            isCod ? 'text-red-700 dark:text-red-400 font-bold' : 'text-slate-700 dark:text-slate-300'
-                          }`}>
-                            {person.lyDoNghiViec}
-                          </div>
-                          <div className="text-[9.5px] text-slate-400 mt-0.5">
-                            {person.nhomLyDo}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs">
-              <div className="text-slate-400 font-medium">
-                Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong> - <strong>{Math.min(currentPage * pageSize, filteredList.length)}</strong> trên tổng số <strong>{filteredList.length}</strong> nhân sự
-              </div>
-
-              <div className="flex items-center gap-1.5 self-center">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold"
-                >
-                  Trước
-                </button>
-                
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
-                      currentPage === page
-                        ? 'bg-orange-600 text-white shadow-xs'
-                        : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold"
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
-          )}
-
-        </div>
-      )}
 
     </div>
   );
