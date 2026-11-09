@@ -14,7 +14,8 @@ import {
   MessageSquare,
   ShieldCheck,
   Send,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,7 +26,9 @@ export const LoginScreen: React.FC = () => {
     sendZaloOtp, 
     verifyZaloOtp, 
     lockoutRemaining, 
-    failedAttempts 
+    failedAttempts,
+    logoutReason,
+    clearLogoutReason 
   } = useAuth();
 
   const [username, setUsername] = useState('');
@@ -46,7 +49,10 @@ export const LoginScreen: React.FC = () => {
   // Clear errors when switching modes or typing
   useEffect(() => {
     setErrorMessage(null);
-  }, [username, password, emailInput, phoneInput, otpInput, recoveryMode]);
+    if (logoutReason && (username || password || emailInput || phoneInput || otpInput)) {
+      clearLogoutReason();
+    }
+  }, [username, password, emailInput, phoneInput, otpInput, recoveryMode, logoutReason, clearLogoutReason]);
 
   const handleNormalLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +151,19 @@ export const LoginScreen: React.FC = () => {
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-900/90 rounded-md font-mono font-bold text-white text-sm border border-red-700">
                   <span>Đếm ngược: {lockoutRemaining}s</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Inactivity Logout Notice (Tự động đăng xuất sau 10 phút) */}
+          {logoutReason && (
+            <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-500/60 text-amber-200 text-xs flex items-start gap-2.5">
+              <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-300">HẾT HẠN PHIÊN THAO TÁC</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed">
+                  {logoutReason}
+                </p>
               </div>
             </div>
           )}

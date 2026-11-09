@@ -5,16 +5,20 @@ interface AuthContextType {
   currentUser: string | null;
   failedAttempts: number;
   lockoutRemaining: number;
+  logoutReason: string | null;
+  clearLogoutReason: () => void;
   login: (username: string, pass: string) => { success: boolean; error?: string };
   verifyEmail: (email: string) => { success: boolean; error?: string };
   sendZaloOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyZaloOtp: (enteredOtp: string) => { success: boolean; error?: string };
-  logout: () => void;
+  logout: (reason?: string) => void;
 }
 
 const AUTH_STORAGE_KEY = 'ghn_auth_session';
 const FAILED_ATTEMPTS_KEY = 'ghn_auth_failed_attempts';
 const LOCKOUT_KEY = 'ghn_auth_lockout_until';
+const LAST_ACTIVITY_KEY = 'ghn_auth_last_activity';
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút tự động đăng xuất nếu không có thao tác
 
 const VALID_USER = 'Huyamdnb';
 const VALID_PASS = '@Huycan95#';
@@ -185,12 +189,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  const logout = () => {
+  const [logoutReason, setLogoutReason] = useState<string | null>(null);
+
+  const clearLogoutReason = () => {
+    setLogoutReason(null);
+  };
+
+  const logout = (reason?: string) => {
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem('ghn_auth_user');
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
+    if (reason) {
+      setLogoutReason(reason);
+    }
   };
+
+  // Logic tự động đăng xuất sau 10 phút không thao tác (10-minute Idle Auto-Logout)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Cập nhật timestamp thao tác lúc bắt đầu
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    let lastRecorded = Date.now();
+
+    const handleUserActivity = () => {
+      const now = Date.now();
+      // Throttle cập nhật mỗi 5 giây để tối ưu tài nguyên
+      if (now - lastRecorded > 5000) {
+        lastRecorded = now;
+        localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+      }
+    };
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, handleUserActivity, { passive: true });
+    });
+
+    // Kiểm tra định kỳ mỗi 5 giây
+    const idleCheckInterval = setInterval(() => {
+      const savedStr = localStorage.getItem(LAST_ACTIVITY_KEY);
+      const lastAct = savedStr ? parseInt(savedStr, 10) : lastRecorded;
+      const elapsed = Date.now() - lastAct;
+
+      if (elapsed >= IDLE_TIMEOUT_MS) {
+        logout('Phiên làm việc đã tự động kết thúc do không có thao tác trong 10 phút. Vui lòng đăng nhập lại để tiếp tục.');
+      }
+    }, 5000);
+
+    return () => {
+      activityEvents.forEach(evt => {
+        window.removeEventListener(evt, handleUserActivity);
+      });
+      clearInterval(idleCheckInterval);
+    };
+  }, [isAuthenticated]);
 
   return (
     <AuthContext.Provider
@@ -199,6 +254,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         failedAttempts,
         lockoutRemaining,
+        logoutReason,
+        clearLogoutReason,
         login,
         verifyEmail,
         sendZaloOtp,
