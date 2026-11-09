@@ -98,7 +98,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         source: result.source,
         lastUpdated: nowStr,
         isSyncing: false,
-        error: result.error
+        error: result.error,
+        sheetStatuses: result.sheetStatuses
       });
     } catch (err: any) {
       setSyncStatus(prev => ({

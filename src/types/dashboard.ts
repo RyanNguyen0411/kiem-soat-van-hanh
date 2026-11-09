@@ -149,11 +149,23 @@ export interface DatasetState {
   nghiViec: NghiViecRecord[];
 }
 
-export interface SyncStatus {
+export type SheetHealthStatus = 'LIVE' | 'SNAPSHOT' | 'ERROR' | 'STALE' | 'LOADING';
+
+export interface SheetSyncDetail {
+  sheetName: string;
+  status: SheetHealthStatus;
   source: 'LIVE_SHEETS' | 'CACHED_SNAPSHOT';
+  lastUpdated: string;
+  rowCount: number;
+  error?: string | null;
+}
+
+export interface SyncStatus {
+  source: 'LIVE_SHEETS' | 'CACHED_SNAPSHOT' | 'HYBRID';
   lastUpdated: string;
   isSyncing: boolean;
   error: string | null;
+  sheetStatuses?: Record<string, SheetSyncDetail>;
 }
 
 export interface FilterOptions {

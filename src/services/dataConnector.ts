@@ -6,9 +6,21 @@ import type {
   BacklogGltRecord, 
   BacklogLcRecord,
   NhanSuRecord,
-  NghiViecRecord
+  NghiViecRecord,
+  SheetHealthStatus,
+  SheetSyncDetail
 } from '../types/dashboard';
-import { isValidDateDDMMYYYY } from '../utils/dateEngine';
+import { 
+  createHeaderReader,
+  lookupPostOffice,
+  normalizePostOfficeName,
+  normalizePostOfficeCode,
+  normalizeDate,
+  parseNumber,
+  normalizeStaffIdentity,
+  cleanVietnameseText,
+  stripVietnameseDiacritics
+} from '../utils/normalizationEngine';
 
 // Import audited local snapshots as safe fallback
 import gtcBuuCucSnapshot from '../data/snapshots/gtc_buu_cuc.json';
@@ -21,8 +33,9 @@ import nhanSuSnapshot from '../data/snapshots/nhan_su.json';
 import nghiViecSnapshot from '../data/snapshots/nghi_viec.json';
 import { SPREADSHEET_ID } from '../config/dashboard.config';
 
-// Re-export SPREADSHEET_ID from the single source of truth in dashboard.config
-export { SPREADSHEET_ID };
+// Re-exports
+export { SPREADSHEET_ID, normalizePostOfficeName, normalizePostOfficeCode, lookupPostOffice };
+export type { SheetHealthStatus, SheetSyncDetail };
 
 // Danh sách nhân sự bị loại bỏ khỏi 100% dữ liệu dashboard theo chỉ đạo của AM Huy (ĐNB)
 // Logic: Các nhân viên này không thuộc bất kỳ bưu cục nào thuộc AM Huy quản lý:
@@ -40,13 +53,7 @@ export const EXCLUDED_STAFF_IDS = new Set(['3175777', '3103251', '3183963']);
 
 export function normalizePersonName(name?: string): string {
   if (!name) return '';
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return stripVietnameseDiacritics(name);
 }
 
 const EXCLUDED_NORMALIZED_NAMES = EXCLUDED_STAFF_NAMES.map(n => normalizePersonName(n));
@@ -59,39 +66,6 @@ export function isExcludedStaff(nameOrRaw?: string, id?: string): boolean {
     if (norm.includes(ex)) return true;
   }
   return false;
-}
-
-// Chuẩn hóa tên Bưu cục khu vực Long An (ĐNB) - Đồng nhất hoàn toàn '(LAN) Cần Đước' vào '(LAN) Cần Đước 1'
-export function normalizePostOfficeName(bc?: string): string {
-  if (!bc) return '';
-  const trimmed = bc.trim();
-  // (LAN) Cần Đước 1 tên trước đây là (LAN) Cần Đước, mã bưu cục là 23220000
-  if (
-    trimmed === '(LAN) Cần Đước' || 
-    trimmed === 'Cần Đước' ||
-    trimmed === '(LAN) Cần Đước 1' ||
-    trimmed === 'Cần Đước 1' ||
-    trimmed.includes('Cần Đước') ||
-    trimmed === '2278' ||
-    trimmed === '23220000'
-  ) {
-    return '(LAN) Cần Đước 1';
-  }
-  return trimmed;
-}
-
-// Chuẩn hóa mã bưu cục - (LAN) Cần Đước 1 có mã bưu cục chuẩn duy nhất là 23220000
-export function normalizePostOfficeCode(code?: string, bcName?: string): string {
-  const trimmedCode = (code || '').trim();
-  const trimmedName = (bcName || '').trim();
-  if (
-    trimmedCode === '2278' || 
-    trimmedCode === '23220000' || 
-    trimmedName.includes('Cần Đước')
-  ) {
-    return '23220000';
-  }
-  return trimmedCode;
 }
 
 export const SHEET_NAMES = {
@@ -124,13 +98,8 @@ export function classifyResignationReason(reason?: string): string {
 
 function parseDateDDMMYYYYHelper(str?: string): Date | null {
   if (!str) return null;
-  const parts = str.trim().split('/');
-  if (parts.length !== 3) return null;
-  const d = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10) - 1;
-  const y = parseInt(parts[2], 10);
-  if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
-  return new Date(y, m, d);
+  const d = normalizeDate(str);
+  return d.isValid ? d.dateObj : null;
 }
 
 function getWeekNumberHelper(d: Date): number {
@@ -167,7 +136,7 @@ const benchmarkSalaryMap: Record<string, number> = {
   'G10: Trên 5 năm': 520000
 };
 
-function parseCSV(text: string): string[][] {
+export function parseCSV(text: string): string[][] {
   const lines: string[][] = [];
   let row: string[] = [];
   let inQuotes = false;
@@ -210,14 +179,6 @@ function parseCSV(text: string): string[][] {
   return lines;
 }
 
-function parseNum(val: any): number {
-  if (val === undefined || val === null || val === '') return 0;
-  if (typeof val === 'number') return val;
-  const cleaned = String(val).replace(/\./g, '').replace(/,/g, '.');
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
-}
-
 async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise<string> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const controller = new AbortController();
@@ -236,268 +197,533 @@ async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise
   }
 }
 
-export async function loadDataset(): Promise<{
+export interface DatasetLoadResult {
   data: DatasetState;
-  source: 'LIVE_SHEETS' | 'CACHED_SNAPSHOT';
+  source: 'LIVE_SHEETS' | 'CACHED_SNAPSHOT' | 'HYBRID';
   error: string | null;
-}> {
+  sheetStatuses: Record<string, SheetSyncDetail>;
+}
+
+export async function loadDataset(): Promise<DatasetLoadResult> {
+  const sheetStatuses: Record<string, SheetSyncDetail> = {};
+  const nowStr = new Date().toLocaleString('vi-VN');
+
+  // --------------------------------------------------------------------------
+  // 1. Sheet: GTC Bưu cục
+  // --------------------------------------------------------------------------
+  let gtcBuuCuc: GtcPostOfficeRecord[] = [];
   try {
-    // Attempt live fetch for all sheets
-    const [gtcBcText, gtcNvText, hhText, gltText, lcText, nhanSuText, nghiViecText] = await Promise.all([
-      fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC),
-      fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN),
-      fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY),
-      fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT),
-      fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC),
-      fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU),
-      fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC)
-    ]);
-
-    // 1. Parse GTC Bưu cục: Cột M (index 12)
-    // Phải đúng định dạng dd/mm/yyyy và bỏ Grand Total!
-    const gtcBcRows = parseCSV(gtcBcText).slice(1);
-    const gtcBuuCuc: GtcPostOfficeRecord[] = gtcBcRows
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Dữ liệu GTC Bưu cục trống');
+    
+    const reader = createHeaderReader(rows[0]);
+    gtcBuuCuc = rows.slice(1)
       .filter(r => {
-        const ngay = r[12];
-        if (!isValidDateDDMMYYYY(ngay)) return false;
-        if (!r[0] || r[0].toLowerCase() === 'grand total' || r[0].trim() === '') return false;
-        return true;
-      })
-      .map(r => ({
-        buuCuc: normalizePostOfficeName(r[0]),
-        loaiHang: r[1] || 'Chưa phân loại',
-        time: r[2] || '',
-        volume: parseNum(r[3]),
-        tiLeGan: r[4] || '0%',
-        tiLeGTC: r[5] || '0%',
-        tiLeChuyenTra: r[6] || '0%',
-        leadtime: parseNum(r[7]),
-        sldGan: parseNum(r[8]),
-        sldGTC: parseNum(r[9]),
-        tonDong: parseNum(r[10]),
-        ngay: r[12].trim(), // Cột M
-        thu: r[13] || ''
-      }));
-
-    // 2. Parse GTC Nhân viên: Cột J (index 9)
-    // Phải đúng định dạng dd/mm/yyyy
-    const gtcNvRows = parseCSV(gtcNvText).slice(1);
-    const gtcNhanVien: GtcEmployeeRecord[] = gtcNvRows
-      .filter(r => {
-        const ngay = r[9];
-        if (!isValidDateDDMMYYYY(ngay)) return false;
-        if (!r[0] || !r[1] || r[0].trim() === '' || r[1].trim() === '') return false;
-        const nvRaw = r[1] || '';
-        const parts = nvRaw.split('_');
-        const maNV = parts[0]?.trim() || '';
-        const tenNV = parts.slice(1).join('_').trim() || nvRaw;
-        if (isExcludedStaff(tenNV, maNV) || isExcludedStaff(nvRaw, maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
-        return true;
+        const bc = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
+        if (!bc || bc.toLowerCase() === 'grand total' || bc.trim() === '') return false;
+        const ngayRaw = reader.getCol(r, ['ngày', 'ngay', 'date']);
+        const d = normalizeDate(ngayRaw);
+        return d.isValid;
       })
       .map(r => {
-        const nvRaw = r[1];
-        const parts = nvRaw.split('_');
+        const buuCuc = normalizePostOfficeName(reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']));
+        const ngay = normalizeDate(reader.getCol(r, ['ngày', 'ngay', 'date'])).standard || '';
         return {
-          buuCuc: normalizePostOfficeName(r[0]),
-          nhanVienRaw: nvRaw,
-          maNV: parts[0]?.trim() || '',
-          tenNV: parts.slice(1).join('_').trim() || nvRaw,
-          ngayDisplay: r[2] || '',
-          tongDon: parseNum(r[3]),
-          tongDonGTC: parseNum(r[4]),
-          tiLeGTC: r[5] || '0%',
-          leadtime: parseNum(r[6]),
-          chuyenDi: parseNum(r[7]),
-          tonDong: parseNum(r[8]),
-          ngay: r[9].trim(), // Cột J
-          thu: r[10] || ''
+          buuCuc,
+          loaiHang: reader.getCol(r, ['loại hàng', 'loai hang', 'ca']) || 'Chưa phân loại',
+          time: reader.getCol(r, ['time', 'thời gian', 'thoi gian']),
+          volume: parseNumber(reader.getCol(r, ['volume', 'sản lượng']), { fallback: 0 }) || 0,
+          tiLeGan: reader.getCol(r, ['% gán', '% gan', 'tỷ lệ gán']) || '0%',
+          tiLeGTC: reader.getCol(r, ['% gtc', '%gtc', 'tỷ lệ gtc']) || '0%',
+          tiLeChuyenTra: reader.getCol(r, ['% chuyển trả', '% chuyen tra', 'tỷ lệ trả hàng']) || '0%',
+          leadtime: parseNumber(reader.getCol(r, ['leadtime', 'lead time']), { fallback: 0 }) || 0,
+          sldGan: parseNumber(reader.getCol(r, ['slđ gán', 'sld gan', 'đơn gán']), { fallback: 0 }) || 0,
+          sldGTC: parseNumber(reader.getCol(r, ['slđ gtc', 'sld gtc', 'đơn gtc']), { fallback: 0 }) || 0,
+          tonDong: parseNumber(reader.getCol(r, ['tồn đọng', 'ton dong', 'tồn']), { fallback: 0 }) || 0,
+          ngay,
+          thu: reader.getCol(r, ['thứ', 'thu']) || ''
         };
       });
 
-    // 3. Parse Hoa hồng ngày: Cột R (index 17)
-    // Phải đúng định dạng dd/mm/yyyy
-    const hhRows = parseCSV(hhText).slice(1);
-    const hoaHongNgay: DailySalaryRecord[] = hhRows
+    sheetStatuses[SHEET_NAMES.GTC_BUU_CUC] = {
+      sheetName: SHEET_NAMES.GTC_BUU_CUC,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: gtcBuuCuc.length,
+      error: null
+    };
+  } catch (err: any) {
+    gtcBuuCuc = (gtcBuuCucSnapshot as GtcPostOfficeRecord[]).map(r => ({
+      ...r,
+      buuCuc: normalizePostOfficeName(r.buuCuc)
+    }));
+    sheetStatuses[SHEET_NAMES.GTC_BUU_CUC] = {
+      sheetName: SHEET_NAMES.GTC_BUU_CUC,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: gtcBuuCuc.length,
+      error: err.message
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. Sheet: GTC Nhân viên
+  // --------------------------------------------------------------------------
+  let gtcNhanVien: GtcEmployeeRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Dữ liệu GTC Nhân viên trống');
+
+    const reader = createHeaderReader(rows[0]);
+    const dateColIndices = reader.getAllIndices(['ngày', 'ngay']);
+
+    gtcNhanVien = rows.slice(1)
       .filter(r => {
-        const ngay = r[17];
-        if (!isValidDateDDMMYYYY(ngay)) return false;
-        if (!r[0] || r[0].trim() === '') return false;
-        const nvRaw = r[0] || '';
-        const nvParts = nvRaw.split('-');
-        const maNV = nvParts[0]?.trim() || '';
-        const tenNV = nvParts.slice(1).join('-').trim() || nvRaw;
-        if (isExcludedStaff(tenNV, maNV) || isExcludedStaff(nvRaw, maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
+        const bc = reader.getCol(r, ['bưu cục', 'buu cuc']);
+        const nvRaw = reader.getCol(r, ['nhân viên', 'nhan vien']);
+        if (!bc || !nvRaw) return false;
+        
+        let validDate = false;
+        for (const idx of dateColIndices) {
+          if (normalizeDate(r[idx]).isValid) {
+            validDate = true;
+            break;
+          }
+        }
+        if (!validDate) return false;
+
+        const staff = normalizeStaffIdentity(nvRaw);
+        if (isExcludedStaff(staff.tenNV, staff.maNV) || staff.tenNV.includes('Trần Trọng Phú')) return false;
         return true;
       })
       .map(r => {
-        const nvRaw = r[0];
-        const nvParts = nvRaw.split('-');
-        const bcRaw = r[1] || '';
-        const bcParts = bcRaw.split('-');
-        const rawBc = bcParts.slice(1).join('-').trim() || bcRaw;
-        const tenBC = normalizePostOfficeName(rawBc);
-        const maBC = normalizePostOfficeCode(bcParts[0]?.trim() || '', tenBC);
+        const nvRaw = reader.getCol(r, ['nhân viên', 'nhan vien']);
+        const staff = normalizeStaffIdentity(nvRaw);
+        
+        // Find standard DD/MM/YYYY date and display date
+        let standardDate = '';
+        let displayDate = '';
+        for (const idx of dateColIndices) {
+          const norm = normalizeDate(r[idx]);
+          if (norm.isValid && !standardDate) {
+            standardDate = norm.standard || '';
+          }
+          if (r[idx] && r[idx].includes('thg') && !displayDate) {
+            displayDate = r[idx].trim();
+          }
+        }
+        if (!displayDate) displayDate = standardDate;
+
+        return {
+          buuCuc: normalizePostOfficeName(reader.getCol(r, ['bưu cục', 'buu cuc'])),
+          nhanVienRaw: nvRaw,
+          maNV: staff.maNV,
+          tenNV: staff.tenNV,
+          ngayDisplay: displayDate,
+          tongDon: parseNumber(reader.getCol(r, ['tổng đơn', 'tong don']), { fallback: 0 }) || 0,
+          tongDonGTC: parseNumber(reader.getCol(r, ['tổng đơn gtc', 'tong don gtc']), { fallback: 0 }) || 0,
+          tiLeGTC: reader.getCol(r, ['%gtc', '% gtc']) || '0%',
+          leadtime: parseNumber(reader.getCol(r, ['lead time', 'leadtime']), { fallback: 0 }) || 0,
+          chuyenDi: parseNumber(reader.getCol(r, ['chuyến đi', 'chuyen di']), { fallback: 0 }) || 0,
+          tonDong: parseNumber(reader.getCol(r, ['tồn đọng', 'ton dong']), { fallback: 0 }) || 0,
+          ngay: standardDate,
+          thu: reader.getCol(r, ['thứ', 'thu']) || ''
+        };
+      });
+
+    sheetStatuses[SHEET_NAMES.GTC_NHAN_VIEN] = {
+      sheetName: SHEET_NAMES.GTC_NHAN_VIEN,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: gtcNhanVien.length,
+      error: null
+    };
+  } catch (err: any) {
+    gtcNhanVien = (gtcNhanVienSnapshot as GtcEmployeeRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
+      .map(r => ({
+        ...r,
+        buuCuc: normalizePostOfficeName(r.buuCuc)
+      }));
+    sheetStatuses[SHEET_NAMES.GTC_NHAN_VIEN] = {
+      sheetName: SHEET_NAMES.GTC_NHAN_VIEN,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: gtcNhanVien.length,
+      error: err.message
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 3. Sheet: Hoa hồng ngày
+  // --------------------------------------------------------------------------
+  let hoaHongNgay: DailySalaryRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Dữ liệu Hoa hồng ngày trống');
+
+    const reader = createHeaderReader(rows[0]);
+    hoaHongNgay = rows.slice(1)
+      .filter(r => {
+        const nvRaw = reader.getCol(r, ['nhân viên', 'nhan vien']);
+        if (!nvRaw) return false;
+        const ngayRaw = reader.getCol(r, ['ngày', 'ngay', 'date']);
+        const d = normalizeDate(ngayRaw);
+        if (!d.isValid) return false;
+
+        const staff = normalizeStaffIdentity(nvRaw);
+        if (isExcludedStaff(staff.tenNV, staff.maNV) || staff.tenNV.includes('Trần Trọng Phú')) return false;
+        return true;
+      })
+      .map(r => {
+        const nvRaw = reader.getCol(r, ['nhân viên', 'nhan vien']);
+        const staff = normalizeStaffIdentity(nvRaw);
+        const bcRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
+        const postOfficeMeta = lookupPostOffice(bcRaw);
+        const tenBC = postOfficeMeta.standardName;
+        const maBC = postOfficeMeta.standardCode;
         const buuCucRaw = tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : bcRaw;
+        const ngay = normalizeDate(reader.getCol(r, ['ngày', 'ngay', 'date'])).standard || '';
+
         return {
           nhanVienRaw: nvRaw,
-          maNV: nvParts[0]?.trim() || '',
-          tenNV: nvParts.slice(1).join('-').trim() || nvRaw,
+          maNV: staff.maNV,
+          tenNV: staff.tenNV,
           buuCucRaw,
           maBC,
           tenBC,
-          vung: r[2] || '',
-          ngayVaoLam: r[3] || '',
-          thamNien: r[4] || '',
-          thoiGian: r[5] || '',
-          soDonGanGiao: parseNum(r[6]),
-          soDonGanLay: parseNum(r[7]),
-          donGiaoTinhLuong: parseNum(r[8]),
-          giaoTbNgay: parseNum(r[9]),
-          donLayTinhLuong: parseNum(r[10]),
-          layTbNgay: parseNum(r[11]),
-          soNgayDiLam: parseNum(r[12]),
-          luongHHNgay: parseNum(r[13]),
-          tongLuong: parseNum(r[14]),
-          luongDamBao: parseNum(r[15]),
-          ngay: r[17].trim(), // Cột R
-          thu: r[18] || ''
+          vung: reader.getCol(r, ['vùng', 'vung', 'khu vực']) || '',
+          ngayVaoLam: reader.getCol(r, ['ngày vào làm', 'ngay vao lam']) || '',
+          thamNien: reader.getCol(r, ['thâm niên', 'tham nien']) || '',
+          thoiGian: reader.getCol(r, ['thời gian', 'thoi gian', 'time']) || '',
+          soDonGanGiao: parseNumber(reader.getCol(r, ['số đơn gán giao', 'so don gan giao']), { fallback: 0 }) || 0,
+          soDonGanLay: parseNumber(reader.getCol(r, ['số đơn gán lấy', 'so don gan lay']), { fallback: 0 }) || 0,
+          donGiaoTinhLuong: parseNumber(reader.getCol(r, ['đơn giao tính lương', 'don giao tinh luong']), { fallback: 0 }) || 0,
+          giaoTbNgay: parseNumber(reader.getCol(r, ['giao tb/ngày', 'giao tb/ngay']), { fallback: 0 }) || 0,
+          donLayTinhLuong: parseNumber(reader.getCol(r, ['đơn lấy tính lương', 'don lay tinh luong']), { fallback: 0 }) || 0,
+          layTbNgay: parseNumber(reader.getCol(r, ['lấy tb/ngày', 'lay tb/ngay']), { fallback: 0 }) || 0,
+          soNgayDiLam: parseNumber(reader.getCol(r, ['số ngày đi làm', 'so ngay di lam']), { fallback: 0 }) || 0,
+          luongHHNgay: parseNumber(reader.getCol(r, ['lương hh/ ngày', 'luong hh/ ngay', 'hoa hồng ngày']), { fallback: 0 }) || 0,
+          tongLuong: parseNumber(reader.getCol(r, ['tổng lương', 'tong luong', 'lương tổng']), { fallback: 0 }) || 0,
+          luongDamBao: parseNumber(reader.getCol(r, ['lương đảm bảo', 'luong dam bao']), { fallback: 0 }) || 0,
+          ngay,
+          thu: reader.getCol(r, ['thứ', 'thu']) || ''
         };
       });
 
-    // 4. Parse Tồn đọng GLT
-    const gltRows = parseCSV(gltText).slice(1);
-    const tonDongGlt: BacklogGltRecord[] = gltRows
-      .filter(r => r[0] && r[2] && r[0].trim() !== '')
+    sheetStatuses[SHEET_NAMES.HOA_HONG_NGAY] = {
+      sheetName: SHEET_NAMES.HOA_HONG_NGAY,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: hoaHongNgay.length,
+      error: null
+    };
+  } catch (err: any) {
+    hoaHongNgay = (hoaHongNgaySnapshot as DailySalaryRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
       .map(r => {
-        const buuCuc = normalizePostOfficeName(r[0]);
-        const maBC = normalizePostOfficeCode(r[1] || '', buuCuc);
+        const postOfficeMeta = lookupPostOffice({ code: r.maBC, name: r.tenBC });
+        const tenBC = postOfficeMeta.standardName;
         return {
-          buuCuc,
-          maBC,
-          maDonHang: r[2],
-          loaiDon: r[3] || 'Khác',
-          khachHang: r[4] || 'OTHER',
-          phuongXa: r[5] || '',
-          trangThai: r[6] || '',
-          thoiGianTonDong: r[7] || '',
-          canhBao: r[8] || ''
-        };
-      });
-
-    // 5. Parse Tồn đọng LC
-    const lcRows = parseCSV(lcText).slice(1);
-    const tonDongLc: BacklogLcRecord[] = lcRows
-      .filter(r => r[0] && r[2] && r[0].trim() !== '')
-      .map(r => {
-        const tenBC = normalizePostOfficeName(r[0]);
-        const maBC = normalizePostOfficeCode(r[1] || '', tenBC);
-        return {
+          ...r,
           tenBC,
-          maBC,
-          maDonHang: r[2],
-          loaiDon: r[3] || 'Luân chuyển',
-          khachHang: r[4] || 'OTHER',
-          trangThai: r[5] || '',
-          thoiGianTonDong: r[6] || '',
-          canhBao: r[7] || ''
+          maBC: postOfficeMeta.standardCode,
+          buuCucRaw: tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      });
+    sheetStatuses[SHEET_NAMES.HOA_HONG_NGAY] = {
+      sheetName: SHEET_NAMES.HOA_HONG_NGAY,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: hoaHongNgay.length,
+      error: err.message
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 4. Sheet: Tồn đọng GLT
+  // --------------------------------------------------------------------------
+  let tonDongGlt: BacklogGltRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng GLT trống');
+
+    const reader = createHeaderReader(rows[0]);
+    tonDongGlt = rows.slice(1)
+      .filter(r => {
+        const bc = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
+        const orderId = reader.getCol(r, ['mã đơn hàng', 'ma don hang']);
+        return Boolean(bc && orderId);
+      })
+      .map(r => {
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
+        const meta = lookupPostOffice(buuCucRaw);
+        return {
+          buuCuc: meta.standardName,
+          maBC: meta.standardCode,
+          maDonHang: cleanVietnameseText(reader.getCol(r, ['mã đơn hàng', 'ma don hang'])),
+          loaiDon: reader.getCol(r, ['loại đơn', 'loai don']) || 'Khác',
+          khachHang: reader.getCol(r, ['khách hàng', 'khach hang']) || 'OTHER',
+          phuongXa: reader.getCol(r, ['phường/xã', 'phuong/xa']) || '',
+          trangThai: reader.getCol(r, ['trạng thái', 'trang thai']) || '',
+          thoiGianTonDong: reader.getCol(r, ['thời gian tồn đọng', 'thoi gian ton dong']) || '',
+          canhBao: reader.getCol(r, ['cảnh báo', 'canh bao']) || ''
         };
       });
 
-    // 6. Parse Nhân sự: Sheet 'Nhân sự' (bao gồm 3175777 Trần Trọng Phú đảm nhiệm vị trí NVXL Tầm Vu)
-    const nhanSuRows = parseCSV(nhanSuText).slice(1);
-    const nhanSu: NhanSuRecord[] = nhanSuRows
+    sheetStatuses[SHEET_NAMES.TON_DONG_GLT] = {
+      sheetName: SHEET_NAMES.TON_DONG_GLT,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: tonDongGlt.length,
+      error: null
+    };
+  } catch (err: any) {
+    tonDongGlt = (tonDongGltSnapshot as BacklogGltRecord[]).map(r => {
+      const meta = lookupPostOffice({ code: r.maBC, name: r.buuCuc });
+      return {
+        ...r,
+        buuCuc: meta.standardName,
+        maBC: meta.standardCode
+      };
+    });
+    sheetStatuses[SHEET_NAMES.TON_DONG_GLT] = {
+      sheetName: SHEET_NAMES.TON_DONG_GLT,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: tonDongGlt.length,
+      error: err.message
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 5. Sheet: Tồn đọng LC
+  // --------------------------------------------------------------------------
+  let tonDongLc: BacklogLcRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng LC trống');
+
+    const reader = createHeaderReader(rows[0]);
+    tonDongLc = rows.slice(1)
       .filter(r => {
-        if (!r[0] || r[0].trim() === '') return false;
-        const maNV = r[0].trim();
-        const tenNV = (r[1] || '').trim();
+        const bc = reader.getCol(r, ['tên bc', 'ten bc', 'bưu cục', 'buu cuc']);
+        const orderId = reader.getCol(r, ['mã đơn hàng', 'ma don hang']);
+        return Boolean(bc && orderId);
+      })
+      .map(r => {
+        const bcRaw = reader.getCol(r, ['tên bc', 'ten bc', 'bưu cục', 'buu cuc']);
+        const meta = lookupPostOffice(bcRaw);
+        return {
+          tenBC: meta.standardName,
+          maBC: meta.standardCode,
+          maDonHang: cleanVietnameseText(reader.getCol(r, ['mã đơn hàng', 'ma don hang'])),
+          loaiDon: reader.getCol(r, ['loại đơn', 'loai don']) || 'Luân chuyển',
+          khachHang: reader.getCol(r, ['khách hàng', 'khach hang']) || 'OTHER',
+          trangThai: reader.getCol(r, ['trạng thái', 'trang thai']) || '',
+          thoiGianTonDong: reader.getCol(r, ['thời gian tồn đọng', 'thoi gian ton dong']) || '',
+          canhBao: reader.getCol(r, ['cảnh báo', 'canh bao']) || ''
+        };
+      });
+
+    sheetStatuses[SHEET_NAMES.TON_DONG_LC] = {
+      sheetName: SHEET_NAMES.TON_DONG_LC,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: tonDongLc.length,
+      error: null
+    };
+  } catch (err: any) {
+    tonDongLc = (tonDongLcSnapshot as BacklogLcRecord[]).map(r => {
+      const meta = lookupPostOffice({ code: r.maBC, name: r.tenBC });
+      return {
+        ...r,
+        tenBC: meta.standardName,
+        maBC: meta.standardCode
+      };
+    });
+    sheetStatuses[SHEET_NAMES.TON_DONG_LC] = {
+      sheetName: SHEET_NAMES.TON_DONG_LC,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: tonDongLc.length,
+      error: err.message
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 6. Sheet: Tỷ lệ trả hàng (Xác nhận trong dữ liệu thực tế chỉ có header, 0 data)
+  // --------------------------------------------------------------------------
+  let tyLeTraHang: any[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.TY_LE_TRA_HANG);
+    const rows = parseCSV(text);
+    if (rows.length <= 1) {
+      sheetStatuses[SHEET_NAMES.TY_LE_TRA_HANG] = {
+        sheetName: SHEET_NAMES.TY_LE_TRA_HANG,
+        status: 'SNAPSHOT',
+        source: 'CACHED_SNAPSHOT',
+        lastUpdated: nowStr,
+        rowCount: 0,
+        error: 'Nguồn Google Sheets chỉ có dòng header, 0 bản ghi số liệu.'
+      };
+    } else {
+      tyLeTraHang = rows.slice(1);
+      sheetStatuses[SHEET_NAMES.TY_LE_TRA_HANG] = {
+        sheetName: SHEET_NAMES.TY_LE_TRA_HANG,
+        status: 'LIVE',
+        source: 'LIVE_SHEETS',
+        lastUpdated: nowStr,
+        rowCount: tyLeTraHang.length,
+        error: null
+      };
+    }
+  } catch (err: any) {
+    tyLeTraHang = tyLeTraHangSnapshot as any[];
+    sheetStatuses[SHEET_NAMES.TY_LE_TRA_HANG] = {
+      sheetName: SHEET_NAMES.TY_LE_TRA_HANG,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: 0,
+      error: 'Google Sheets chưa có dữ liệu; hệ thống sử dụng trường % Chuyển trả từ GTC Bưu cục.'
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 7. Sheet: Nhân sự
+  // --------------------------------------------------------------------------
+  let nhanSu: NhanSuRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Sheet Nhân sự trống');
+
+    const reader = createHeaderReader(rows[0]);
+    nhanSu = rows.slice(1)
+      .filter(r => {
+        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên']);
+        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv']);
+        if (!maNV) return false;
         if (isExcludedStaff(tenNV, maNV)) return false;
         return true;
       })
       .map(r => {
-        const maNV = r[0].trim();
-        const tenNV = (r[1] || '').trim();
-        const chucVu = (r[2] || '').trim();
-        const ngayVaoLamText = (r[3] || '').trim();
-        const ngayNghiViecText = (r[4] || '').trim();
-        const trangThai = (r[5] || '').trim();
-        const buuCucRaw = (r[6] || '').trim();
-        const rawBcName = buuCucRaw.includes('-') ? buuCucRaw.split('-').slice(1).join('-').trim() : buuCucRaw;
-        const buuCuc = normalizePostOfficeName(rawBcName);
-        const stdBuuCucRaw = buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
-        const zone = (r[7] || '').trim();
-        const am = (r[8] || '').trim();
-        const loaiHD = (r[9] || '').trim();
-        const tinh = (r[10] || '').trim();
-        const vung = (r[11] || '').trim();
-        const nhomThamNien = (r[12] || '').trim();
-        const ngayVaoLam = (r[13] || '').trim();
+        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên']);
+        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv']);
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'kho']);
+        const meta = lookupPostOffice(buuCucRaw);
+        const stdBuuCucRaw = meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
 
         return {
           maNV,
           tenNV,
-          chucVu,
-          ngayVaoLamText,
-          ngayNghiViecText,
-          trangThai,
+          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu']),
+          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm']),
+          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc']),
+          trangThai: reader.getCol(r, ['trạng thái', 'trang thai']),
           buuCucRaw: stdBuuCucRaw,
-          buuCuc,
-          zone,
-          am,
-          loaiHD,
-          tinh,
-          vung,
-          nhomThamNien,
-          ngayVaoLam
+          buuCuc: meta.standardName,
+          zone: reader.getCol(r, ['zone', 'khu vực']),
+          am: reader.getCol(r, ['am', 'quản lý']),
+          loaiHD: reader.getCol(r, ['loại hđ', 'loai hd']),
+          tinh: reader.getCol(r, ['tỉnh', 'tinh']),
+          vung: reader.getCol(r, ['vùng', 'vung']),
+          nhomThamNien: reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien']),
+          ngayVaoLam: normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam'])).standard || ''
         };
       });
 
-    // Lookups for performance and salary matching
-    const gtcPerfMap: Record<string, { totalDon: number; days: number }> = {};
-    gtcNhanVien.forEach(r => {
-      const id = r.maNV;
-      if (!gtcPerfMap[id]) gtcPerfMap[id] = { totalDon: 0, days: 0 };
-      gtcPerfMap[id].totalDon += (r.tongDon || 0);
-      gtcPerfMap[id].days += 1;
-    });
+    sheetStatuses[SHEET_NAMES.NHAN_SU] = {
+      sheetName: SHEET_NAMES.NHAN_SU,
+      status: 'LIVE',
+      source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: nhanSu.length,
+      error: null
+    };
+  } catch (err: any) {
+    nhanSu = (nhanSuSnapshot as NhanSuRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV, r.maNV))
+      .map(r => {
+        const meta = lookupPostOffice(r.buuCuc);
+        return {
+          ...r,
+          buuCuc: meta.standardName,
+          buuCucRaw: meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      });
+    sheetStatuses[SHEET_NAMES.NHAN_SU] = {
+      sheetName: SHEET_NAMES.NHAN_SU,
+      status: 'SNAPSHOT',
+      source: 'CACHED_SNAPSHOT',
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: nhanSu.length,
+      error: err.message
+    };
+  }
 
-    const hhSalaryMap: Record<string, { totalSalary: number; days: number }> = {};
-    hoaHongNgay.forEach(r => {
-      const id = r.maNV;
-      if (!hhSalaryMap[id]) hhSalaryMap[id] = { totalSalary: 0, days: 0 };
-      hhSalaryMap[id].totalSalary += (r.tongLuong || r.luongHHNgay || 0);
-      hhSalaryMap[id].days += 1;
-    });
+  // Lookups for performance and salary cross-referencing
+  const gtcPerfMap: Record<string, { totalDon: number; days: number }> = {};
+  gtcNhanVien.forEach(r => {
+    const id = r.maNV;
+    if (!gtcPerfMap[id]) gtcPerfMap[id] = { totalDon: 0, days: 0 };
+    gtcPerfMap[id].totalDon += (r.tongDon || 0);
+    gtcPerfMap[id].days += 1;
+  });
 
-    // 7. Parse Nghỉ việc: Sheet 'Nghỉ việc'
-    const nghiViecRows = parseCSV(nghiViecText).slice(1);
-    const nghiViec: NghiViecRecord[] = nghiViecRows
+  const hhSalaryMap: Record<string, { totalSalary: number; days: number }> = {};
+  hoaHongNgay.forEach(r => {
+    const id = r.maNV;
+    if (!hhSalaryMap[id]) hhSalaryMap[id] = { totalSalary: 0, days: 0 };
+    hhSalaryMap[id].totalSalary += (r.tongLuong || r.luongHHNgay || 0);
+    hhSalaryMap[id].days += 1;
+  });
+
+  // --------------------------------------------------------------------------
+  // 8. Sheet: Nghỉ việc
+  // --------------------------------------------------------------------------
+  let nghiViec: NghiViecRecord[] = [];
+  try {
+    const text = await fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC);
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('Sheet Nghỉ việc trống');
+
+    const reader = createHeaderReader(rows[0]);
+    nghiViec = rows.slice(1)
       .filter(r => {
-        if (!r[0] || r[0].trim() === '') return false;
-        const id = r[0].trim();
-        const ten = (r[1] || '').trim();
+        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id']);
+        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten']);
+        if (!id) return false;
         if (isExcludedStaff(ten, id)) return false;
         return true;
       })
       .map(r => {
-        const id = r[0].trim();
-        const ten = (r[1] || '').trim();
-        const ngayVaoLamText = (r[2] || '').trim();
-        const ngayNghiViecText = (r[3] || '').trim();
-        const chucVu = (r[4] || '').trim();
-        const buuCucRaw = (r[5] || '').trim();
-        const rawBcName = buuCucRaw.includes('-') ? buuCucRaw.split('-').slice(1).join('-').trim() : buuCucRaw;
-        const rawBcCode = buuCucRaw.includes('-') ? buuCucRaw.split('-')[0].trim() : '';
-        const buuCuc = normalizePostOfficeName(rawBcName);
-        const maBC = normalizePostOfficeCode(rawBcCode, buuCuc);
-        const stdBuuCucRaw = buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
-        const section = (r[6] || 'Zone Tay Ninh').trim();
-        const am = (r[7] || 'Nguyễn Hoàng Huy').trim();
-        const lyDoNghiViec = (r[8] || '').trim();
+        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id']);
+        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten']);
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc']);
+        const meta = lookupPostOffice(buuCucRaw);
+        const stdBuuCucRaw = meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
+        const lyDoNghiViec = reader.getCol(r, ['lý do nghỉ việc', 'ly do nghi viec']);
         const nhomLyDo = classifyResignationReason(lyDoNghiViec);
-        const nhomThamNien = (r[9] || '').trim();
-        const ngayLamViecCuoi = (r[10] || '').trim();
-        const ngayVaoLam = (r[11] || '').trim();
-        const ngayNghiViec = (r[12] || '').trim();
+        const nhomThamNien = reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien']);
+        const ngayVaoLam = normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam'])).standard || '';
+        const ngayNghiViec = normalizeDate(reader.getCol(r, ['ngày nghỉ việc', 'ngay nghi viec'])).standard || '';
 
         const dStart = parseDateDDMMYYYYHelper(ngayVaoLam);
         const dEnd = parseDateDDMMYYYYHelper(ngayNghiViec);
@@ -509,7 +735,6 @@ export async function loadDataset(): Promise<{
         const perf = gtcPerfMap[id];
         const sal = hhSalaryMap[id];
         const isRealtimeLog = Boolean(perf || sal);
-
         const sanLuongTb = perf && perf.days > 0 ? Math.round(perf.totalDon / perf.days) : (benchmarkVolMap[nhomThamNien] || 85);
         const mucLuongTb = sal && sal.days > 0 ? Math.round(sal.totalSalary / sal.days) : (benchmarkSalaryMap[nhomThamNien] || 320000);
 
@@ -527,18 +752,18 @@ export async function loadDataset(): Promise<{
         return {
           id,
           ten,
-          ngayVaoLamText,
-          ngayNghiViecText,
-          chucVu,
+          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm']),
+          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc']),
+          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu']),
           buuCucRaw: stdBuuCucRaw,
-          buuCuc,
-          maBC,
-          section,
-          am,
+          buuCuc: meta.standardName,
+          maBC: meta.standardCode,
+          section: reader.getCol(r, ['zone', 'section']) || 'Zone Tay Ninh',
+          am: reader.getCol(r, ['am', 'quản lý']) || 'Nguyễn Hoàng Huy',
           lyDoNghiViec,
           nhomLyDo,
           nhomThamNien,
-          ngayLamViecCuoi,
+          ngayLamViecCuoi: reader.getCol(r, ['ngày làm việc cuối', 'ngay lam viec cuoi']),
           ngayVaoLam,
           ngayNghiViec,
           soNgayLam,
@@ -551,88 +776,70 @@ export async function loadDataset(): Promise<{
         };
       });
 
-    return {
-      data: {
-        gtcBuuCuc,
-        gtcNhanVien,
-        hoaHongNgay,
-        tyLeTraHang: [],
-        tonDongGlt,
-        tonDongLc,
-        nhanSu,
-        nghiViec
-      },
+    sheetStatuses[SHEET_NAMES.NGHI_VIEC] = {
+      sheetName: SHEET_NAMES.NGHI_VIEC,
+      status: 'LIVE',
       source: 'LIVE_SHEETS',
+      lastUpdated: nowStr,
+      rowCount: nghiViec.length,
       error: null
     };
-
   } catch (err: any) {
-    console.warn('Live Google Sheets fetch failed. Using validated snapshot:', err.message);
-    
-    return {
-      data: {
-        gtcBuuCuc: (gtcBuuCucSnapshot as GtcPostOfficeRecord[]).map(r => ({
+    nghiViec = (nghiViecSnapshot as NghiViecRecord[])
+      .filter(r => !isExcludedStaff(r.ten, r.id))
+      .map(r => {
+        const meta = lookupPostOffice(r.buuCuc);
+        return {
           ...r,
-          buuCuc: normalizePostOfficeName(r.buuCuc)
-        })),
-        gtcNhanVien: (gtcNhanVienSnapshot as GtcEmployeeRecord[])
-          .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
-          .map(r => ({
-            ...r,
-            buuCuc: normalizePostOfficeName(r.buuCuc)
-          })),
-        hoaHongNgay: (hoaHongNgaySnapshot as DailySalaryRecord[])
-          .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
-          .map(r => {
-            const tenBC = normalizePostOfficeName(r.tenBC);
-            return {
-              ...r,
-              tenBC,
-              maBC: normalizePostOfficeCode(r.maBC, tenBC),
-              buuCucRaw: tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
-            };
-          }),
-        tyLeTraHang: tyLeTraHangSnapshot as any[],
-        tonDongGlt: (tonDongGltSnapshot as BacklogGltRecord[]).map(r => {
-          const buuCuc = normalizePostOfficeName(r.buuCuc);
-          return {
-            ...r,
-            buuCuc,
-            maBC: normalizePostOfficeCode(r.maBC, buuCuc)
-          };
-        }),
-        tonDongLc: (tonDongLcSnapshot as BacklogLcRecord[]).map(r => {
-          const tenBC = normalizePostOfficeName(r.tenBC);
-          return {
-            ...r,
-            tenBC,
-            maBC: normalizePostOfficeCode(r.maBC, tenBC)
-          };
-        }),
-        nhanSu: (nhanSuSnapshot as NhanSuRecord[])
-          .filter(r => !isExcludedStaff(r.tenNV, r.maNV))
-          .map(r => {
-            const buuCuc = normalizePostOfficeName(r.buuCuc);
-            return {
-              ...r,
-              buuCuc,
-              buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
-            };
-          }),
-        nghiViec: (nghiViecSnapshot as NghiViecRecord[])
-          .filter(r => !isExcludedStaff(r.ten, r.id))
-          .map(r => {
-            const buuCuc = normalizePostOfficeName(r.buuCuc);
-            return {
-              ...r,
-              buuCuc,
-              maBC: normalizePostOfficeCode(r.maBC, buuCuc),
-              buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
-            };
-          })
-      },
+          buuCuc: meta.standardName,
+          maBC: meta.standardCode,
+          buuCucRaw: meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      });
+    sheetStatuses[SHEET_NAMES.NGHI_VIEC] = {
+      sheetName: SHEET_NAMES.NGHI_VIEC,
+      status: 'SNAPSHOT',
       source: 'CACHED_SNAPSHOT',
-      error: `Không thể kết nối trực tiếp đến Google Sheets (${err.message}). Hệ thống đang hiển thị dữ liệu kiểm toán snapshot gần nhất.`
+      lastUpdated: 'Snapshot kiểm toán',
+      rowCount: nghiViec.length,
+      error: err.message
     };
   }
+
+  // --------------------------------------------------------------------------
+  // Determine overall status & source
+  // --------------------------------------------------------------------------
+  const allStatuses = Object.values(sheetStatuses);
+  const liveCount = allStatuses.filter(s => s.status === 'LIVE').length;
+  const snapshotCount = allStatuses.filter(s => s.status === 'SNAPSHOT').length;
+
+  let overallSource: 'LIVE_SHEETS' | 'CACHED_SNAPSHOT' | 'HYBRID' = 'HYBRID';
+  if (liveCount === allStatuses.length) {
+    overallSource = 'LIVE_SHEETS';
+  } else if (snapshotCount === allStatuses.length) {
+    overallSource = 'CACHED_SNAPSHOT';
+  } else {
+    overallSource = 'HYBRID';
+  }
+
+  const failedSheets = allStatuses.filter(s => s.status === 'SNAPSHOT' && s.error && !s.error.includes('header'));
+  const overallError = failedSheets.length > 0 
+    ? `${failedSheets.length} sheet sử dụng snapshot an toàn (${failedSheets.map(s => s.sheetName).join(', ')})`
+    : null;
+
+  return {
+    data: {
+      gtcBuuCuc,
+      gtcNhanVien,
+      hoaHongNgay,
+      tyLeTraHang,
+      tonDongGlt,
+      tonDongLc,
+      nhanSu,
+      nghiViec
+    },
+    source: overallSource,
+    error: overallError,
+    sheetStatuses
+  };
 }
