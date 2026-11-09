@@ -38,7 +38,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  Legend
+  Legend,
+  ReferenceLine,
+  Cell
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
 import type { DailySalaryRecord } from '../types/dashboard';
@@ -665,6 +667,7 @@ export const DailySalaryTab: React.FC = () => {
   // Controls cho Ma Trận Thu Nhập Bưu Cục
   const [matrixRange, setMatrixRange] = useState<'7' | '14' | 'all'>('7');
   const [matrixSearch, setMatrixSearch] = useState<string>('');
+  const [matrixSelectedMonths, setMatrixSelectedMonths] = useState<string[]>([]);
   const [expandedMatrixPos, setExpandedMatrixPos] = useState<Set<string>>(new Set());
   const [showMatrixChart, setShowMatrixChart] = useState<boolean>(true);
   const [matrixChartView, setMatrixChartView] = useState<'overview' | 'lines' | 'stacked'>('overview');
@@ -711,10 +714,10 @@ export const DailySalaryTab: React.FC = () => {
   }, [allUniqueDatesDesc]);
 
   // Bộ lọc chu kỳ cho từng phân đoạn (Section 2, 3, 4, 5, 6)
-  // Section 2: Ma Trận Đối Chiếu Thu Nhập
-  const [sec2Month, setSec2Month] = useState<string>('');
-  const [sec2Week, setSec2Week] = useState<string>('');
-  const [sec2Dates, setSec2Dates] = useState<string[]>([]);
+  // Section 2: Ma Trận Biểu Đồ So Sánh Lương Các Bưu Cục (Bộ lọc Ngày, Tháng, Bưu Cục)
+  const [sec2SelectedBuuCuc, setSec2SelectedBuuCuc] = useState<string[]>([]);
+  const [sec2SelectedMonths, setSec2SelectedMonths] = useState<string[]>([]);
+  const [sec2SelectedDates, setSec2SelectedDates] = useState<string[]>([]);
 
   // Section 3: Sản Lượng Giao & Lấy
   const [sec3Month, setSec3Month] = useState<string>('');
@@ -830,10 +833,14 @@ export const DailySalaryTab: React.FC = () => {
   // MỤC 1: MA TRẬN THU NHẬP CỦA TỪNG BƯU CỤC QUA TỪNG NGÀY & CHI TIẾT NHÂN VIÊN
   // =========================================================================
   const matrixDates = useMemo(() => {
-    if (matrixRange === '7') return allUniqueDatesDesc.slice(0, 7);
-    if (matrixRange === '14') return allUniqueDatesDesc.slice(0, 14);
-    return allUniqueDatesDesc;
-  }, [allUniqueDatesDesc, matrixRange]);
+    let dates = allUniqueDatesDesc;
+    if (matrixSelectedMonths && matrixSelectedMonths.length > 0) {
+      dates = dates.filter(d => matrixSelectedMonths.includes(d.slice(3)));
+    }
+    if (matrixRange === '7') return dates.slice(0, 7);
+    if (matrixRange === '14') return dates.slice(0, 14);
+    return dates;
+  }, [allUniqueDatesDesc, matrixRange, matrixSelectedMonths]);
 
   interface EmpMatrixSalary {
     maNV: string;
@@ -1171,92 +1178,205 @@ export const DailySalaryTab: React.FC = () => {
   };
 
   // =========================================================================
-  // MỤC 2: MA TRẬN ĐỐI CHIẾU THU NHẬP SO VỚI MẶT BẰNG CHUNG BC & TOÀN KHU VỰC
+  // MỤC 2: MA TRẬN BIỂU ĐỒ SO SÁNH LƯƠNG CÁC BƯU CỤC SO VỚI TOÀN KHU VỰC
+  // Có bộ lọc: Tick chọn ngày, Tick chọn tháng, Tick chọn bưu cục
   // =========================================================================
+  const sec2DateOptions = useMemo(() => {
+    let dates = allUniqueDatesDesc;
+    if (sec2SelectedMonths.length > 0) {
+      dates = dates.filter(d => sec2SelectedMonths.includes(d.slice(3)));
+    }
+    return dates.map(d => ({ label: d, value: d }));
+  }, [allUniqueDatesDesc, sec2SelectedMonths]);
+
   const sec2FilteredRecords = useMemo(() => {
-    return filterRecordsByPeriod(
-      dataset.hoaHongNgay,
-      sec2Month,
-      sec2Week,
-      sec2Dates,
-      availableMonths,
-      availableWeeks
-    );
-  }, [dataset.hoaHongNgay, sec2Month, sec2Week, sec2Dates, availableMonths, availableWeeks]);
-
-  const { regionComparisonData, sec2RegionAvg } = useMemo(() => {
-    const poMap: Record<string, {
-      buuCuc: string;
-      totalLuong: number;
-      totalCong: number;
-      staff: Set<string>;
-      dailyLuong: Record<string, number>;
-      empSalary: Record<string, { totalLuong: number; totalCong: number }>;
-    }> = {};
-
-    PO_ORDER.forEach(po => {
-      poMap[po] = {
-        buuCuc: po,
-        totalLuong: 0,
-        totalCong: 0,
-        staff: new Set(),
-        dailyLuong: {},
-        empSalary: {}
-      };
-    });
-
-    sec2FilteredRecords.forEach(r => {
-      const po = r.tenBC;
-      if (!poMap[po]) return;
-      poMap[po].totalLuong += r.tongLuong || 0;
-      poMap[po].totalCong += r.soNgayDiLam || 0;
-      poMap[po].staff.add(r.maNV);
-      poMap[po].dailyLuong[r.ngay] = (poMap[po].dailyLuong[r.ngay] || 0) + (r.tongLuong || 0);
-
-      if (!poMap[po].empSalary[r.maNV]) {
-        poMap[po].empSalary[r.maNV] = { totalLuong: 0, totalCong: 0 };
+    return dataset.hoaHongNgay.filter(r => {
+      // 1. Lọc Bưu Cục
+      if (sec2SelectedBuuCuc.length > 0 && !sec2SelectedBuuCuc.includes(r.tenBC)) {
+        return false;
       }
-      poMap[po].empSalary[r.maNV].totalLuong += r.tongLuong || 0;
-      poMap[po].empSalary[r.maNV].totalCong += r.soNgayDiLam || 0;
+      // 2. Lọc Tháng
+      if (sec2SelectedMonths.length > 0) {
+        const rMonth = r.ngay ? r.ngay.slice(3) : '';
+        if (!sec2SelectedMonths.includes(rMonth)) return false;
+      }
+      // 3. Lọc Ngày
+      if (sec2SelectedDates.length > 0 && !sec2SelectedDates.includes(r.ngay)) {
+        return false;
+      }
+      return true;
     });
+  }, [dataset.hoaHongNgay, sec2SelectedBuuCuc, sec2SelectedMonths, sec2SelectedDates]);
 
-    const totalRegionLuong = Object.values(poMap).reduce((s, p) => s + p.totalLuong, 0);
-    const totalRegionCong = Object.values(poMap).reduce((s, p) => s + p.totalCong, 0);
-    const regionAvg = totalRegionCong > 0 ? Math.round(totalRegionLuong / totalRegionCong) : 0;
+  // Dữ liệu toàn khu vực trong kỳ đã chọn (dùng làm chuẩn đối chiếu Benchmark)
+  const sec2RegionTimeframeRecords = useMemo(() => {
+    return dataset.hoaHongNgay.filter(r => {
+      if (sec2SelectedMonths.length > 0) {
+        const rMonth = r.ngay ? r.ngay.slice(3) : '';
+        if (!sec2SelectedMonths.includes(rMonth)) return false;
+      }
+      if (sec2SelectedDates.length > 0 && !sec2SelectedDates.includes(r.ngay)) {
+        return false;
+      }
+      return true;
+    });
+  }, [dataset.hoaHongNgay, sec2SelectedMonths, sec2SelectedDates]);
 
-    const list = Object.values(poMap).map(po => {
-      const avgLuongPerDay = po.totalCong > 0 ? Math.round(po.totalLuong / po.totalCong) : 0;
-      const deltaVsRegion = regionAvg > 0 ? ((avgLuongPerDay - regionAvg) / regionAvg) * 100 : 0;
+  const sec2RegionAvgSalary = useMemo(() => {
+    const totalLuong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.tongLuong || r.luongHHNgay || 0), 0);
+    const totalCong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.soNgayDiLam || 1), 0);
+    return totalCong > 0 ? Math.round(totalLuong / totalCong) : 0;
+  }, [sec2RegionTimeframeRecords]);
 
-      const dailyVals = Object.values(po.dailyLuong).filter(v => v > 0);
+  const sec2RegionAvgCostPerOrder = useMemo(() => {
+    const totalLuong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.tongLuong || r.luongHHNgay || 0), 0);
+    const totalOrders = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.donGiaoTinhLuong || 0) + (r.donLayTinhLuong || 0), 0);
+    return totalOrders > 0 ? Math.round(totalLuong / totalOrders) : 0;
+  }, [sec2RegionTimeframeRecords]);
+
+  const sec2ComparisonList = useMemo(() => {
+    const targetPOs = sec2SelectedBuuCuc.length > 0
+      ? sec2SelectedBuuCuc
+      : PO_ORDER;
+
+    return targetPOs.map(po => {
+      const poRecords = sec2FilteredRecords.filter(r => r.tenBC === po);
+      const totalLuong = poRecords.reduce((s, r) => s + (r.tongLuong || r.luongHHNgay || 0), 0);
+      const totalCong = poRecords.reduce((s, r) => s + (r.soNgayDiLam || 1), 0);
+      const totalGiao = poRecords.reduce((s, r) => s + (r.donGiaoTinhLuong || 0), 0);
+      const totalLay = poRecords.reduce((s, r) => s + (r.donLayTinhLuong || 0), 0);
+      const totalOrders = totalGiao + totalLay;
+      const staffSet = new Set(poRecords.map(r => r.maNV).filter(Boolean));
+
+      const avgLuongPerDay = totalCong > 0 ? Math.round(totalLuong / totalCong) : 0;
+      const costPerOrder = totalOrders > 0 ? Math.round(totalLuong / totalOrders) : 0;
+      const ordersPerDay = totalCong > 0 ? +(totalOrders / totalCong).toFixed(1) : 0;
+
+      const deltaVsRegion = sec2RegionAvgSalary > 0
+        ? +(((avgLuongPerDay - sec2RegionAvgSalary) / sec2RegionAvgSalary) * 100).toFixed(1)
+        : 0;
+
+      // Diễn biến theo ngày của bưu cục này
+      const dailyMap: Record<string, number> = {};
+      poRecords.forEach(r => {
+        dailyMap[r.ngay] = (dailyMap[r.ngay] || 0) + (r.tongLuong || r.luongHHNgay || 0);
+      });
+      const dailyVals = Object.values(dailyMap).filter(v => v > 0);
       const maxDaily = dailyVals.length > 0 ? Math.max(...dailyVals) : 0;
       const minDaily = dailyVals.length > 0 ? Math.min(...dailyVals) : 0;
       const dailyVolatility = minDaily > 0 ? Math.round(((maxDaily - minDaily) / minDaily) * 100) : 0;
 
-      const empAvgs = Object.values(po.empSalary)
-        .map(e => e.totalCong > 0 ? Math.round(e.totalLuong / e.totalCong) : 0)
+      // Độ phân hóa nội bộ nhân viên
+      const empSalaryMap: Record<string, { luong: number; cong: number }> = {};
+      poRecords.forEach(r => {
+        if (!empSalaryMap[r.maNV]) empSalaryMap[r.maNV] = { luong: 0, cong: 0 };
+        empSalaryMap[r.maNV].luong += (r.tongLuong || r.luongHHNgay || 0);
+        empSalaryMap[r.maNV].cong += (r.soNgayDiLam || 1);
+      });
+      const empAvgs = Object.values(empSalaryMap)
+        .map(e => e.cong > 0 ? Math.round(e.luong / e.cong) : 0)
         .filter(v => v > 0);
       const maxEmp = empAvgs.length > 0 ? Math.max(...empAvgs) : 0;
       const minEmp = empAvgs.length > 0 ? Math.min(...empAvgs) : 0;
       const empSpread = maxEmp - minEmp;
 
+      // Map với các sheet dữ liệu khác của dashboard
+      const poGtcRecords = dataset.gtcBuuCuc.filter(r => r.buuCuc === po);
+      const avgGtcRate = poGtcRecords.length > 0
+        ? +(poGtcRecords.reduce((sum, r) => sum + (parseFloat(r.tiLeGTC) || 0), 0) / poGtcRecords.length).toFixed(1)
+        : 0;
+      const gltBacklog = dataset.tonDongGlt.filter(r => r.buuCuc === po).length;
+      const lcBacklog = dataset.tonDongLc.filter(r => r.tenBC === po).length;
+
       return {
-        buuCuc: po.buuCuc,
-        staffCount: po.staff.size,
-        totalLuong: po.totalLuong,
+        buuCuc: po,
+        shortName: po.replace('(LAN) ', ''),
+        staffCount: staffSet.size,
+        totalLuong,
+        totalCong,
+        totalGiao,
+        totalLay,
+        totalOrders,
         avgLuongPerDay,
+        costPerOrder,
+        ordersPerDay,
         deltaVsRegion,
         maxDaily,
         minDaily,
         dailyVolatility,
         maxEmp,
         minEmp,
-        empSpread
+        empSpread,
+        avgGtcRate,
+        gltBacklog,
+        lcBacklog,
+        dailyMap
       };
     }).sort((a, b) => b.totalLuong - a.totalLuong);
+  }, [sec2FilteredRecords, sec2SelectedBuuCuc, sec2RegionAvgSalary, dataset.gtcBuuCuc, dataset.tonDongGlt, dataset.tonDongLc]);
 
-    return { regionComparisonData: list, sec2RegionAvg: regionAvg };
-  }, [sec2FilteredRecords]);
+  // Dữ liệu biểu đồ xu hướng theo ngày
+  const sec2TimelineChartData = useMemo(() => {
+    const rawDates = [...new Set(sec2FilteredRecords.map(r => r.ngay))].filter(Boolean);
+    const sortedDatesAsc = sortDatesDesc(rawDates).reverse().slice(-14);
+
+    return sortedDatesAsc.map(date => {
+      const point: Record<string, any> = {
+        date: date.slice(0, 5),
+        fullDate: date
+      };
+      sec2ComparisonList.forEach(po => {
+        point[po.shortName] = Math.round((po.dailyMap[date] || 0) / 1000);
+      });
+      return point;
+    });
+  }, [sec2FilteredRecords, sec2ComparisonList]);
+
+  // Bộ phân tích nhận xét tương tác trực quan & thực tế (Executive Commentary)
+  const sec2ExecutiveAssessment = useMemo(() => {
+    if (sec2ComparisonList.length === 0) return null;
+
+    const validPOs = sec2ComparisonList.filter(p => p.totalCong > 0);
+    if (validPOs.length === 0) return null;
+
+    const topSalaryPO = [...validPOs].sort((a, b) => b.avgLuongPerDay - a.avgLuongPerDay)[0];
+    const lowestSalaryPO = [...validPOs].sort((a, b) => a.avgLuongPerDay - b.avgLuongPerDay)[0];
+    const mostEfficientPO = [...validPOs].filter(p => p.costPerOrder > 0).sort((a, b) => a.costPerOrder - b.costPerOrder)[0];
+    const highestCostPO = [...validPOs].filter(p => p.costPerOrder > 0).sort((a, b) => b.costPerOrder - a.costPerOrder)[0];
+
+    const isFilteredPO = sec2SelectedBuuCuc.length > 0;
+    const isFilteredMonth = sec2SelectedMonths.length > 0;
+    const isFilteredDate = sec2SelectedDates.length > 0;
+
+    let scopeDesc = 'Toàn bộ 5 bưu cục khu vực Long An';
+    if (isFilteredPO) {
+      scopeDesc = `${sec2SelectedBuuCuc.length} bưu cục đã chọn (${sec2SelectedBuuCuc.map(b => b.replace('(LAN) ', '')).join(', ')})`;
+    }
+    let timeDesc = 'toàn bộ thời gian vận hành';
+    if (isFilteredMonth && isFilteredDate) {
+      timeDesc = `${sec2SelectedMonths.join(', ')} (chi tiết ${sec2SelectedDates.length} ngày)`;
+    } else if (isFilteredMonth) {
+      timeDesc = `Tháng ${sec2SelectedMonths.join(', ')}`;
+    } else if (isFilteredDate) {
+      timeDesc = `${sec2SelectedDates.length} ngày đã chọn`;
+    }
+
+    const spreadSalary = topSalaryPO && lowestSalaryPO ? topSalaryPO.avgLuongPerDay - lowestSalaryPO.avgLuongPerDay : 0;
+    const hasDisparity = spreadSalary > 80000;
+
+    return {
+      scopeDesc,
+      timeDesc,
+      topSalaryPO,
+      lowestSalaryPO,
+      mostEfficientPO,
+      highestCostPO,
+      regionAvgSalary: sec2RegionAvgSalary,
+      regionAvgCostPerOrder: sec2RegionAvgCostPerOrder,
+      spreadSalary,
+      hasDisparity
+    };
+  }, [sec2ComparisonList, sec2SelectedBuuCuc, sec2SelectedMonths, sec2SelectedDates, sec2RegionAvgSalary, sec2RegionAvgCostPerOrder]);
 
   // =========================================================================
   // MỤC 3: BẢNG THỐNG KÊ TỔNG THEO BƯU CỤC SẢN LƯỢNG ĐƠN GIAO VÀ LẤY (LTC)
@@ -1849,6 +1969,28 @@ export const DailySalaryTab: React.FC = () => {
               />
             </div>
 
+            {/* Bộ lọc Tick Chọn Tháng (Dạng cuộn, tự động ẩn khi click ra ngoài) */}
+            <IndividualFilterDropdown
+              label="Tháng"
+              compact={true}
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              options={monthOptions}
+              selectedValues={matrixSelectedMonths}
+              onChange={setMatrixSelectedMonths}
+              searchPlaceholder="Tìm tháng (mm/yyyy)..."
+              minWidth="w-56"
+            />
+            {matrixSelectedMonths.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMatrixSelectedMonths([])}
+                className="px-2 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg hover:bg-rose-100 cursor-pointer"
+                title="Xóa lọc tháng ma trận"
+              >
+                Đặt lại ({matrixSelectedMonths.length} tháng)
+              </button>
+            )}
+
             {/* Chọn số ngày */}
             <div className="flex items-center bg-slate-200/80 dark:bg-slate-700 p-0.5 rounded-lg text-xs font-semibold">
               <button
@@ -2413,69 +2555,275 @@ export const DailySalaryTab: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* MỤC 2: MA TRẬN ĐỐI CHIẾU THU NHẬP SO VỚI MẶT BẰNG CHUNG BC & TOÀN KHU VỰC */}
+      {/* MỤC 2: MA TRẬN BIỂU ĐỒ SO SÁNH LƯƠNG CÁC BƯU CỤC SO VỚI TOÀN KHU VỰC */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 border-b border-slate-200 dark:border-slate-700 pb-2.5">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                Ma Trận Đối Chiếu Thu Nhập So Với Mặt Bằng Chung
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                So sánh mức thu nhập bình quân bưu cục với Chuẩn toàn khu vực ({sec2RegionAvg.toLocaleString('vi-VN')} đ/công) và độ phân hóa nội bộ
-              </p>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-4">
+        {/* Header điều hành & Bộ lọc đa chiều */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  Ma Trận Biểu Đồ So Sánh Lương Bưu Cục vs Toàn Khu Vực
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Đối chiếu mặt bằng lương bình quân, cơ cấu chi phí đơn hàng và độ phân hóa nội bộ 5 bưu cục so với Chuẩn Khu vực
+                </p>
+              </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <PeriodicFilterToolbar
-              selectedMonth={sec2Month}
-              onMonthChange={setSec2Month}
-              availableMonths={availableMonths}
-              selectedWeek={sec2Week}
-              onWeekChange={setSec2Week}
-              availableWeeks={availableWeeks}
-              selectedDates={sec2Dates}
-              onDatesChange={setSec2Dates}
-              availableDates={allUniqueDatesDesc}
-              onReset={() => { setSec2Month(''); setSec2Week(''); setSec2Dates([]); }}
+
+          {/* Bộ lọc: Bưu cục, Tháng, Ngày (Dạng cuộn, tự động ẩn khi click ra ngoài) */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* 1. Lọc Bưu Cục */}
+            <IndividualFilterDropdown
+              label="Bưu cục"
+              compact={true}
+              icon={<Building2 className="w-3.5 h-3.5" />}
+              options={buuCucOptions}
+              selectedValues={sec2SelectedBuuCuc}
+              onChange={setSec2SelectedBuuCuc}
+              searchPlaceholder="Tìm bưu cục..."
+              minWidth="w-56"
             />
-            <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-              Chuẩn Khu Vực: {sec2RegionAvg.toLocaleString('vi-VN')} đ/công
-            </span>
+
+            {/* 2. Lọc Tháng */}
+            <IndividualFilterDropdown
+              label="Tháng"
+              compact={true}
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              options={monthOptions}
+              selectedValues={sec2SelectedMonths}
+              onChange={setSec2SelectedMonths}
+              searchPlaceholder="Tìm tháng (mm/yyyy)..."
+              minWidth="w-56"
+            />
+
+            {/* 3. Lọc Ngày */}
+            <IndividualFilterDropdown
+              label="Ngày"
+              compact={true}
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              options={sec2DateOptions}
+              selectedValues={sec2SelectedDates}
+              onChange={setSec2SelectedDates}
+              searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
+              minWidth="w-64"
+            />
+
+            {/* Nút đặt lại */}
+            {(sec2SelectedBuuCuc.length > 0 || sec2SelectedMonths.length > 0 || sec2SelectedDates.length > 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSec2SelectedBuuCuc([]);
+                  setSec2SelectedMonths([]);
+                  setSec2SelectedDates([]);
+                }}
+                className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg hover:bg-rose-100 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Đặt lại bộ lọc ma trận"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Đặt lại</span>
+              </button>
+            )}
+
+            {/* Badge Chuẩn Khu Vực */}
+            <div className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Chuẩn Khu Vực: <strong>{sec2RegionAvgSalary.toLocaleString('vi-VN')}</strong> đ/công</span>
+            </div>
           </div>
         </div>
 
+        {/* MA TRẬN BIỂU ĐỒ (VISUAL CHARTS MATRIX) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Biểu đồ 1: Lương Bình Quân / Ngày Công vs Chuẩn Khu Vực */}
+          <div className="bg-slate-50/70 dark:bg-slate-750/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wide flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                Lương TB / Công vs Chuẩn Khu Vực
+              </span>
+              <span className="text-[10px] text-slate-400">Đơn vị: VNĐ/công</span>
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sec2ComparisonList} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
+                  <XAxis dataKey="shortName" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${Math.round(v / 1000)}k`} domain={[0, 'dataMax + 80000']} />
+                  <RechartsTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      const delta = d.deltaVsRegion;
+                      return (
+                        <div className="bg-slate-900 text-white text-xs p-2.5 rounded-lg shadow-xl space-y-1 border border-slate-700">
+                          <div className="font-bold text-orange-400">{d.buuCuc}</div>
+                          <div className="flex justify-between gap-3 text-slate-300">
+                            <span>Lương TB/công:</span>
+                            <strong className="text-white">{d.avgLuongPerDay.toLocaleString('vi-VN')} đ</strong>
+                          </div>
+                          <div className="flex justify-between gap-3 text-slate-300">
+                            <span>So với Chuẩn KV:</span>
+                            <strong className={delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                              {delta >= 0 ? `+${delta}%` : `${delta}%`}
+                            </strong>
+                          </div>
+                          <div className="flex justify-between gap-3 text-slate-400 text-[10.5px]">
+                            <span>Tổng công: {d.totalCong} | Bưu tá: {d.staffCount}</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <ReferenceLine
+                    y={sec2RegionAvgSalary}
+                    stroke="#10b981"
+                    strokeDasharray="4 4"
+                    strokeWidth={2}
+                    label={{ value: `Chuẩn KV: ${Math.round(sec2RegionAvgSalary / 1000)}k`, position: 'insideTopRight', fill: '#10b981', fontSize: 10, fontWeight: 'bold' }}
+                  />
+                  <Bar dataKey="avgLuongPerDay" radius={[4, 4, 0, 0]}>
+                    {sec2ComparisonList.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.avgLuongPerDay >= sec2RegionAvgSalary ? '#10b981' : entry.avgLuongPerDay >= sec2RegionAvgSalary * 0.9 ? '#0284c7' : '#f43f5e'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Biểu đồ 2: Chi Phí Lương / Đơn Hàng (Cost per Order) & Năng Suất */}
+          <div className="bg-slate-50/70 dark:bg-slate-750/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wide flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-blue-600" />
+                Chi Phí Lương / Đơn & Năng Suất
+              </span>
+              <span className="text-[10px] text-slate-400">Trục trái: đ/đơn | Phải: đơn/công</span>
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={sec2ComparisonList} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
+                  <XAxis dataKey="shortName" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" />
+                  <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
+                  <RechartsTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="bg-slate-900 text-white text-xs p-2.5 rounded-lg shadow-xl space-y-1 border border-slate-700">
+                          <div className="font-bold text-blue-400">{d.buuCuc}</div>
+                          <div className="flex justify-between gap-3 text-slate-300">
+                            <span>Chi phí / đơn:</span>
+                            <strong className="text-emerald-400">{d.costPerOrder.toLocaleString('vi-VN')} đ</strong>
+                          </div>
+                          <div className="flex justify-between gap-3 text-slate-300">
+                            <span>Năng suất đơn:</span>
+                            <strong className="text-orange-400">{d.ordersPerDay} đơn/công</strong>
+                          </div>
+                          <div className="flex justify-between gap-3 text-slate-400 text-[10.5px]">
+                            <span>Tổng đơn giao & lấy: {d.totalOrders.toLocaleString('vi-VN')}</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <ReferenceLine
+                    yAxisId="left"
+                    y={sec2RegionAvgCostPerOrder}
+                    stroke="#f59e0b"
+                    strokeDasharray="3 3"
+                    label={{ value: `CP TB: ${Math.round(sec2RegionAvgCostPerOrder / 1000)}k`, position: 'insideTopLeft', fill: '#f59e0b', fontSize: 9 }}
+                  />
+                  <Bar yAxisId="left" dataKey="costPerOrder" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Chi phí/đơn (đ)" />
+                  <Line yAxisId="right" type="monotone" dataKey="ordersPerDay" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3 }} name="Đơn/công" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Biểu đồ 3: Diễn Biến Quỹ Lương Theo Ngày Vận Hành */}
+          <div className="bg-slate-50/70 dark:bg-slate-750/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wide flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-purple-600" />
+                Xu Hướng Biến Động Lương Theo Ngày
+              </span>
+              <span className="text-[10px] text-slate-400">Đơn vị: nghìn VNĐ (k đ)</span>
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sec2TimelineChartData} margin={{ top: 10, right: 10, left: -10, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${Math.round(v / 1000)}tr`} />
+                  <RechartsTooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                  {sec2ComparisonList.slice(0, 5).map((po, idx) => {
+                    const colors = ['#f97316', '#06b6d4', '#8b5cf6', '#10b981', '#ec4899'];
+                    return (
+                      <Line
+                        key={po.shortName}
+                        type="monotone"
+                        dataKey={po.shortName}
+                        stroke={colors[idx % colors.length]}
+                        strokeWidth={2}
+                        dot={{ r: 2 }}
+                        name={po.shortName}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* BẢNG MA TRẬN ĐỐI CHIẾU CHI TIẾT */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                <th className="px-3.5 py-2 font-bold">Bưu Cục</th>
-                <th className="px-3 py-2 text-right font-bold">Lương TB / Công</th>
-                <th className="px-3 py-2 text-right font-bold">So Với Chuẩn KV</th>
-                <th className="px-3 py-2 text-right font-bold">Ngày Đỉnh Điểm</th>
-                <th className="px-3 py-2 text-right font-bold">Ngày Thấp Nhất</th>
-                <th className="px-3 py-2 text-right font-bold">Biên Độ Biến Động</th>
-                <th className="px-3 py-2 text-right font-bold">Khoảng Phân Hóa Bưu Tá</th>
-                <th className="px-3 py-2 text-center font-bold">Trạng Thái Vận Hành</th>
+                <th className="px-3 py-2 font-bold">Bưu Cục</th>
+                <th className="px-2 py-2 text-center font-bold">Bưu Tá</th>
+                <th className="px-2 py-2 text-center font-bold">Tổng Công</th>
+                <th className="px-3 py-2 text-right font-bold">Tổng Quỹ Lương</th>
+                <th className="px-3 py-2 text-right font-bold text-orange-600">Lương TB / Công</th>
+                <th className="px-3 py-2 text-right font-bold">So Chuẩn KV</th>
+                <th className="px-3 py-2 text-right font-bold">Chi Phí / Đơn</th>
+                <th className="px-2 py-2 text-center font-bold">Năng Suất</th>
+                <th className="px-3 py-2 text-right font-bold">Phân Hóa Min-Max</th>
+                <th className="px-2 py-2 text-center font-bold">%GTC</th>
+                <th className="px-2 py-2 text-center font-bold">Tồn Đọng</th>
+                <th className="px-3 py-2 text-center font-bold">Trạng Thái Đánh Giá</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {regionComparisonData.map(r => {
+              {sec2ComparisonList.map(r => {
                 const isOver = r.deltaVsRegion >= 0;
                 let statusBadge = (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                    Đạt Chuẩn Ổn Định
+                    Đạt Chuẩn Cân Đối
                   </span>
                 );
-                if (r.deltaVsRegion >= 15) {
+                if (r.deltaVsRegion >= 12) {
                   statusBadge = (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       Thu Nhập Cao Vượt Trội
                     </span>
                   );
-                } else if (r.deltaVsRegion <= -15) {
+                } else if (r.deltaVsRegion <= -12) {
                   statusBadge = (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
                       Cần Hỗ Trợ Đơn Tuyến
@@ -2485,26 +2833,40 @@ export const DailySalaryTab: React.FC = () => {
 
                 return (
                   <tr key={r.buuCuc} className="hover:bg-slate-50 dark:hover:bg-slate-750/70 transition-colors">
-                    <td className="px-3.5 py-2 font-bold text-slate-900 dark:text-white">
+                    <td className="px-3 py-2 font-bold text-slate-900 dark:text-white">
                       {r.buuCuc}
                     </td>
-                    <td className="px-3 py-2 text-right font-bold text-slate-800 dark:text-slate-100">
+                    <td className="px-2 py-2 text-center font-semibold text-slate-600 dark:text-slate-300">
+                      {r.staffCount}
+                    </td>
+                    <td className="px-2 py-2 text-center font-semibold text-slate-700 dark:text-slate-300">
+                      {r.totalCong}
+                    </td>
+                    <td className="px-3 py-2 text-right font-black text-emerald-600 dark:text-emerald-400">
+                      {(r.totalLuong / 1e6).toFixed(1)} tr
+                    </td>
+                    <td className="px-3 py-2 text-right font-black text-orange-600 dark:text-orange-400">
                       {r.avgLuongPerDay.toLocaleString('vi-VN')} đ
                     </td>
                     <td className={`px-3 py-2 text-right font-bold ${isOver ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {isOver ? `+${r.deltaVsRegion.toFixed(1)}%` : `${r.deltaVsRegion.toFixed(1)}%`}
+                      {isOver ? `+${r.deltaVsRegion}%` : `${r.deltaVsRegion}%`}
                     </td>
-                    <td className="px-3 py-2 text-right text-emerald-600 font-semibold">
-                      {(r.maxDaily / 1e6).toFixed(1)} tr
+                    <td className="px-3 py-2 text-right font-mono font-bold text-blue-600 dark:text-blue-400">
+                      {r.costPerOrder > 0 ? `${r.costPerOrder.toLocaleString('vi-VN')} đ` : '-'}
                     </td>
-                    <td className="px-3 py-2 text-right text-slate-500 font-medium">
-                      {(r.minDaily / 1e6).toFixed(1)} tr
+                    <td className="px-2 py-2 text-center font-bold text-purple-600 dark:text-purple-400">
+                      {r.ordersPerDay} đ/c
                     </td>
-                    <td className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-300">
-                      {r.dailyVolatility}%
+                    <td className="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-300">
+                      {(r.empSpread / 1000).toFixed(0)}k đ
                     </td>
-                    <td className="px-3 py-2 text-right font-mono font-medium text-purple-600 dark:text-purple-400">
-                      {(r.empSpread / 1e3).toFixed(0)}k đ/công
+                    <td className="px-2 py-2 text-center font-bold text-emerald-600">
+                      {r.avgGtcRate}%
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${r.gltBacklog + r.lcBacklog > 10 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'text-slate-500'}`}>
+                        {r.gltBacklog + r.lcBacklog} đơn
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-center">
                       {statusBadge}
@@ -2515,6 +2877,95 @@ export const DailySalaryTab: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* ========================================================================= */}
+        {/* KHỐI NHẬN XÉT & ĐÁNH GIÁ CHIẾN LƯỢC QUẢN TRỊ VẬN HÀNH CHO AM HUY */}
+        {/* Tư duy thực tế, không máy móc, tương tác trực tiếp với các bộ lọc đã chọn */}
+        {/* ========================================================================= */}
+        {sec2ExecutiveAssessment && (
+          <div className="rounded-xl border border-orange-200 dark:border-orange-900/60 bg-gradient-to-br from-orange-50/40 via-white to-amber-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-orange-950/20 p-4 space-y-3.5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-orange-200/60 dark:border-slate-700 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Nhận Xét Đánh Giá Chiến Lược Vận Hành Của Bưu Cục So Với Toàn Khu Vực
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Phạm vi đang lọc: <strong className="text-orange-600 font-semibold">{sec2ExecutiveAssessment.scopeDesc}</strong> | Khung thời gian: <strong className="text-orange-600 font-semibold">{sec2ExecutiveAssessment.timeDesc}</strong>
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10.5px] font-extrabold px-2.5 py-1 rounded-md bg-orange-600 text-white shadow-2xs shrink-0">
+                Góc Nhìn AM Huy (ĐNB)
+              </span>
+            </div>
+
+            {/* 4 Trụ Cột Nhận Xét Chiến Lược */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-xs">
+              {/* Trụ cột 1: Bức tranh Macro & Vị thế Bưu cục */}
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11.5px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  1. Chuẩn Khu Vực & Tương Quan Thu Nhập
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  Chuẩn thu nhập bình quân toàn khu vực đạt <strong>{sec2ExecutiveAssessment.regionAvgSalary.toLocaleString('vi-VN')} đ/công</strong>. 
+                  {sec2ExecutiveAssessment.topSalaryPO && (
+                    <span> <strong>{sec2ExecutiveAssessment.topSalaryPO.shortName}</strong> dẫn đầu mặt bằng lương với <strong>{sec2ExecutiveAssessment.topSalaryPO.avgLuongPerDay.toLocaleString('vi-VN')} đ/công</strong> ({sec2ExecutiveAssessment.topSalaryPO.deltaVsRegion >= 0 ? `+${sec2ExecutiveAssessment.topSalaryPO.deltaVsRegion}%` : `${sec2ExecutiveAssessment.topSalaryPO.deltaVsRegion}%`} so với chuẩn).</span>
+                  )}
+                  {sec2ExecutiveAssessment.lowestSalaryPO && sec2ExecutiveAssessment.lowestSalaryPO.buuCuc !== sec2ExecutiveAssessment.topSalaryPO?.buuCuc && (
+                    <span> Ngược lại, <strong>{sec2ExecutiveAssessment.lowestSalaryPO.shortName}</strong> đang ở đáy thu nhập ({sec2ExecutiveAssessment.lowestSalaryPO.avgLuongPerDay.toLocaleString('vi-VN')} đ/công).</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Trụ cột 2: Hiệu Quả Chi Phí Đơn Vị (Cost Per Order) */}
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold text-[11.5px]">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  2. Hiệu Suất Đơn Vị & Tối Ưu Chi Phí
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  {sec2ExecutiveAssessment.mostEfficientPO && (
+                    <span><strong>{sec2ExecutiveAssessment.mostEfficientPO.shortName}</strong> tối ưu chi phí lương tốt nhất: chỉ <strong>{sec2ExecutiveAssessment.mostEfficientPO.costPerOrder.toLocaleString('vi-VN')} đ/đơn</strong> nhờ năng suất vượt bậc ({sec2ExecutiveAssessment.mostEfficientPO.ordersPerDay} đơn/công). </span>
+                  )}
+                  {sec2ExecutiveAssessment.highestCostPO && (
+                    <span>Trong khi đó, <strong>{sec2ExecutiveAssessment.highestCostPO.shortName}</strong> có chi phí lương trên mỗi đơn lên đến <strong>{sec2ExecutiveAssessment.highestCostPO.costPerOrder.toLocaleString('vi-VN')} đ/đơn</strong> do bán kính di chuyển rộng và thâm hụt sản lượng đơn lấy.</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Trụ cột 3: Đối Chiếu Dashboard & Phân Hóa Rủi Ro */}
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-[11.5px]">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  3. Tổng Hợp Dữ Liệu & Rủi Ro Giữ Chân
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  {sec2ExecutiveAssessment.hasDisparity ? (
+                    <span>Chênh lệch lương giữa BC cao nhất và thấp nhất là <strong>{(sec2ExecutiveAssessment.spreadSalary / 1000).toFixed(0)}k đ/ngày</strong>. Tình trạng phân hóa thu nhập kéo dài dễ gây tâm lý so bì giữa các bưu cục lân cận, làm tăng tỷ lệ nghỉ việc ở các nhân sự mới vào nghề.</span>
+                  ) : (
+                    <span>Mặt bằng thu nhập giữa các bưu cục được chọn tương đối đồng đều, biên độ chênh lệch nằm trong ngưỡng kiểm soát ổn định ({Math.round(sec2ExecutiveAssessment.spreadSalary / 1000)}k đ/công).</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Trụ cột 4: Khuyến Nghị Điều Hành Cho AM Huy */}
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold text-[11.5px]">
+                  <span className="w-2 h-2 rounded-full bg-purple-500" />
+                  4. Quyết Sách Điều Hành Của AM
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  (1) San sẻ tuyến giao giáp ranh giữa các bưu cục để kéo năng suất bưu cục thấp lên trên 60 đơn/công; 
+                  (2) Điều tiết thêm khách hàng gửi hàng/shop lấy cố định cho các bưu cục có thu nhập thấp để cải thiện thu nhập đơn lấy; 
+                  (3) Giám sát chặt chẽ tỷ lệ công nhật để tránh tình trạng chia nhỏ công làm loãng lương bưu tá.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
