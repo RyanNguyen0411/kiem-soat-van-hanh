@@ -20,7 +20,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -41,7 +42,8 @@ import { IndividualFilterDropdown } from '../components/common/IndividualFilterD
 import { 
   sortDatesDesc, 
   extractMonths, 
-  extractWeeks 
+  extractWeeks,
+  toTimestamp
 } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 
@@ -468,6 +470,173 @@ export const GtcPostOfficeTab: React.FC = () => {
       return true;
     });
   }, [dataset.gtcBuuCuc, dtFilterBuuCuc, dtFilterLoaiHang, dtFilterMonth, dtFilterWeek, dtFilterDate, availableMonths, availableWeeks]);
+
+  // =========================================================================
+  // BẢNG: "GIAO THÀNH CÔNG BƯU CỤC" (TỔNG HỢP SHEET GTC BƯU CỤC)
+  // Các cột: Bưu cục, Ngày, Volume, SLĐ Gán, % Gán, SLĐ GTC, % GTC, Tồn Đọng
+  // Lấy data từ dataset.gtcBuuCuc theo 5 bưu cục đang quản lý
+  // Ngày: lọc từ ngày gần nhất đến ngày xa nhất (descending)
+  // Volume = Tổng Volume (Hàng mới ca 1 + Hàng mới ca 2 + Hàng tồn)
+  // SLĐ Gán = Tổng SLĐ Gán (Hàng mới ca 1 + Hàng mới ca 2 + Hàng tồn)
+  // % Gán = (SLĐ Gán)/(Volume)
+  // SLĐ GTC = Tổng SLĐ GTC (Hàng mới ca 1 + Hàng mới ca 2 + Hàng tồn)
+  // % GTC = (SLĐ GTC)/(Volume)
+  // Tồn đọng = (Volume)-(SLĐ GTC)
+  // Cho phép xuất về Excel
+  // =========================================================================
+  const [gtcDeliveryFilterPo, setGtcDeliveryFilterPo] = useState<string>('all');
+  const [gtcDeliveryFilterMonth, setGtcDeliveryFilterMonth] = useState<string>('all');
+  const [gtcDeliverySearch, setGtcDeliverySearch] = useState<string>('');
+  const [gtcDeliverySortField, setGtcDeliverySortField] = useState<string>('ngay');
+  const [gtcDeliverySortDir, setGtcDeliverySortDir] = useState<'asc' | 'desc'>('desc');
+  const [gtcDeliveryPage, setGtcDeliveryPage] = useState<number>(1);
+  const [gtcDeliveryPageSize, setGtcDeliveryPageSize] = useState<number>(20);
+
+  const gtcDeliveryDailyData = useMemo(() => {
+    const MANAGED_POS = ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
+    const map: Record<string, {
+      buuCuc: string;
+      ngay: string;
+      volume: number;
+      sldGan: number;
+      sldGTC: number;
+    }> = {};
+
+    dataset.gtcBuuCuc.forEach(r => {
+      if (!r.buuCuc || !r.ngay) return;
+      if (!MANAGED_POS.includes(r.buuCuc)) return;
+
+      const key = `${r.buuCuc}__${r.ngay}`;
+      if (!map[key]) {
+        map[key] = {
+          buuCuc: r.buuCuc,
+          ngay: r.ngay,
+          volume: 0,
+          sldGan: 0,
+          sldGTC: 0
+        };
+      }
+      map[key].volume += r.volume || 0;
+      map[key].sldGan += r.sldGan || 0;
+      map[key].sldGTC += r.sldGTC || 0;
+    });
+
+    return Object.values(map).map(item => {
+      const tiLeGan = item.volume > 0 ? (item.sldGan / item.volume) * 100 : 0;
+      const tiLeGTC = item.volume > 0 ? (item.sldGTC / item.volume) * 100 : 0;
+      const tonDong = item.volume - item.sldGTC; // strictly: (Volume) - (SLĐ GTC)
+      return {
+        id: `${item.buuCuc}__${item.ngay}`,
+        buuCuc: item.buuCuc,
+        ngay: item.ngay,
+        volume: item.volume,
+        sldGan: item.sldGan,
+        tiLeGan,
+        sldGTC: item.sldGTC,
+        tiLeGTC,
+        tonDong
+      };
+    });
+  }, [dataset.gtcBuuCuc]);
+
+  const filteredGtcDeliveryDaily = useMemo(() => {
+    const MANAGED_POS = ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
+    const result = gtcDeliveryDailyData.filter(item => {
+      if (gtcDeliveryFilterPo !== 'all' && item.buuCuc !== gtcDeliveryFilterPo) return false;
+      if (gtcDeliveryFilterMonth !== 'all') {
+        const targetMonth = availableMonths.find(m => m.key === gtcDeliveryFilterMonth);
+        if (targetMonth && !targetMonth.dates.includes(item.ngay)) return false;
+      }
+      if (gtcDeliverySearch.trim()) {
+        const q = gtcDeliverySearch.trim().toLowerCase();
+        const matchPo = item.buuCuc.toLowerCase().includes(q);
+        const matchDate = item.ngay.includes(q);
+        if (!matchPo && !matchDate) return false;
+      }
+      return true;
+    });
+
+    result.sort((a, b) => {
+      if (gtcDeliverySortField === 'ngay') {
+        const timeDiff = toTimestamp(b.ngay) - toTimestamp(a.ngay);
+        if (timeDiff !== 0) {
+          return gtcDeliverySortDir === 'desc' ? timeDiff : -timeDiff;
+        }
+        return MANAGED_POS.indexOf(a.buuCuc) - MANAGED_POS.indexOf(b.buuCuc);
+      } else if (gtcDeliverySortField === 'buuCuc') {
+        const comp = a.buuCuc.localeCompare(b.buuCuc, 'vi');
+        return gtcDeliverySortDir === 'asc' ? comp : -comp;
+      } else {
+        const valA = (a as any)[gtcDeliverySortField] ?? 0;
+        const valB = (b as any)[gtcDeliverySortField] ?? 0;
+        return gtcDeliverySortDir === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+
+    return result;
+  }, [gtcDeliveryDailyData, gtcDeliveryFilterPo, gtcDeliveryFilterMonth, gtcDeliverySearch, gtcDeliverySortField, gtcDeliverySortDir, availableMonths]);
+
+  const gtcDeliverySummary = useMemo(() => {
+    const totalVolume = filteredGtcDeliveryDaily.reduce((acc, r) => acc + r.volume, 0);
+    const totalSldGan = filteredGtcDeliveryDaily.reduce((acc, r) => acc + r.sldGan, 0);
+    const totalSldGTC = filteredGtcDeliveryDaily.reduce((acc, r) => acc + r.sldGTC, 0);
+    const totalTonDong = totalVolume - totalSldGTC;
+    const tiLeGan = totalVolume > 0 ? (totalSldGan / totalVolume) * 100 : 0;
+    const tiLeGTC = totalVolume > 0 ? (totalSldGTC / totalVolume) * 100 : 0;
+
+    return {
+      totalVolume,
+      totalSldGan,
+      totalSldGTC,
+      totalTonDong,
+      tiLeGan,
+      tiLeGTC,
+      rowCount: filteredGtcDeliveryDaily.length
+    };
+  }, [filteredGtcDeliveryDaily]);
+
+  const totalGtcDeliveryPages = gtcDeliveryPageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredGtcDeliveryDaily.length / gtcDeliveryPageSize));
+  
+  const paginatedGtcDeliveryDaily = useMemo(() => {
+    if (gtcDeliveryPageSize === -1) return filteredGtcDeliveryDaily;
+    const start = (gtcDeliveryPage - 1) * gtcDeliveryPageSize;
+    return filteredGtcDeliveryDaily.slice(start, start + gtcDeliveryPageSize);
+  }, [filteredGtcDeliveryDaily, gtcDeliveryPage, gtcDeliveryPageSize]);
+
+  const handleSortGtcDelivery = (field: string) => {
+    if (gtcDeliverySortField === field) {
+      setGtcDeliverySortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setGtcDeliverySortField(field);
+      setGtcDeliverySortDir(field === 'ngay' || field === 'buuCuc' ? 'asc' : 'desc');
+    }
+    setGtcDeliveryPage(1);
+  };
+
+  const handleExportGtcDeliveryExcel = () => {
+    const headers = ['Bưu Cục', 'Ngày', 'Volume', 'SLĐ Gán', '% Gán', 'SLĐ GTC', '% GTC', 'Tồn Đọng'];
+    const rows: (string | number)[][] = filteredGtcDeliveryDaily.map(r => [
+      r.buuCuc,
+      r.ngay,
+      r.volume,
+      r.sldGan,
+      `${r.tiLeGan.toFixed(2)}%`,
+      r.sldGTC,
+      `${r.tiLeGTC.toFixed(2)}%`,
+      r.tonDong
+    ]);
+    rows.push([
+      'TỔNG CỘNG',
+      `${filteredGtcDeliveryDaily.length} ngày-bưu cục`,
+      gtcDeliverySummary.totalVolume,
+      gtcDeliverySummary.totalSldGan,
+      `${gtcDeliverySummary.tiLeGan.toFixed(2)}%`,
+      gtcDeliverySummary.totalSldGTC,
+      `${gtcDeliverySummary.tiLeGTC.toFixed(2)}%`,
+      gtcDeliverySummary.totalTonDong
+    ]);
+    exportToCSV('giao_thanh_cong_buu_cuc_ghn', headers, rows);
+  };
 
   // =========================================================================
   // BẢNG 2: "HIỂN THỊ 8 NGÀY GẦN NHẤT CHI TIẾT GÁN GIAO CỦA TỪNG BƯU CỤC" (BỘ LỌC RIÊNG TUẦN & THÁNG)
@@ -1833,6 +2002,428 @@ export const GtcPostOfficeTab: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* =========================================================================
+          5.1 BẢNG "GIAO THÀNH CÔNG BƯU CỤC" (TỔNG HỢP NGUỒN SHEET "GTC BƯU CỤC")
+          Cột: Bưu cục, Ngày, Volume, SLĐ Gán, % Gán, SLĐ GTC, % GTC, Tồn Đọng
+          Sắp xếp ngày gần nhất đến xa nhất, hỗ trợ xuất Excel
+         ========================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
+        {/* Header Bảng */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                GIAO THÀNH CÔNG BƯU CỤC
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                Sheet GTC Bưu Cục
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Tổng hợp dữ liệu theo 5 bưu cục đang quản lý và ngày vận hành (ngày gần nhất đến xa nhất). 
+              Volume = Hàng mới ca 1 + Hàng mới ca 2 + Hàng tồn; % Gán = SLĐ Gán / Volume; % GTC = SLĐ GTC / Volume; Tồn đọng = Volume - SLĐ GTC. Cho phép xuất toàn bộ về Excel.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportGtcDeliveryExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-sm transition-colors cursor-pointer"
+              title="Xuất bảng Giao Thành Công Bưu Cục ra định dạng Excel / CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Xuất Excel ({filteredGtcDeliveryDaily.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Toolbar Bộ lọc & Tìm kiếm */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-750 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5 text-emerald-600" /> Bộ lọc bảng:
+              </span>
+
+              {/* Lọc Bưu Cục */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-slate-500 font-medium text-[11px]">Bưu cục:</label>
+                <select
+                  value={gtcDeliveryFilterPo}
+                  onChange={e => {
+                    setGtcDeliveryFilterPo(e.target.value);
+                    setGtcDeliveryPage(1);
+                  }}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="all">Tất cả 5 bưu cục</option>
+                  {['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'].map(po => (
+                    <option key={po} value={po}>{po}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lọc Tháng */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-slate-500 font-medium text-[11px]">Tháng:</label>
+                <select
+                  value={gtcDeliveryFilterMonth}
+                  onChange={e => {
+                    setGtcDeliveryFilterMonth(e.target.value);
+                    setGtcDeliveryPage(1);
+                  }}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="all">Tất cả tháng</option>
+                  {availableMonths.map(m => (
+                    <option key={m.key} value={m.key}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ô tìm kiếm ngày / bưu cục */}
+              <div className="relative flex items-center">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  value={gtcDeliverySearch}
+                  onChange={e => {
+                    setGtcDeliverySearch(e.target.value);
+                    setGtcDeliveryPage(1);
+                  }}
+                  placeholder="Tìm ngày (dd/mm/yyyy) hoặc bưu cục..."
+                  className="pl-8 pr-7 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none w-48 sm:w-64"
+                />
+                {gtcDeliverySearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGtcDeliverySearch('');
+                      setGtcDeliveryPage(1);
+                    }}
+                    className="absolute right-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Nút reset nếu đang lọc */}
+              {(gtcDeliveryFilterPo !== 'all' || gtcDeliveryFilterMonth !== 'all' || gtcDeliverySearch.trim() !== '') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGtcDeliveryFilterPo('all');
+                    setGtcDeliveryFilterMonth('all');
+                    setGtcDeliverySearch('');
+                    setGtcDeliveryPage(1);
+                  }}
+                  className="text-rose-600 hover:text-rose-800 dark:text-rose-400 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Xóa lọc</span>
+                </button>
+              )}
+            </div>
+
+            {/* Số dòng hiển thị & Tổng quan */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <span className="text-[11px]">Hiển thị:</span>
+                <select
+                  value={gtcDeliveryPageSize}
+                  onChange={e => {
+                    setGtcDeliveryPageSize(Number(e.target.value));
+                    setGtcDeliveryPage(1);
+                  }}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded px-2 py-0.5 font-semibold focus:outline-none"
+                >
+                  <option value={20}>20 dòng</option>
+                  <option value={50}>50 dòng</option>
+                  <option value={100}>100 dòng</option>
+                  <option value={-1}>Tất cả</option>
+                </select>
+              </div>
+
+              <span className="text-[11px] text-slate-400">
+                Tổng: <strong className="text-slate-700 dark:text-slate-200">{filteredGtcDeliveryDaily.length}</strong> dòng
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bảng Dữ Liệu */}
+        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                {/* 1. Bưu Cục */}
+                <th
+                  onClick={() => handleSortGtcDelivery('buuCuc')}
+                  className="px-3.5 py-2.5 cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo Bưu Cục"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Bưu Cục</span>
+                    {gtcDeliverySortField === 'buuCuc' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 2. Ngày */}
+                <th
+                  onClick={() => handleSortGtcDelivery('ngay')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp từ ngày gần nhất đến xa nhất (hoặc ngược lại)"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Ngày</span>
+                    {gtcDeliverySortField === 'ngay' ? (
+                      gtcDeliverySortDir === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 3. Volume */}
+                <th
+                  onClick={() => handleSortGtcDelivery('volume')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo Volume (Tổng hàng mới ca 1 + ca 2 + tồn)"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Volume</span>
+                    {gtcDeliverySortField === 'volume' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 4. SLĐ Gán */}
+                <th
+                  onClick={() => handleSortGtcDelivery('sldGan')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo SLĐ Gán"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>SLĐ Gán</span>
+                    {gtcDeliverySortField === 'sldGan' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 5. % Gán */}
+                <th
+                  onClick={() => handleSortGtcDelivery('tiLeGan')}
+                  className="px-2.5 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo % Gán = (SLĐ Gán / Volume)"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>% Gán</span>
+                    {gtcDeliverySortField === 'tiLeGan' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 6. SLĐ GTC */}
+                <th
+                  onClick={() => handleSortGtcDelivery('sldGTC')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo SLĐ GTC"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>SLĐ GTC</span>
+                    {gtcDeliverySortField === 'sldGTC' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 7. % GTC */}
+                <th
+                  onClick={() => handleSortGtcDelivery('tiLeGTC')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo % GTC = (SLĐ GTC / Volume)"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>% GTC</span>
+                    {gtcDeliverySortField === 'tiLeGTC' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+
+                {/* 8. Tồn Đọng */}
+                <th
+                  onClick={() => handleSortGtcDelivery('tonDong')}
+                  className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Nhấn để sắp xếp theo Tồn Đọng = (Volume - SLĐ GTC)"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Tồn Đọng</span>
+                    {gtcDeliverySortField === 'tonDong' ? (
+                      gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                    )}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              {paginatedGtcDeliveryDaily.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                    Không tìm thấy dữ liệu phù hợp với điều kiện lọc
+                  </td>
+                </tr>
+              ) : (
+                paginatedGtcDeliveryDaily.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-emerald-50/40 dark:hover:bg-slate-750/70 transition-colors"
+                  >
+                    {/* Bưu Cục */}
+                    <td className="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                        {row.buuCuc}
+                      </span>
+                    </td>
+
+                    {/* Ngày */}
+                    <td className="px-3 py-2.5 text-center font-medium text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+                      {row.ngay}
+                    </td>
+
+                    {/* Volume */}
+                    <td className="px-3 py-2.5 text-center font-bold text-slate-900 dark:text-white">
+                      {row.volume.toLocaleString('vi-VN')}
+                    </td>
+
+                    {/* SLĐ Gán */}
+                    <td className="px-3 py-2.5 text-center text-slate-700 dark:text-slate-300 font-medium">
+                      {row.sldGan.toLocaleString('vi-VN')}
+                    </td>
+
+                    {/* % Gán */}
+                    <td className="px-2.5 py-2.5 text-center font-bold text-blue-600 dark:text-blue-400">
+                      {row.tiLeGan.toFixed(2)}%
+                    </td>
+
+                    {/* SLĐ GTC */}
+                    <td className="px-3 py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                      {row.sldGTC.toLocaleString('vi-VN')}
+                    </td>
+
+                    {/* % GTC */}
+                    <td className="px-3 py-2.5 text-center font-black">
+                      <span className={`px-2 py-0.5 rounded-full inline-flex items-center justify-center text-[10px] ${
+                        row.tiLeGTC < 62 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+                        row.tiLeGTC < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      }`}>
+                        {row.tiLeGTC.toFixed(2)}%
+                      </span>
+                    </td>
+
+                    {/* Tồn Đọng */}
+                    <td className="px-3 py-2.5 text-center font-bold text-rose-600 dark:text-rose-400">
+                      {row.tonDong.toLocaleString('vi-VN')}
+                    </td>
+                  </tr>
+                ))
+              )}
+
+              {/* HÀNG TỔNG CỘNG */}
+              {filteredGtcDeliveryDaily.length > 0 && (
+                <tr className="bg-slate-100 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-600">
+                  <td className="px-3.5 py-3 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    TỔNG CỘNG
+                  </td>
+                  <td className="px-3 py-3 text-center text-[11px] text-slate-500 font-semibold">
+                    {filteredGtcDeliveryDaily.length} ngày-bưu cục
+                  </td>
+                  <td className="px-3 py-3 text-center text-slate-900 dark:text-white">
+                    {gtcDeliverySummary.totalVolume.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-3 py-3 text-center text-slate-800 dark:text-slate-200">
+                    {gtcDeliverySummary.totalSldGan.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2.5 py-3 text-center text-blue-600 dark:text-blue-400 font-black">
+                    {gtcDeliverySummary.tiLeGan.toFixed(2)}%
+                  </td>
+                  <td className="px-3 py-3 text-center text-emerald-600 dark:text-emerald-400 font-black">
+                    {gtcDeliverySummary.totalSldGTC.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-3 py-3 text-center font-black">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] shadow-xs">
+                      {gtcDeliverySummary.tiLeGTC.toFixed(2)}%
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-center text-rose-600 dark:text-rose-400 font-black">
+                    {gtcDeliverySummary.totalTonDong.toLocaleString('vi-VN')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Phân trang (Pagination) */}
+        {totalGtcDeliveryPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-700 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">
+              Hiển thị từ {((gtcDeliveryPage - 1) * (gtcDeliveryPageSize === -1 ? filteredGtcDeliveryDaily.length : gtcDeliveryPageSize)) + 1} đến{' '}
+              {Math.min(gtcDeliveryPage * (gtcDeliveryPageSize === -1 ? filteredGtcDeliveryDaily.length : gtcDeliveryPageSize), filteredGtcDeliveryDaily.length)}{' '}
+              trong tổng số <strong>{filteredGtcDeliveryDaily.length}</strong> dòng
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setGtcDeliveryPage(prev => Math.max(1, prev - 1))}
+                disabled={gtcDeliveryPage === 1}
+                className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Trước
+              </button>
+
+              <span className="px-2 font-bold text-slate-700 dark:text-slate-200">
+                {gtcDeliveryPage} / {totalGtcDeliveryPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setGtcDeliveryPage(prev => Math.min(totalGtcDeliveryPages, prev + 1))}
+                disabled={gtcDeliveryPage === totalGtcDeliveryPages}
+                className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =========================================================================
