@@ -22,6 +22,7 @@ import {
   Users,
   Clock,
   Calendar,
+  Filter,
   RotateCcw,
   Check,
   X
@@ -392,6 +393,209 @@ const PeriodicFilterToolbar: React.FC<PeriodicFilterToolbarProps> = ({
   );
 };
 
+// =========================================================================
+// COMPONENT: BỘ LỌC CHU KỲ THU GỌN DẠNG POPOVER CHO TOP 10 BƯU TÁ
+// Tự động thu gọn, tiết kiệm không gian, cuộn mượt mà và tự đóng khi click ra ngoài
+// =========================================================================
+interface CompactPeriodicFilterPopoverProps {
+  selectedMonth: string;
+  onMonthChange: (monthKey: string) => void;
+  availableMonths: MonthFilterOption[];
+
+  selectedWeek: string;
+  onWeekChange: (weekKey: string) => void;
+  availableWeeks: WeekFilterOption[];
+
+  selectedDates: string[];
+  onDatesChange: (dates: string[]) => void;
+  availableDates: string[];
+
+  onReset: () => void;
+}
+
+const CompactPeriodicFilterPopover: React.FC<CompactPeriodicFilterPopoverProps> = ({
+  selectedMonth,
+  onMonthChange,
+  availableMonths,
+  selectedWeek,
+  onWeekChange,
+  availableWeeks,
+  selectedDates,
+  onDatesChange,
+  availableDates,
+  onReset
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const hasActive = Boolean(selectedMonth || selectedWeek || (selectedDates && selectedDates.length > 0));
+
+  const labelSummary = useMemo(() => {
+    if (selectedDates && selectedDates.length > 0) {
+      return `Đã chọn ${selectedDates.length} ngày`;
+    }
+    if (selectedWeek) {
+      const w = availableWeeks.find(opt => opt.key === selectedWeek);
+      return w ? w.label : selectedWeek;
+    }
+    if (selectedMonth) {
+      const m = availableMonths.find(opt => opt.key === selectedMonth);
+      return m ? m.label : `Tháng ${selectedMonth}`;
+    }
+    return 'Tất cả kỳ vận hành';
+  }, [selectedDates, selectedWeek, selectedMonth, availableWeeks, availableMonths]);
+
+  const dateOptions = useMemo(() => {
+    let datesToShow = availableDates;
+    if (selectedMonth) {
+      const m = availableMonths.find(opt => opt.key === selectedMonth);
+      if (m) datesToShow = m.dates;
+    }
+    if (selectedWeek) {
+      const w = availableWeeks.find(opt => opt.key === selectedWeek);
+      if (w) datesToShow = w.dates;
+    }
+    return datesToShow.map(d => ({ label: d, value: d }));
+  }, [availableDates, selectedMonth, selectedWeek, availableMonths, availableWeeks]);
+
+  const weeksToShow = useMemo(() => {
+    if (!selectedMonth) return availableWeeks;
+    const m = availableMonths.find(opt => opt.key === selectedMonth);
+    if (!m) return availableWeeks;
+    const mDateSet = new Set(m.dates);
+    return availableWeeks.filter(w => w.dates.some(d => mDateSet.has(d)));
+  }, [availableWeeks, selectedMonth, availableMonths]);
+
+  return (
+    <div className="relative inline-block text-left" ref={containerRef}>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+            hasActive
+              ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-400 text-orange-800 dark:text-orange-200 ring-1 ring-orange-400'
+              : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50'
+          }`}
+          title="Thu gọn bộ lọc kỳ: Click để mở chọn Tháng, Tuần, Ngày"
+        >
+          <Filter className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+          <span className="truncate max-w-[170px]">{labelSummary}</span>
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {hasActive && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+            title="Đặt lại bộ lọc kỳ"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-3 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+            <span className="font-bold text-xs uppercase tracking-wide text-slate-800 dark:text-white flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-orange-600" />
+              Lọc Kỳ Top 10 Bưu Tá
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Chọn Tháng */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Theo Tháng:</label>
+            <select
+              value={selectedMonth}
+              onChange={e => onMonthChange(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            >
+              <option value="">Tất cả Tháng</option>
+              {availableMonths.map(m => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Chọn Tuần */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Theo Tuần:</label>
+            <select
+              value={selectedWeek}
+              onChange={e => onWeekChange(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            >
+              <option value="">Tất cả Tuần</option>
+              {weeksToShow.map(w => (
+                <option key={w.key} value={w.key}>{w.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Chọn Ngày dạng cuộn */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Tick Chọn Ngày Cụ Thể:</label>
+            <IndividualFilterDropdown
+              label="Ngày"
+              compact={false}
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              options={dateOptions}
+              selectedValues={selectedDates}
+              onChange={onDatesChange}
+              searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
+              minWidth="w-72"
+            />
+          </div>
+
+          {/* Footer popover */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+            {hasActive ? (
+              <button
+                type="button"
+                onClick={() => { onReset(); }}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+              >
+                Đặt lại
+              </button>
+            ) : <span />}
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+            >
+              Áp dụng
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Hàm lọc dữ liệu theo kỳ thời gian
 function filterRecordsByPeriod<T extends { ngay: string }>(
   records: T[],
@@ -445,6 +649,7 @@ export const DailySalaryTab: React.FC = () => {
     buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
     nhanVien: [],
     thamNien: [],
+    thang: [],
     ngay: []
   }));
 
@@ -497,6 +702,10 @@ export const DailySalaryTab: React.FC = () => {
     return extractMonths(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
 
+  const monthOptions = useMemo(() => {
+    return availableMonths.map(m => ({ label: m.label, value: m.key }));
+  }, [availableMonths]);
+
   const availableWeeks = useMemo(() => {
     return extractWeeks(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
@@ -512,7 +721,7 @@ export const DailySalaryTab: React.FC = () => {
   const [sec3Week, setSec3Week] = useState<string>('');
   const [sec3Dates, setSec3Dates] = useState<string[]>([]);
 
-  // Section 4: Top 10 Cao & Thấp
+  // Section 4: Top 10 Cao & Thấp (Được đồng bộ kỳ đánh giá qua CompactPeriodicFilterPopover)
   const [topHighMonth, setTopHighMonth] = useState<string>('');
   const [topHighWeek, setTopHighWeek] = useState<string>('');
   const [topHighDates, setTopHighDates] = useState<string[]>([]);
@@ -537,6 +746,7 @@ export const DailySalaryTab: React.FC = () => {
     return (filterValues.buuCuc?.length || 0) +
       (filterValues.nhanVien?.length || 0) +
       (filterValues.thamNien?.length || 0) +
+      (filterValues.thang?.length || 0) +
       (filterValues.ngay?.length || 0);
   }, [filterValues]);
 
@@ -545,6 +755,7 @@ export const DailySalaryTab: React.FC = () => {
       buuCuc: [],
       nhanVien: [],
       thamNien: [],
+      thang: [],
       ngay: []
     });
   };
@@ -561,6 +772,10 @@ export const DailySalaryTab: React.FC = () => {
     setFilterValues(prev => ({ ...prev, thamNien: vals }));
   };
 
+  const handleThangChange = (vals: string[]) => {
+    setFilterValues(prev => ({ ...prev, thang: vals }));
+  };
+
   const handleNgayChange = (vals: string[]) => {
     setFilterValues(prev => ({ ...prev, ngay: vals }));
   };
@@ -571,6 +786,11 @@ export const DailySalaryTab: React.FC = () => {
       if (filterValues.buuCuc?.length && !filterValues.buuCuc.includes(r.tenBC)) return false;
       if (filterValues.nhanVien?.length && !filterValues.nhanVien.includes(r.maNV)) return false;
       if (filterValues.thamNien?.length && !filterValues.thamNien.includes(r.thamNien)) return false;
+      if (filterValues.thang?.length) {
+        // r.ngay có định dạng dd/mm/yyyy. Month key có định dạng mm/yyyy
+        const rMonth = r.ngay ? r.ngay.slice(3) : '';
+        if (!filterValues.thang.includes(rMonth)) return false;
+      }
       if (filterValues.ngay?.length && !filterValues.ngay.includes(r.ngay)) return false;
       return true;
     });
@@ -1505,7 +1725,19 @@ export const DailySalaryTab: React.FC = () => {
               minWidth="w-56"
             />
 
-            {/* 4. Lọc Ngày Vận Hành */}
+            {/* 4. Lọc Tháng Vận Hành (Tick chọn tháng dạng cuộn) */}
+            <IndividualFilterDropdown
+              label="Tháng"
+              compact={true}
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              options={monthOptions}
+              selectedValues={filterValues.thang || []}
+              onChange={handleThangChange}
+              searchPlaceholder="Tìm tháng (mm/yyyy)..."
+              minWidth="w-56"
+            />
+
+            {/* 5. Lọc Ngày Vận Hành */}
             <IndividualFilterDropdown
               label="Ngày"
               compact={true}
@@ -2381,37 +2613,62 @@ export const DailySalaryTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* MỤC 4: TOP NHÂN VIÊN THU NHẬP CAO NHẤT VÀ THẤP NHẤT */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {/* Top 10 Cao Nhất */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-500 shrink-0" />
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Top 10 Bưu Tá Thu Nhập Cao Nhất
-                </h3>
-                <p className="text-[11px] text-slate-400">Nhân sự xuất sắc dẫn đầu năng suất và thu nhập</p>
-              </div>
+      <div className="space-y-3">
+        {/* Header Mục 4 với Bộ Lọc Thu Gọn */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/60 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+              <Award className="w-4 h-4" />
             </div>
-            <div className="flex items-center gap-1.5">
-              <PeriodicFilterToolbar
-                selectedMonth={topHighMonth}
-                onMonthChange={setTopHighMonth}
-                availableMonths={availableMonths}
-                selectedWeek={topHighWeek}
-                onWeekChange={setTopHighWeek}
-                availableWeeks={availableWeeks}
-                selectedDates={topHighDates}
-                onDatesChange={setTopHighDates}
-                availableDates={allUniqueDatesDesc}
-                onReset={() => { setTopHighMonth(''); setTopHighWeek(''); setTopHighDates([]); }}
-              />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
-                Vinh Danh
-              </span>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                Top 10 Bưu Tá: Thu Nhập Cao Nhất & Thấp Nhất
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Đối chiếu 2 thái cực thu nhập toàn khu vực để vinh danh xuất sắc và hỗ trợ kịp thời bưu tá năng suất thấp
+              </p>
             </div>
           </div>
+
+          {/* Bộ lọc thu gọn dạng cuộn, tự động ẩn khi click ra ngoài */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">Kỳ đánh giá:</span>
+            <CompactPeriodicFilterPopover
+              selectedMonth={topHighMonth}
+              onMonthChange={(m) => { setTopHighMonth(m); setTopLowMonth(m); }}
+              availableMonths={availableMonths}
+              selectedWeek={topHighWeek}
+              onWeekChange={(w) => { setTopHighWeek(w); setTopLowWeek(w); }}
+              availableWeeks={availableWeeks}
+              selectedDates={topHighDates}
+              onDatesChange={(d) => { setTopHighDates(d); setTopLowDates(d); }}
+              availableDates={allUniqueDatesDesc}
+              onReset={() => {
+                setTopHighMonth(''); setTopHighWeek(''); setTopHighDates([]);
+                setTopLowMonth(''); setTopLowWeek(''); setTopLowDates([]);
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 2 Bảng Top 10 Cao & Thấp */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Top 10 Cao Nhất */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Top 10 Bưu Tá Thu Nhập Cao Nhất
+                  </h4>
+                  <p className="text-[10px] text-slate-400">Nhân sự xuất sắc dẫn đầu năng suất và thu nhập</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                Vinh Danh Dẫn Đầu
+              </span>
+            </div>
 
           <div className="w-full">
             <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
@@ -2460,33 +2717,19 @@ export const DailySalaryTab: React.FC = () => {
 
         {/* Top 10 Thấp Nhất (Cần Hỗ Trợ) */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
                   Top 10 Bưu Tá Thu Nhập Thấp Nhất
-                </h3>
-                <p className="text-[11px] text-slate-400">Nhân sự ít công, năng suất thấp hoặc mới vào</p>
+                </h4>
+                <p className="text-[10px] text-slate-400">Nhân sự ít công, năng suất thấp hoặc mới vào</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <PeriodicFilterToolbar
-                selectedMonth={topLowMonth}
-                onMonthChange={setTopLowMonth}
-                availableMonths={availableMonths}
-                selectedWeek={topLowWeek}
-                onWeekChange={setTopLowWeek}
-                availableWeeks={availableWeeks}
-                selectedDates={topLowDates}
-                onDatesChange={setTopLowDates}
-                availableDates={allUniqueDatesDesc}
-                onReset={() => { setTopLowMonth(''); setTopLowWeek(''); setTopLowDates([]); }}
-              />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 shrink-0">
-                Cần Quan Tâm
-              </span>
-            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 shrink-0">
+              Cần Quan Tâm & Hỗ Trợ
+            </span>
           </div>
 
           <div className="w-full">
@@ -2534,6 +2777,7 @@ export const DailySalaryTab: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
 
       {/* ========================================================================= */}
       {/* MỤC 5: BẢNG THỐNG KÊ SỐ NGÀY CÔNG & TỶ LỆ CHUYÊN CẦN */}

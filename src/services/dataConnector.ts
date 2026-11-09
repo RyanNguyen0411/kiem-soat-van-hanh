@@ -22,8 +22,42 @@ import nghiViecSnapshot from '../data/snapshots/nghi_viec.json';
 
 export const SPREADSHEET_ID = '1nolP_Se1J5Cbj7A1CwcqFvau88FrWYVF8aiFM0lGSUY';
 
-// Danh sách nhân sự không còn là bưu tá - loại bỏ khỏi toàn bộ báo cáo và tính toán
-export const EXCLUDED_STAFF_IDS = new Set(['3175777']);
+// Danh sách nhân sự bị loại bỏ khỏi 100% dữ liệu dashboard theo chỉ đạo của AM Huy (ĐNB)
+// Logic: Các nhân viên này không thuộc bất kỳ bưu cục nào thuộc AM Huy quản lý:
+// 1. Lê Thị Hà, 2. Đặng Ngọc Hiếu, 3. Lương Văn Lợi, 4. Đàm Quang Đạt, 5. Phạm Duy Cao Nguyên, 6. Huỳnh Tuấn Hải
+export const EXCLUDED_STAFF_NAMES = [
+  'Lê Thị Hà',
+  'Đặng Ngọc Hiếu',
+  'Lương Văn Lợi',
+  'Đàm Quang Đạt',
+  'Phạm Duy Cao Nguyên',
+  'Huỳnh Tuấn Hải'
+];
+
+export const EXCLUDED_STAFF_IDS = new Set(['3175777', '3103251', '3183963']);
+
+export function normalizePersonName(name?: string): string {
+  if (!name) return '';
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const EXCLUDED_NORMALIZED_NAMES = EXCLUDED_STAFF_NAMES.map(n => normalizePersonName(n));
+
+export function isExcludedStaff(nameOrRaw?: string, id?: string): boolean {
+  if (id && EXCLUDED_STAFF_IDS.has(id.trim())) return true;
+  if (!nameOrRaw) return false;
+  const norm = normalizePersonName(nameOrRaw);
+  for (const ex of EXCLUDED_NORMALIZED_NAMES) {
+    if (norm.includes(ex)) return true;
+  }
+  return false;
+}
 
 // Chuẩn hóa tên Bưu cục khu vực Long An (ĐNB) - Đồng nhất hoàn toàn '(LAN) Cần Đước' vào '(LAN) Cần Đước 1'
 export function normalizePostOfficeName(bc?: string): string {
@@ -252,8 +286,10 @@ export async function loadDataset(): Promise<{
         if (!isValidDateDDMMYYYY(ngay)) return false;
         if (!r[0] || !r[1] || r[0].trim() === '' || r[1].trim() === '') return false;
         const nvRaw = r[1] || '';
-        const maNV = nvRaw.split('_')[0]?.trim() || '';
-        if (EXCLUDED_STAFF_IDS.has(maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
+        const parts = nvRaw.split('_');
+        const maNV = parts[0]?.trim() || '';
+        const tenNV = parts.slice(1).join('_').trim() || nvRaw;
+        if (isExcludedStaff(tenNV, maNV) || isExcludedStaff(nvRaw, maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
         return true;
       })
       .map(r => {
@@ -285,8 +321,10 @@ export async function loadDataset(): Promise<{
         if (!isValidDateDDMMYYYY(ngay)) return false;
         if (!r[0] || r[0].trim() === '') return false;
         const nvRaw = r[0] || '';
-        const maNV = nvRaw.split('-')[0]?.trim() || '';
-        if (EXCLUDED_STAFF_IDS.has(maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
+        const nvParts = nvRaw.split('-');
+        const maNV = nvParts[0]?.trim() || '';
+        const tenNV = nvParts.slice(1).join('-').trim() || nvRaw;
+        if (isExcludedStaff(tenNV, maNV) || isExcludedStaff(nvRaw, maNV) || nvRaw.includes('Trần Trọng Phú')) return false;
         return true;
       })
       .map(r => {
@@ -366,7 +404,13 @@ export async function loadDataset(): Promise<{
     // 6. Parse Nhân sự: Sheet 'Nhân sự' (bao gồm 3175777 Trần Trọng Phú đảm nhiệm vị trí NVXL Tầm Vu)
     const nhanSuRows = parseCSV(nhanSuText).slice(1);
     const nhanSu: NhanSuRecord[] = nhanSuRows
-      .filter(r => r[0] && r[0].trim() !== '')
+      .filter(r => {
+        if (!r[0] || r[0].trim() === '') return false;
+        const maNV = r[0].trim();
+        const tenNV = (r[1] || '').trim();
+        if (isExcludedStaff(tenNV, maNV)) return false;
+        return true;
+      })
       .map(r => {
         const maNV = r[0].trim();
         const tenNV = (r[1] || '').trim();
@@ -425,7 +469,13 @@ export async function loadDataset(): Promise<{
     // 7. Parse Nghỉ việc: Sheet 'Nghỉ việc'
     const nghiViecRows = parseCSV(nghiViecText).slice(1);
     const nghiViec: NghiViecRecord[] = nghiViecRows
-      .filter(r => r[0] && r[0].trim() !== '')
+      .filter(r => {
+        if (!r[0] || r[0].trim() === '') return false;
+        const id = r[0].trim();
+        const ten = (r[1] || '').trim();
+        if (isExcludedStaff(ten, id)) return false;
+        return true;
+      })
       .map(r => {
         const id = r[0].trim();
         const ten = (r[1] || '').trim();
@@ -524,13 +574,13 @@ export async function loadDataset(): Promise<{
           buuCuc: normalizePostOfficeName(r.buuCuc)
         })),
         gtcNhanVien: (gtcNhanVienSnapshot as GtcEmployeeRecord[])
-          .filter(r => !EXCLUDED_STAFF_IDS.has(r.maNV))
+          .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
           .map(r => ({
             ...r,
             buuCuc: normalizePostOfficeName(r.buuCuc)
           })),
         hoaHongNgay: (hoaHongNgaySnapshot as DailySalaryRecord[])
-          .filter(r => !EXCLUDED_STAFF_IDS.has(r.maNV))
+          .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
           .map(r => {
             const tenBC = normalizePostOfficeName(r.tenBC);
             return {
@@ -557,23 +607,27 @@ export async function loadDataset(): Promise<{
             maBC: normalizePostOfficeCode(r.maBC, tenBC)
           };
         }),
-        nhanSu: (nhanSuSnapshot as NhanSuRecord[]).map(r => {
-          const buuCuc = normalizePostOfficeName(r.buuCuc);
-          return {
-            ...r,
-            buuCuc,
-            buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
-          };
-        }),
-        nghiViec: (nghiViecSnapshot as NghiViecRecord[]).map(r => {
-          const buuCuc = normalizePostOfficeName(r.buuCuc);
-          return {
-            ...r,
-            buuCuc,
-            maBC: normalizePostOfficeCode(r.maBC, buuCuc),
-            buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
-          };
-        })
+        nhanSu: (nhanSuSnapshot as NhanSuRecord[])
+          .filter(r => !isExcludedStaff(r.tenNV, r.maNV))
+          .map(r => {
+            const buuCuc = normalizePostOfficeName(r.buuCuc);
+            return {
+              ...r,
+              buuCuc,
+              buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+            };
+          }),
+        nghiViec: (nghiViecSnapshot as NghiViecRecord[])
+          .filter(r => !isExcludedStaff(r.ten, r.id))
+          .map(r => {
+            const buuCuc = normalizePostOfficeName(r.buuCuc);
+            return {
+              ...r,
+              buuCuc,
+              maBC: normalizePostOfficeCode(r.maBC, buuCuc),
+              buuCucRaw: buuCuc === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+            };
+          })
       },
       source: 'CACHED_SNAPSHOT',
       error: `Không thể kết nối trực tiếp đến Google Sheets (${err.message}). Hệ thống đang hiển thị dữ liệu kiểm toán snapshot gần nhất.`
