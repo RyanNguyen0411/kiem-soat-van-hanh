@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return {
       success: false,
-      error: 'Số điện thoại không đúng với số đăng ký quản trị viên GHN (0385852920)!'
+      error: 'Số điện thoại không khớp với thông tin quản trị viên đã đăng ký!'
     };
   };
 

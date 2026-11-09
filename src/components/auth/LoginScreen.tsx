@@ -38,7 +38,7 @@ export const LoginScreen: React.FC = () => {
 
   // Recovery inputs
   const [emailInput, setEmailInput] = useState('');
-  const [phoneInput, setPhoneInput] = useState('0385852920');
+  const [phoneInput, setPhoneInput] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [zaloSent, setZaloSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -173,7 +173,7 @@ export const LoginScreen: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={lockoutRemaining > 0}
-                    placeholder="Nhập tài khoản quản trị (vd: Huyamdnb)"
+                    placeholder="Nhập tên đăng nhập"
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all placeholder:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     autoFocus
                   />
@@ -202,7 +202,7 @@ export const LoginScreen: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={lockoutRemaining > 0}
-                    placeholder="Nhập mật khẩu quản trị"
+                    placeholder="Nhập mật khẩu"
                     className="w-full pl-9 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all placeholder:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed font-mono"
                   />
                   <button
@@ -274,14 +274,10 @@ export const LoginScreen: React.FC = () => {
                 </button>
               </div>
 
-              {/* Email hint with masked asterisk */}
+              {/* Email note - tuyệt đối không hiển thị email hoặc ký tự gợi ý */}
               <div className="p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl space-y-1">
-                <p className="text-[11px] text-slate-400">Gợi ý địa chỉ Email liên kết của AM Huy:</p>
-                <p className="font-mono font-bold text-amber-300 text-sm tracking-wider">
-                  H*********3**@gmail.com
-                </p>
-                <p className="text-[10px] text-slate-400 italic">
-                  * Nhập đúng toàn bộ địa chỉ email để hệ thống mở khóa quyền truy cập.
+                <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
+                  Vui lòng nhập chính xác địa chỉ Email quản trị viên đã đăng ký với hệ thống để xác thực và mở khóa quyền truy cập.
                 </p>
               </div>
 
@@ -297,7 +293,7 @@ export const LoginScreen: React.FC = () => {
                     type="text"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Hoanghuy13cdgmail.com"
+                    placeholder="Nhập địa chỉ email quản trị"
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
                     autoFocus
                   />
@@ -345,11 +341,8 @@ export const LoginScreen: React.FC = () => {
               {!zaloSent ? (
                 <form onSubmit={handleSendZaloOtp} className="space-y-4">
                   <div className="p-3 bg-blue-950/40 border border-blue-500/40 rounded-xl space-y-1">
-                    <p className="text-[11px] text-blue-200">
-                      Mã xác thực OTP bảo mật sẽ được gửi trực tiếp đến thiết bị di động liên kết với SĐT của AM Huy:
-                    </p>
-                    <p className="font-mono font-bold text-amber-300 text-sm tracking-wider">
-                      0385852920
+                    <p className="text-[11px] text-blue-200 leading-relaxed font-medium">
+                      Vui lòng nhập số điện thoại quản trị viên đã đăng ký với hệ thống để nhận mã xác thực OTP qua tin nhắn ứng dụng / thiết bị.
                     </p>
                   </div>
 
@@ -365,7 +358,7 @@ export const LoginScreen: React.FC = () => {
                         type="tel"
                         value={phoneInput}
                         onChange={(e) => setPhoneInput(e.target.value)}
-                        placeholder="0385852920"
+                        placeholder="Nhập số điện thoại đã đăng ký"
                         className="w-full pl-9 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
                         autoFocus
                       />
@@ -395,10 +388,10 @@ export const LoginScreen: React.FC = () => {
                   <div className="p-3.5 bg-emerald-950/50 border border-emerald-500/50 rounded-xl space-y-1.5">
                     <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>Đã gửi mã OTP đến số: <strong className="font-mono text-white">0385852920</strong></span>
+                      <span>Đã phát lệnh gửi mã OTP thành công!</span>
                     </p>
                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                      Mã xác thực 6 chữ số đã được gửi trực tiếp đến thiết bị di động của AM Huy. Vui lòng kiểm tra tin nhắn trên thiết bị để nhập mã bên dưới.
+                      Mã xác thực 6 chữ số đã được gửi trực tiếp đến thiết bị di động của Quản trị viên. Vui lòng kiểm tra tin nhắn trên thiết bị để nhập mã bên dưới.
                     </p>
                   </div>
 
