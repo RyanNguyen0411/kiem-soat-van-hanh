@@ -771,7 +771,8 @@ export const GtcPostOfficeTab: React.FC = () => {
 
   const chartDataTimeline = useMemo(() => {
     const dates = [...new Set(chartFilteredRecords.map(r => r.ngay))];
-    const sorted = sortDatesDesc(dates).reverse().slice(-14);
+    // Sắp xếp theo đúng logic: ngày gần nhất đến ngày xa nhất
+    const sorted = sortDatesDesc(dates).slice(0, 14);
 
     return sorted.map(d => {
       const dayRows = chartFilteredRecords.filter(r => r.ngay === d);
@@ -2936,6 +2937,9 @@ export const GtcPostOfficeTab: React.FC = () => {
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 uppercase">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
                 <span>4. Xu Hướng % GTC Bưu Cục & Volume Qua Các Ngày Gần Nhất</span>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 normal-case bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800 ml-1">
+                  Ngày gần nhất &rarr; Xa nhất
+                </span>
               </h4>
             </div>
             <div className="h-64 w-full">
