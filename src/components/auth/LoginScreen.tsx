@@ -13,7 +13,8 @@ import {
   EyeOff, 
   MessageSquare,
   ShieldCheck,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,7 +41,7 @@ export const LoginScreen: React.FC = () => {
   const [phoneInput, setPhoneInput] = useState('0385852920');
   const [otpInput, setOtpInput] = useState('');
   const [zaloSent, setZaloSent] = useState(false);
-  const [simulatedZaloNotification, setSimulatedZaloNotification] = useState<{ code: string } | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   // Clear errors when switching modes or typing
   useEffect(() => {
@@ -71,19 +72,25 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleSendZaloOtp = (e: React.FormEvent) => {
+  const handleSendZaloOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput.trim()) {
-      setErrorMessage('Vui lòng nhập số điện thoại Zalo!');
+      setErrorMessage('Vui lòng nhập số điện thoại quản trị!');
       return;
     }
-    const result = sendZaloOtp(phoneInput);
-    if (result.success && result.otp) {
-      setZaloSent(true);
-      setSimulatedZaloNotification({ code: result.otp });
-      setErrorMessage(null);
-    } else {
-      setErrorMessage(result.error || 'Gửi OTP thất bại!');
+    setIsSending(true);
+    setErrorMessage(null);
+    try {
+      const result = await sendZaloOtp(phoneInput);
+      if (result.success) {
+        setZaloSent(true);
+      } else {
+        setErrorMessage(result.error || 'Gửi OTP thất bại!');
+      }
+    } catch {
+      setErrorMessage('Có lỗi xảy ra khi phát lệnh gửi mã OTP!');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -104,32 +111,6 @@ export const LoginScreen: React.FC = () => {
       {/* Background ambient lighting */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-600/15 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      {/* Simulated Zalo Notification Popup */}
-      {simulatedZaloNotification && (
-        <div className="fixed top-5 right-5 z-50 max-w-sm w-full bg-slate-900 border-2 border-blue-500 rounded-2xl p-4 shadow-2xl animate-in slide-in-from-top-4 duration-300">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0 font-bold shadow-md">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-blue-400 uppercase tracking-wider">Zalo Official Account</span>
-                <span className="text-[10px] text-slate-400">Vừa xong</span>
-              </div>
-              <p className="text-xs text-slate-200 mt-1 font-medium">
-                Mã xác thực OTP đăng nhập GHN Express của AM Huy là:
-              </p>
-              <div className="mt-2 py-1.5 px-3 bg-blue-950/80 border border-blue-500/50 rounded-lg text-center font-mono font-black text-lg text-amber-300 tracking-widest shadow-inner">
-                {simulatedZaloNotification.code}
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1.5 italic">
-                * Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này cho người khác.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Login Card */}
       <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl overflow-hidden relative z-10">
@@ -248,7 +229,7 @@ export const LoginScreen: React.FC = () => {
                 <span>ĐĂNG NHẬP VÀO DASHBOARD</span>
               </button>
 
-              {/* Quick credentials hint note */}
+              {/* Quick recovery options */}
               <div className="pt-3 border-t border-slate-800 text-center">
                 <p className="text-[11px] text-slate-400">
                   Hệ thống bảo mật cấp Quản lý Khu vực (Area Manager)
@@ -258,7 +239,7 @@ export const LoginScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setRecoveryMode('email')}
-                    className="text-orange-400 hover:underline font-semibold"
+                    className="text-orange-400 hover:underline font-semibold cursor-pointer"
                   >
                     Email
                   </button>
@@ -266,9 +247,9 @@ export const LoginScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setRecoveryMode('zalo')}
-                    className="text-blue-400 hover:underline font-semibold"
+                    className="text-blue-400 hover:underline font-semibold cursor-pointer"
                   >
-                    Zalo OTP
+                    Mã OTP (SĐT / App)
                   </button>
                 </div>
               </div>
@@ -337,19 +318,19 @@ export const LoginScreen: React.FC = () => {
                   onClick={() => setRecoveryMode('zalo')}
                   className="text-xs text-blue-400 hover:text-blue-300 font-medium underline cursor-pointer"
                 >
-                  Hoặc chuyển sang đăng nhập bằng OTP qua Zalo
+                  Hoặc chuyển sang đăng nhập bằng mã OTP (SĐT / App)
                 </button>
               </div>
             </form>
           )}
 
-          {/* RECOVERY MODE 2: ZALO OTP */}
+          {/* RECOVERY MODE 2: OTP (SĐT / APP) */}
           {recoveryMode === 'zalo' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <MessageSquare className="w-4 h-4 text-blue-400" />
-                  Đăng Nhập Bằng Mã OTP Zalo
+                  Đăng Nhập Bằng Mã OTP (SĐT / App)
                 </span>
                 <button
                   type="button"
@@ -365,7 +346,7 @@ export const LoginScreen: React.FC = () => {
                 <form onSubmit={handleSendZaloOtp} className="space-y-4">
                   <div className="p-3 bg-blue-950/40 border border-blue-500/40 rounded-xl space-y-1">
                     <p className="text-[11px] text-blue-200">
-                      Mã xác thực OTP sẽ được gửi trực tiếp đến tài khoản Zalo gắn với số điện thoại của AM Huy:
+                      Mã xác thực OTP bảo mật sẽ được gửi trực tiếp đến thiết bị di động liên kết với SĐT của AM Huy:
                     </p>
                     <p className="font-mono font-bold text-amber-300 text-sm tracking-wider">
                       0385852920
@@ -374,7 +355,7 @@ export const LoginScreen: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                      Số Điện Thoại Zalo
+                      Số Điện Thoại Nhận OTP
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -393,21 +374,31 @@ export const LoginScreen: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isSending}
+                    className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>GỬI MÃ OTP QUA ZALO</span>
+                    {isSending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>ĐANG GỬI MÃ OTP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>GỬI MÃ OTP BẢO MẬT</span>
+                      </>
+                    )}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyZaloOtp} className="space-y-4">
-                  <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl">
-                    <p className="text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Đã gửi mã OTP đến Zalo số: <span className="font-mono font-bold text-white">0385852920</span>
+                  <div className="p-3.5 bg-emerald-950/50 border border-emerald-500/50 rounded-xl space-y-1.5">
+                    <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Đã gửi mã OTP đến số: <strong className="font-mono text-white">0385852920</strong></span>
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Vui lòng kiểm tra thông báo Zalo hoặc xem tin nhắn popup phía trên góc phải màn hình.
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Mã xác thực 6 chữ số đã được gửi trực tiếp đến thiết bị di động của AM Huy. Vui lòng kiểm tra tin nhắn trên thiết bị để nhập mã bên dưới.
                     </p>
                   </div>
 
@@ -420,8 +411,8 @@ export const LoginScreen: React.FC = () => {
                       maxLength={6}
                       value={otpInput}
                       onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                      placeholder="vd: 852920"
-                      className="w-full text-center tracking-[0.5em] font-mono font-black text-2xl py-3 bg-slate-800/90 border border-slate-700 rounded-xl text-amber-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-600"
+                      placeholder="• • • • • •"
+                      className="w-full text-center tracking-[0.5em] font-mono font-black text-2xl py-3 bg-slate-800/90 border border-slate-700 rounded-xl text-amber-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-600 placeholder:tracking-[0.3em]"
                       autoFocus
                     />
                   </div>
@@ -437,20 +428,18 @@ export const LoginScreen: React.FC = () => {
                   <div className="flex items-center justify-between text-[11px] pt-1">
                     <button
                       type="button"
-                      onClick={() => {
-                        setZaloSent(false);
-                        setSimulatedZaloNotification(null);
-                      }}
-                      className="text-slate-400 hover:text-white"
+                      onClick={() => setZaloSent(false)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
                     >
                       Đổi số điện thoại
                     </button>
                     <button
                       type="button"
                       onClick={handleSendZaloOtp}
-                      className="text-blue-400 hover:text-blue-300 font-semibold underline"
+                      disabled={isSending}
+                      className="text-blue-400 hover:text-blue-300 font-semibold underline cursor-pointer"
                     >
-                      Gửi lại mã OTP
+                      {isSending ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
                     </button>
                   </div>
                 </form>

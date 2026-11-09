@@ -7,10 +7,9 @@ interface AuthContextType {
   lockoutRemaining: number;
   login: (username: string, pass: string) => { success: boolean; error?: string };
   verifyEmail: (email: string) => { success: boolean; error?: string };
-  sendZaloOtp: (phone: string) => { success: boolean; error?: string; otp?: string };
+  sendZaloOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyZaloOtp: (enteredOtp: string) => { success: boolean; error?: string };
   logout: () => void;
-  activeOtpCode: string | null;
 }
 
 const AUTH_STORAGE_KEY = 'ghn_auth_session';
@@ -139,13 +138,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  const sendZaloOtp = (phone: string): { success: boolean; error?: string; otp?: string } => {
+  const sendZaloOtp = async (phone: string): Promise<{ success: boolean; error?: string }> => {
     const cleaned = phone.trim().replace(/\s+/g, '');
     if (cleaned === VALID_PHONE) {
-      // Tạo mã OTP 6 số
+      // Tạo mã OTP 6 số ngẫu nhiên thực tế
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setActiveOtpCode(code);
-      return { success: true, otp: code };
+
+      // Gửi mã OTP trực tiếp đến thiết bị di động của AM Huy qua kênh Bot đã xác thực
+      try {
+        const timestamp = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const text = `🔐 [GHN SECURITY] MÃ OTP XÁC THỰC ĐĂNG NHẬP DASHBOARD\n👤 Quản trị: AM Huy (ĐNB)\n📱 Số điện thoại: 0385852920\n🔑 Mã OTP của bạn là: ${code}\n⏰ Thời gian tạo: ${timestamp}\n⚠️ Hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai!`;
+        
+        await fetch(`https://api.telegram.org/bot9066732714:AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw/sendMessage?chat_id=1215576379&text=${encodeURIComponent(text)}`);
+      } catch (err) {
+        console.error('Lỗi khi gửi mã OTP qua bot:', err);
+      }
+
+      return { success: true };
     }
     return {
       success: false,
@@ -155,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyZaloOtp = (enteredOtp: string): { success: boolean; error?: string } => {
     if (!activeOtpCode) {
-      return { success: false, error: 'Mã OTP chưa được gửi hoặc đã hết hiệu lực!' };
+      return { success: false, error: 'Mã OTP chưa được gửi hoặc đã hết hiệu lực! Vui lòng nhấn gửi lại.' };
     }
     if (enteredOtp.trim() === activeOtpCode || enteredOtp.trim() === '852920') {
       setIsAuthenticated(true);
@@ -171,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return {
       success: false,
-      error: 'Mã OTP Zalo không chính xác! Vui lòng kiểm tra lại.'
+      error: 'Mã OTP không chính xác! Vui lòng kiểm tra lại tin nhắn nhận được trên điện thoại.'
     };
   };
 
@@ -193,8 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmail,
         sendZaloOtp,
         verifyZaloOtp,
-        logout,
-        activeOtpCode
+        logout
       }}
     >
       {children}
