@@ -256,6 +256,136 @@ export const OverviewTab: React.FC = () => {
   }, [filteredGtcNv, filteredHh]);
 
   // =========================================================================
+  // BẢNG ĐÁNH GIÁ & NHẬN ĐỊNH VẬN HÀNH SẮC BÉN CỦA AREA MANAGER
+  // TƯ DUY DATA ANALYST & OPERATIONS MANAGER: KHÔNG MÁY MÓC, BÓC TÁCH BẢN CHẤT SỐ LIỆU ĐANG LỌC
+  // =========================================================================
+  const poAssessments = useMemo(() => {
+    return poSummaries.map(po => {
+      const normMatch = (bcStr?: string) => {
+        if (!bcStr) return false;
+        const b = bcStr.trim();
+        return b === po.buuCuc || (b === '(LAN) Cần Đước' && po.buuCuc === '(LAN) Cần Đước 1');
+      };
+
+      const poGtcRows = filteredGtcBc.filter(r => normMatch(r.buuCuc));
+      const poNvRows = filteredGtcNv.filter(r => normMatch(r.buuCuc));
+      const poStaffRows = dataset.nhanSu.filter(r => normMatch(r.buuCuc));
+      const poGltRows = filteredGlt.filter(r => normMatch(r.buuCuc));
+      const poLcRows = filteredLc.filter(r => normMatch(r.tenBC));
+
+      const totalVol = po.volume;
+      const gtcRate = po.gtcRate;
+      const assignedRate = po.assignedRate;
+      const gltCount = po.gltBacklog;
+      const lcCount = po.lcBacklog;
+      const totalBacklog = gltCount + lcCount;
+      const backlogRatio = totalVol > 0 ? (totalBacklog / totalVol) * 100 : 0;
+
+      // Phân loại đơn tồn nhạy cảm SLA (tồn >192h, >120h)
+      const overdue192h = poGltRows.filter(r => {
+        return r.thoiGianTonDong === '192' || (r.canhBao && r.canhBao.includes('192'));
+      }).length;
+      const overdue120h = poGltRows.filter(r => {
+        return r.thoiGianTonDong === '120_192' || (r.canhBao && r.canhBao.includes('120'));
+      }).length;
+
+      // Đơn LC > 24h & > 36h
+      const lcHighHours = poLcRows.filter(r => {
+        const tg = r.thoiGianTonDong || '';
+        return tg.includes('24') || tg.includes('36') || tg.includes('48') || (r.canhBao && r.canhBao.includes('gấp'));
+      }).length;
+
+      // Nhân sự & Năng suất
+      const totalStaff = poStaffRows.length || 1;
+      const activeCouriers = new Set(poNvRows.map(r => r.maNV)).size;
+      const attendancePct = totalStaff > 0 ? (activeCouriers / totalStaff) * 100 : 0;
+      const ordersPerCourier = activeCouriers > 0 ? Math.round(po.sldGTC / activeCouriers) : 0;
+      const costPerDeliveredOrder = po.sldGTC > 0 ? Math.round(po.totalSalary / po.sldGTC) : 0;
+
+      // Ca 2 (Hàng Mới Ca 2)
+      const ca2Rows = poGtcRows.filter(r => r.loaiHang === 'Hàng Mới Ca 2');
+      const ca2Vol = ca2Rows.reduce((a, b) => a + (b.volume || 0), 0);
+      const ca2Gtc = ca2Rows.reduce((a, b) => a + (b.sldGTC || 0), 0);
+      const ca2Rate = ca2Vol > 0 ? (ca2Gtc / ca2Vol) * 100 : 0;
+
+      // Đánh giá chuyên sâu sắc bén (Real-world Operations Assessment)
+      let roleTitle = '';
+      let roleColor = '';
+      let priorityText = '';
+      let priorityColor = '';
+      let diagnosisAnalysis = '';
+      let amActionPlan = '';
+
+      // TƯ DUY ĐIỀU HÀNH THỰC TẾ GHN:
+      if (totalVol >= 35000 && gtcRate >= 66 && gltCount < 1500) {
+        roleTitle = 'Trụ Cột Vận Hành (Pillar)';
+        roleColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300';
+        priorityText = 'Giữ Nhịp Vận Hành';
+        priorityColor = 'bg-emerald-500 text-white';
+        diagnosisAnalysis = `Đảm đương ${((totalVol / (filteredGtcBc.reduce((a,b)=>a+(b.volume||0),0)||1))*100).toFixed(0)}% sản lượng khu vực, %GTC đạt ${gtcRate.toFixed(1)}% (sát chuẩn GHN). Tỷ lệ gán tốt (${assignedRate.toFixed(1)}%), bưu tá giao đều (${ordersPerCourier} đơn/NV), chi phí lương hợp lý (${costPerDeliveredOrder.toLocaleString('vi-VN')}đ/đơn). Tồn kho kiểm soát tốt (${backlogRatio.toFixed(1)}% vol).`;
+        amActionPlan = `Duy trì kỷ luật giao ca chiều. Điều phối viên giám sát dứt điểm ${overdue120h > 0 ? `${overdue120h} đơn chớm 120h` : 'đơn luân chuyển'} trước 18h hàng ngày. Sẵn sàng san tải tuyến cho các bưu cục lân cận khi cao điểm.`;
+      } else if (gltCount >= 2000 || overdue192h > 0 || backlogRatio > 4) {
+        roleTitle = 'Nghẽn Tồn Kho & Rủi Ro SLA (Bottleneck)';
+        roleColor = 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300';
+        priorityText = 'Can Thiệp Khẩn Cấp';
+        priorityColor = 'bg-rose-600 text-white animate-pulse';
+        diagnosisAnalysis = `Báo động đỏ về tồn kho: ${gltCount.toLocaleString('vi-VN')} đơn GLT + ${lcCount} LC, chiếm ${backlogRatio.toFixed(1)}% sản lượng. ${overdue192h > 0 ? `ĐẶC BIỆT CẢNH BÁO: Đang tồn ${overdue192h} đơn >192h vi phạm nghiêm trọng SLA sàn TMĐT!` : ''} Tỷ lệ giao ca 2 thấp (${ca2Rate.toFixed(1)}%) khiến đơn dồn ứ cuối ngày không được giải tỏa.`;
+        amActionPlan = `CHỈ ĐẠO CỦA AM: 1) NVXL tập trung gán và push giao gấp 100% đơn 192h. 2) Đối với đơn 120h theo dõi và gửi riêng từng mã đơn cho bưu tá phụ trách. 3) Bắt buộc đủ Log gọi và POD chuẩn, nếu sai quy định xử lý nghiêm theo log thao tác.`;
+      } else if (gtcRate < 64) {
+        roleTitle = 'Chất Lượng Giao Thấp (Low GTC)';
+        roleColor = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300';
+        priorityText = 'Cần Thúc Đẩy Gấp';
+        priorityColor = 'bg-amber-600 text-white';
+        diagnosisAnalysis = `%GTC chỉ đạt ${gtcRate.toFixed(2)}% (thủng ngưỡng 70% tới ${(70 - gtcRate).toFixed(1)}%). Nguyên nhân: Năng lực chạy hàng Ca 2 chỉ đạt ${ca2Rate.toFixed(1)}%, đồng thời tỷ lệ bưu tá đi làm thực tế đạt ${attendancePct.toFixed(0)}%, dẫn đến việc tuyến bị dồn tải vào các bưu tá còn lại.`;
+        amActionPlan = `Rà soát ngay danh sách bưu tá vắng/nghỉ. Họp khẩn BCT và ĐPV tái phân bổ tuyến giao ca chiều. Kích hoạt thưởng nóng mốc Ca 2 để kích cầu năng suất giao tối thiểu 60% trước 20h.`;
+      } else if (assignedRate < 90) {
+        roleTitle = 'Chậm Trễ Khâu Gán Tuyến (Dispatch Lag)';
+        roleColor = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300';
+        priorityText = 'Tối Ưu Chia Tuyến';
+        priorityColor = 'bg-blue-600 text-white';
+        diagnosisAnalysis = `Tỷ lệ gán đơn chỉ đạt ${assignedRate.toFixed(1)}% (chuẩn ≥ 95%). Hàng đổ về kho nhưng bị om tại sàn chia chọn, bưu tá không có đơn để giao đúng khung giờ vàng (trước 9h sáng và 14h chiều), làm tăng leadtime lên ${po.leadtime.toFixed(1)}h.`;
+        amActionPlan = `Yêu cầu ĐPV chốt ca bắn mã phân tuyến trước 8h30 sáng và 13h30 chiều. Tuyệt đối không để bưu tá chờ đơn hoặc ôm hàng không gán trên app.`;
+      } else {
+        roleTitle = 'Tuyến Gọn - Ổn Định (Agile)';
+        roleColor = 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 border-slate-300';
+        priorityText = 'Giám Sát Định Kỳ';
+        priorityColor = 'bg-slate-600 text-white';
+        diagnosisAnalysis = `Mô hình tuyến gọn, GTC đạt ${gtcRate.toFixed(1)}%, tỷ lệ gán ${assignedRate.toFixed(1)}%. Tồn kho giữ mức an toàn (${gltCount} đơn). Năng suất bình quân ${ordersPerCourier} đơn/NV, chi phí trên đơn tối ưu (${costPerDeliveredOrder.toLocaleString('vi-VN')}đ/đơn).`;
+        amActionPlan = `Duy trì tiến độ hiện tại. Phối hợp với Điều Phối Khu Vực sẵn sàng nhận san tải 10-15% khối lượng từ các bưu cục đang quá tải vào các đợt Mega Sale sàn TMĐT.`;
+      }
+
+      return {
+        buuCuc: po.buuCuc,
+        volume: totalVol,
+        gtcRate,
+        gtcGap: gtcRate - 70,
+        assignedRate,
+        gltCount,
+        lcCount,
+        totalBacklog,
+        backlogRatio,
+        overdue192h,
+        overdue120h,
+        lcHighHours,
+        totalStaff,
+        activeCouriers,
+        attendancePct,
+        ordersPerCourier,
+        costPerDeliveredOrder,
+        ca2Vol,
+        ca2Gtc,
+        ca2Rate,
+        roleTitle,
+        roleColor,
+        priorityText,
+        priorityColor,
+        diagnosisAnalysis,
+        amActionPlan
+      };
+    });
+  }, [poSummaries, filteredGtcBc, filteredGtcNv, filteredGlt, filteredLc, dataset.nhanSu]);
+
+  // =========================================================================
   // MA TRẬN SỨC KHỎE VẬN HÀNH TOÀN DIỆN 5 BƯU CỤC (OPERATIONAL BALANCED SCORECARD)
   // LOGIC CHUYÊN SÂU DATA ANALYST: TỔNG HỢP GTC, TỒN KHO, NHÂN SỰ, CA 2
   // =========================================================================
@@ -2625,6 +2755,144 @@ export const OverviewTab: React.FC = () => {
                   </React.Fragment>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          BẢNG ĐÁNH GIÁ & NHẬN ĐỊNH VẬN HÀNH SẮC BÉN CỦA AREA MANAGER
+          TƯ DUY ĐIỀU HÀNH THỰC TẾ • MAP ĐÚNG THEO BỘ LỌC ĐANG CHỌN • BÓC TÁCH BẢN CHẤT
+          ========================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-4 md:p-5 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">
+                <Target className="w-4 h-4" />
+              </span>
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                Bảng Đánh Giá &amp; Nhận Định Vận Hành Sắc Bén Của Area Manager
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Phân tích đa chiều chuyên sâu theo dữ liệu thực tế đang lọc: Bóc tách nguyên nhân cốt lõi &amp; Đưa ra chỉ đạo hành động trực tiếp cho từng Bưu cục
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>
+                {filterBuuCuc === 'all' ? 'Toàn 5 Bưu Cục' : filterBuuCuc} &bull; {effectiveDates.length > 0 && effectiveDates.length < allUniqueDatesDesc.length ? `${effectiveDates.length} ngày chọn lọc` : 'Toàn kỳ'}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {/* Bảng Đánh Giá Chi Tiết */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs overflow-hidden">
+          <table className="w-full text-xs text-left border-collapse table-fixed">
+            <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="py-2.5 px-3 w-[17%]">Bưu Cục &amp; Vị Thế</th>
+                <th className="py-2.5 px-2.5 w-[14%] text-center">Chỉ Số Trọng Yếu</th>
+                <th className="py-2.5 px-2.5 w-[13%] text-center">Hiệu Suất &amp; Chi Phí</th>
+                <th className="py-2.5 px-3 w-[28%] text-left">Bóc Tách Bản Chất &amp; Nguyên Nhân Gốc</th>
+                <th className="py-2.5 px-3 w-[28%] text-left">Chỉ Đạo Hành Động Tức Thì Của AM</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {poAssessments.map((item) => (
+                <tr key={item.buuCuc} className="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 transition-colors">
+                  {/* 1. Bưu Cục & Vị Thế */}
+                  <td className="py-3 px-3 align-top">
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                      <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                      <span className="truncate">{item.buuCuc}</span>
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      <div className={`inline-block px-2 py-0.5 rounded-md text-[9.5px] font-extrabold border ${item.roleColor}`}>
+                        {item.roleTitle}
+                      </div>
+                      <div>
+                        <span className={`inline-block px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${item.priorityColor}`}>
+                          {item.priorityText}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* 2. Chỉ Số Trọng Yếu */}
+                  <td className="py-3 px-2.5 text-center align-top space-y-1">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Tỷ Lệ GTC:</span>
+                      <span className="font-black text-xs text-slate-900 dark:text-white">{item.gtcRate.toFixed(2)}%</span>
+                      <span className={`text-[9.5px] font-bold ml-1 ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        ({item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}%` : `${item.gtcGap.toFixed(1)}%`})
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Gán: <strong className="text-blue-600 dark:text-blue-400 font-bold">{item.assignedRate.toFixed(1)}%</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-600 dark:text-slate-300">
+                      Tồn: <strong className={item.totalBacklog > 2000 ? 'text-rose-600 font-bold' : 'font-semibold'}>
+                        {item.totalBacklog.toLocaleString('vi-VN')} đơn
+                      </strong> ({item.backlogRatio.toFixed(1)}%)
+                    </div>
+                    {(item.overdue192h > 0 || item.overdue120h > 0) && (
+                      <div className="pt-0.5">
+                        {item.overdue192h > 0 && (
+                          <span className="inline-block px-1.5 py-0.2 rounded bg-rose-600 text-white font-bold text-[9px] mr-1">
+                            {item.overdue192h} đơn &gt;192h
+                          </span>
+                        )}
+                        {item.overdue120h > 0 && (
+                          <span className="inline-block px-1.5 py-0.2 rounded bg-amber-500 text-white font-bold text-[9px]">
+                            {item.overdue120h} đơn &gt;120h
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* 3. Hiệu Suất & Chi Phí */}
+                  <td className="py-3 px-2.5 text-center align-top space-y-1">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Bưu Tá Giao:</span>
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
+                        {item.activeCouriers}/{item.totalStaff} NV
+                      </span>
+                      <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold ml-1">
+                        ({item.attendancePct.toFixed(0)}%)
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Năng suất: <strong className="text-slate-800 dark:text-slate-200">{item.ordersPerCourier} đơn/NV</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Lương/GTC: <strong className="text-emerald-600 dark:text-emerald-400">{item.costPerDeliveredOrder.toLocaleString('vi-VN')}đ</strong>
+                    </div>
+                    <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                      Ca 2: {item.ca2Rate.toFixed(1)}% GTC
+                    </div>
+                  </td>
+
+                  {/* 4. Bóc Tách Bản Chất & Nguyên Nhân Gốc */}
+                  <td className="py-3 px-3 align-top">
+                    <div className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-normal bg-slate-50/70 dark:bg-slate-750/50 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                      {item.diagnosisAnalysis}
+                    </div>
+                  </td>
+
+                  {/* 5. Chỉ Đạo Hành Động Tức Thì Của AM */}
+                  <td className="py-3 px-3 align-top">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-100 leading-relaxed font-medium bg-orange-50/50 dark:bg-orange-950/20 p-2 rounded-lg border border-orange-200/70 dark:border-orange-900/40">
+                      {item.amActionPlan}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

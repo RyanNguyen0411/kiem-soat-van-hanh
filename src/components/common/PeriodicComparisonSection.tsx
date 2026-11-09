@@ -1,19 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   GitCompare, 
   Calendar, 
+  CalendarDays,
+  CalendarRange,
   TrendingUp, 
   TrendingDown, 
-  CheckSquare, 
-  Square, 
   Download, 
   ArrowRight,
   ChevronDown,
   ChevronRight,
-  Filter,
-  Building2,
-  Package,
-  RotateCcw
+  RotateCcw,
+  Check,
+  X
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -27,7 +26,7 @@ import {
   Legend 
 } from 'recharts';
 import type { GtcPostOfficeRecord, GtcEmployeeRecord, DailySalaryRecord } from '../../types/dashboard';
-import type { WeekFilterOption, MonthFilterOption } from '../../utils/dateEngine';
+import { sortDatesDesc, type WeekFilterOption, type MonthFilterOption } from '../../utils/dateEngine';
 import { exportToCSV } from '../../services/excelExportService';
 
 interface PeriodicComparisonProps {
@@ -62,9 +61,16 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
   availableWeeks,
   availableMonths
 }) => {
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'day'>('week');
 
-  // Selected weeks for comparison (default: select first 3 weeks or all)
+  // Danh sách toàn bộ các ngày duy nhất sắp xếp từ mới nhất -> cũ nhất (gần nhất -> xa nhất)
+  const allUniqueDatesDesc = useMemo(() => {
+    const rawDates = gtcBcList.map(r => r.ngay).filter(Boolean);
+    const unique = [...new Set(rawDates)];
+    return sortDatesDesc(unique);
+  }, [gtcBcList]);
+
+  // Selected weeks for comparison (default: all)
   const [selectedWeekKeys, setSelectedWeekKeys] = useState<string[]>(() => {
     return availableWeeks.map(w => w.key);
   });
@@ -73,6 +79,30 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
   const [selectedMonthKeys, setSelectedMonthKeys] = useState<string[]>(() => {
     return availableMonths.map(m => m.key);
   });
+
+  // Selected days for comparison (default: 7 ngày gần nhất)
+  const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>(() => {
+    return allUniqueDatesDesc.slice(0, 7);
+  });
+
+  // Quản lý dropdown dạng cuộn mở (tuần, tháng, ngày)
+  const [openDropdown, setOpenDropdown] = useState<'week' | 'month' | 'day' | null>(null);
+  const filterSectionRef = useRef<HTMLDivElement>(null);
+
+  // Tự động thu gọn popover khi nhấn bất kỳ nơi nào trên màn hình
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterSectionRef.current && !filterSectionRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    if (openDropdown !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   // Key of period row currently expanded to show daily breakdown
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -156,6 +186,28 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
   const clearAllMonths = () => {
     if (availableMonths.length > 0) {
       setSelectedMonthKeys([availableMonths[0].key]);
+    }
+  };
+
+  // Toggle day checkbox
+  const toggleDay = (d: string) => {
+    setSelectedDateKeys(prev => {
+      if (prev.includes(d)) {
+        if (prev.length === 1) return prev; // keep at least 1
+        return prev.filter(k => k !== d);
+      } else {
+        return sortDatesDesc([...prev, d]);
+      }
+    });
+  };
+
+  const selectAllDays = () => {
+    setSelectedDateKeys([...allUniqueDatesDesc]);
+  };
+
+  const clearAllDays = () => {
+    if (allUniqueDatesDesc.length > 0) {
+      setSelectedDateKeys([allUniqueDatesDesc[0]]);
     }
   };
 
@@ -265,14 +317,25 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
     });
   }, [availableMonths, localFilteredGtcBc, localFilteredGtcNv, localFilteredHh]);
 
-  // Filtered metrics based on ticked checkboxes
+  // Compute metrics for all days (khi chọn chế độ so sánh theo ngày)
+  const allDayMetrics = useMemo(() => {
+    return allUniqueDatesDesc.map(d => {
+      const bcRow = localFilteredGtcBc.find(r => r.ngay === d);
+      const thu = bcRow?.thu || '';
+      return computeMetricsForDates(d, `Ngày ${d}${thu ? ` (${thu})` : ''}`, d, [d]);
+    });
+  }, [allUniqueDatesDesc, localFilteredGtcBc, localFilteredGtcNv, localFilteredHh]);
+
+  // Filtered metrics based on ticked checkboxes (Thứ tự từ kỳ gần nhất -> kỳ xa nhất)
   const displayedMetrics = useMemo(() => {
     if (viewMode === 'week') {
       return allWeekMetrics.filter(m => selectedWeekKeys.includes(m.key));
-    } else {
+    } else if (viewMode === 'month') {
       return allMonthMetrics.filter(m => selectedMonthKeys.includes(m.key));
+    } else {
+      return allDayMetrics.filter(m => selectedDateKeys.includes(m.key));
     }
-  }, [viewMode, allWeekMetrics, allMonthMetrics, selectedWeekKeys, selectedMonthKeys]);
+  }, [viewMode, allWeekMetrics, allMonthMetrics, allDayMetrics, selectedWeekKeys, selectedMonthKeys, selectedDateKeys]);
 
   // Calculate Variance (Chênh lệch delta) between the first two selected periods
   const variance = useMemo(() => {
@@ -355,78 +418,93 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
           </p>
         </div>
 
+        {/* Nút Xuất Excel */}
+        <button
+          type="button"
+          onClick={handleExport}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-2xs cursor-pointer self-start md:self-auto"
+        >
+          <Download className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Xuất Excel</span>
+        </button>
+      </div>
+
+      {/* BỘ LỌC ĐỘC LẬP THU GỌN (DẠNG CUỘN CHUYÊN NGHIỆP - TỰ ĐỘNG ẨN KHI NHẤN NGOÀI) */}
+      <div 
+        className="flex flex-wrap items-center justify-between gap-2.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700 text-xs" 
+        ref={filterSectionRef}
+      >
         <div className="flex flex-wrap items-center gap-2">
-          {/* Mode Switcher Tabs */}
-          <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-750 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+          {/* Mode Switcher Tabs: Tuần / Tháng / Ngày */}
+          <div className="inline-flex rounded-lg bg-slate-200/70 dark:bg-slate-800 p-0.5 border border-slate-300 dark:border-slate-700 font-semibold text-xs">
             <button
               type="button"
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-1 rounded-md transition-all ${
+              onClick={() => {
+                setViewMode('week');
+                setOpenDropdown(null);
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
                 viewMode === 'week'
-                  ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-sm font-bold'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
               Theo tuần ({availableWeeks.length})
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('month')}
-              className={`px-3 py-1 rounded-md transition-all ${
+              onClick={() => {
+                setViewMode('month');
+                setOpenDropdown(null);
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
                 viewMode === 'month'
-                  ? 'bg-white dark:bg-slate-800 text-orange-600 shadow-sm font-bold'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
               Theo tháng ({availableMonths.length})
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('day');
+                setOpenDropdown(null);
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
+                viewMode === 'day'
+                  ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-2xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Theo ngày ({allUniqueDatesDesc.length})
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Xuất Excel</span>
-          </button>
-        </div>
-      </div>
+          <div className="h-4 w-[1px] bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
 
-      {/* BỘ LỌC ĐỘC LẬP RIÊNG CỦA BẢNG SO SÁNH (BƯU CỤC & LOẠI HÀNG - KHÔNG ẢNH HƯỞNG BẢNG KHÁC) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-200">
-            <Filter className="w-3.5 h-3.5 text-orange-600" />
-            <span className="uppercase tracking-wider text-[11px]">Bộ lọc riêng:</span>
-          </div>
-
-          {/* Lọc Bưu Cục */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-slate-500 dark:text-slate-400 font-medium text-[11px] flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-slate-400" /> Bưu cục:
-            </label>
+          {/* 1. Lọc Bưu Cục */}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400 text-[11px] hidden sm:inline">BC:</span>
             <select
               value={filterBuuCuc}
               onChange={e => setFilterBuuCuc(e.target.value)}
-              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
             >
-              <option value="all">Tất cả bưu cục (5 BC)</option>
+              <option value="all">Tất cả 5 bưu cục</option>
               {buuCucOptions.map(bc => (
                 <option key={bc} value={bc}>{bc}</option>
               ))}
             </select>
           </div>
 
-          {/* Lọc Loại Hàng */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-slate-500 dark:text-slate-400 font-medium text-[11px] flex items-center gap-1">
-              <Package className="w-3 h-3 text-slate-400" /> Loại hàng:
-            </label>
+          {/* 2. Lọc Loại Hàng */}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400 text-[11px] hidden sm:inline">Ca:</span>
             <select
               value={filterLoaiHang}
               onChange={e => setFilterLoaiHang(e.target.value)}
-              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
             >
               <option value="all">Tất cả loại hàng / ca</option>
               {loaiHangOptions.map(lh => (
@@ -434,6 +512,310 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
               ))}
             </select>
           </div>
+
+          {/* 3. Dropdown Dạng Cuộn: Chọn Tuần So Sánh (khi viewMode === 'week') */}
+          {viewMode === 'week' && (
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(prev => prev === 'week' ? null : 'week')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  selectedWeekKeys.length > 0
+                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                }`}
+                title="Mở danh sách dạng cuộn để tick chọn tuần so sánh"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {selectedWeekKeys.length === availableWeeks.length
+                    ? 'Tất cả các tuần'
+                    : `Đã chọn ${selectedWeekKeys.length}/${availableWeeks.length} tuần`}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'week' ? 'rotate-180 text-orange-600' : ''}`} />
+              </button>
+
+              {openDropdown === 'week' && (
+                <div className="absolute left-0 mt-1.5 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-700">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
+                      Tick Chọn Tuần So Sánh
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Phím tắt nhanh */}
+                  <div className="flex items-center justify-between gap-1 text-[11px] bg-slate-50 dark:bg-slate-750 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={selectAllWeeks}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold border border-slate-200 dark:border-slate-600 cursor-pointer"
+                    >
+                      Chọn tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllWeeks}
+                      className="text-slate-500 hover:text-orange-600 dark:text-slate-400 font-medium underline cursor-pointer"
+                    >
+                      Chỉ tuần mới nhất
+                    </button>
+                  </div>
+
+                  {/* Danh sách cuộn dọc */}
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    {availableWeeks.map(w => {
+                      const isChecked = selectedWeekKeys.includes(w.key);
+                      return (
+                        <button
+                          key={w.key}
+                          type="button"
+                          onClick={() => toggleWeek(w.key)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all text-left ${
+                            isChecked
+                              ? 'bg-orange-500 text-white font-bold border-orange-600 shadow-2xs'
+                              : 'bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                              isChecked ? 'bg-white text-orange-600 border-white' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'
+                            }`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                            <span className="font-medium">{w.label}</span>
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                            isChecked ? 'bg-orange-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          }`}>
+                            {w.dates.length} ngày
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400">
+                    <span className="italic">* Nhấn ngoài để tự động ẩn</span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                    >
+                      Áp dụng ({selectedWeekKeys.length} tuần)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4. Dropdown Dạng Cuộn: Chọn Tháng So Sánh (khi viewMode === 'month') */}
+          {viewMode === 'month' && (
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(prev => prev === 'month' ? null : 'month')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  selectedMonthKeys.length > 0
+                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                }`}
+                title="Mở danh sách dạng cuộn để tick chọn tháng so sánh"
+              >
+                <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {selectedMonthKeys.length === availableMonths.length
+                    ? 'Tất cả các tháng'
+                    : `Đã chọn ${selectedMonthKeys.length}/${availableMonths.length} tháng`}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'month' ? 'rotate-180 text-orange-600' : ''}`} />
+              </button>
+
+              {openDropdown === 'month' && (
+                <div className="absolute left-0 mt-1.5 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-700">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
+                      Tick Chọn Tháng So Sánh
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Phím tắt nhanh */}
+                  <div className="flex items-center justify-between gap-1 text-[11px] bg-slate-50 dark:bg-slate-750 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={selectAllMonths}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold border border-slate-200 dark:border-slate-600 cursor-pointer"
+                    >
+                      Chọn tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllMonths}
+                      className="text-slate-500 hover:text-orange-600 dark:text-slate-400 font-medium underline cursor-pointer"
+                    >
+                      Chỉ tháng mới nhất
+                    </button>
+                  </div>
+
+                  {/* Danh sách cuộn dọc */}
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    {availableMonths.map(m => {
+                      const isChecked = selectedMonthKeys.includes(m.key);
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => toggleMonth(m.key)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all text-left ${
+                            isChecked
+                              ? 'bg-orange-500 text-white font-bold border-orange-600 shadow-2xs'
+                              : 'bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                              isChecked ? 'bg-white text-orange-600 border-white' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'
+                            }`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                            <span className="font-medium">{m.label}</span>
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                            isChecked ? 'bg-orange-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          }`}>
+                            {m.dates.length} ngày
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400">
+                    <span className="italic">* Nhấn ngoài để tự động ẩn</span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                    >
+                      Áp dụng ({selectedMonthKeys.length} tháng)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. Dropdown Dạng Cuộn: Chọn Ngày So Sánh (khi viewMode === 'day') */}
+          {viewMode === 'day' && (
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(prev => prev === 'day' ? null : 'day')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  selectedDateKeys.length > 0
+                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                }`}
+                title="Mở danh sách dạng cuộn để tick chọn ngày so sánh"
+              >
+                <CalendarRange className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {selectedDateKeys.length === allUniqueDatesDesc.length
+                    ? 'Tất cả các ngày'
+                    : `Đã chọn ${selectedDateKeys.length}/${allUniqueDatesDesc.length} ngày`}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'day' ? 'rotate-180 text-orange-600' : ''}`} />
+              </button>
+
+              {openDropdown === 'day' && (
+                <div className="absolute left-0 mt-1.5 w-[310px] sm:w-[350px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-700">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
+                      Tick Chọn Ngày So Sánh
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Phím tắt nhanh */}
+                  <div className="flex items-center justify-between gap-1 text-[11px] bg-slate-50 dark:bg-slate-750 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={selectAllDays}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold border border-slate-200 dark:border-slate-600 cursor-pointer"
+                    >
+                      Chọn tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllDays}
+                      className="text-slate-500 hover:text-orange-600 dark:text-slate-400 font-medium underline cursor-pointer"
+                    >
+                      Chỉ ngày mới nhất
+                    </button>
+                  </div>
+
+                  {/* Danh sách cuộn dọc */}
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    {allUniqueDatesDesc.map(d => {
+                      const isChecked = selectedDateKeys.includes(d);
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => toggleDay(d)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all text-left ${
+                            isChecked
+                              ? 'bg-orange-500 text-white font-bold border-orange-600 shadow-2xs'
+                              : 'bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                              isChecked ? 'bg-white text-orange-600 border-white' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'
+                            }`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                            <span className="font-mono text-xs">{d}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400">
+                    <span className="italic">* Nhấn ngoài để tự động ẩn</span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                    >
+                      Áp dụng ({selectedDateKeys.length} ngày)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Reset button if active */}
           {(filterBuuCuc !== 'all' || filterLoaiHang !== 'all') && (
@@ -443,129 +825,23 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                 setFilterBuuCuc('all');
                 setFilterLoaiHang('all');
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/60 rounded-md transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/60 rounded-md transition-colors cursor-pointer"
               title="Đặt lại bộ lọc riêng của bảng này"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>Xóa lọc bảng</span>
+              <span>Xóa lọc</span>
             </button>
           )}
         </div>
 
         {/* Current Filter Pill */}
         <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <span className="font-medium">Đang lọc riêng:</span>
+          <span className="font-medium hidden sm:inline">Đang lọc riêng:</span>
           <span className="font-bold text-orange-600 dark:text-orange-400 bg-orange-100/70 dark:bg-orange-950/50 px-2 py-0.5 rounded-md">
-            {filterBuuCuc === 'all' ? 'Toàn khu vực' : filterBuuCuc} &bull; {filterLoaiHang === 'all' ? 'Tất cả loại hàng' : filterLoaiHang}
+            {filterBuuCuc === 'all' ? 'Toàn khu vực' : filterBuuCuc} &bull; {filterLoaiHang === 'all' ? 'Tất cả ca' : filterLoaiHang}
           </span>
         </div>
       </div>
-
-      {/* TICK CHỌN TUẦN / THÁNG MUỐN SO SÁNH */}
-      {viewMode === 'week' && (
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <span>Tick chọn các tuần muốn so sánh ({selectedWeekKeys.length}/{availableWeeks.length} tuần được chọn):</span>
-            </span>
-            <div className="flex gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={selectAllWeeks}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-semibold"
-              >
-                Chọn tất cả
-              </button>
-              <span className="text-slate-300">|</span>
-              <button
-                type="button"
-                onClick={clearAllWeeks}
-                className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              >
-                Chỉ chọn tuần mới nhất
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pt-1">
-            {availableWeeks.map(w => {
-              const isChecked = selectedWeekKeys.includes(w.key);
-              return (
-                <button
-                  key={w.key}
-                  type="button"
-                  onClick={() => toggleWeek(w.key)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                    isChecked
-                      ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-900 dark:text-orange-200 shadow-2xs font-bold'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'
-                  }`}
-                >
-                  {isChecked ? (
-                    <CheckSquare className="w-3.5 h-3.5 text-orange-600" />
-                  ) : (
-                    <Square className="w-3.5 h-3.5 text-slate-400" />
-                  )}
-                  <span>{w.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* TICK CHỌN THÁNG MUỐN SO SÁNH */}
-      {viewMode === 'month' && (
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <span>Tick chọn các tháng muốn so sánh ({selectedMonthKeys.length}/{availableMonths.length} tháng được chọn):</span>
-            </span>
-            <div className="flex gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={selectAllMonths}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-semibold"
-              >
-                Chọn tất cả
-              </button>
-              <span className="text-slate-300">|</span>
-              <button
-                type="button"
-                onClick={clearAllMonths}
-                className="text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              >
-                Chỉ chọn tháng mới nhất
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pt-1">
-            {availableMonths.map(m => {
-              const isChecked = selectedMonthKeys.includes(m.key);
-              return (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => toggleMonth(m.key)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                    isChecked
-                      ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-900 dark:text-orange-200 shadow-2xs font-bold'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'
-                  }`}
-                >
-                  {isChecked ? (
-                    <CheckSquare className="w-3.5 h-3.5 text-orange-600" />
-                  ) : (
-                    <Square className="w-3.5 h-3.5 text-slate-400" />
-                  )}
-                  <span>{m.label} ({m.dates.length} ngày)</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* TÓM TẮT CHÊNH LỆCH DELTA BIẾN ĐỘNG NẾU CÓ >= 2 KỲ ĐƯỢC CHỌN */}
       {variance && (
@@ -872,7 +1148,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={[...displayedMetrics].reverse()}>
+              <ComposedChart data={displayedMetrics}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
