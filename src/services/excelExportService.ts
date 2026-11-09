@@ -13,6 +13,9 @@
 export const GOOGLE_DRIVE_EXPORT_FOLDER_URL = 'https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing';
 export const GOOGLE_DRIVE_EXPORT_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
 
+// Link triển khai Google Apps Script Web App của AM Huy (ĐNB)
+export const DEFAULT_DRIVE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxn90MNH1IukX8UMqsZDUqLhlpnsnme_MCzHdKbfkNgZ08w0O_Kpe-PHUsEobA72BUduA/exec';
+
 export const STORAGE_KEY_DRIVE_WEBHOOK = 'ghn_drive_export_webhook_url';
 
 export function getDriveWebhookUrl(): string {
@@ -22,7 +25,7 @@ export function getDriveWebhookUrl(): string {
   } catch {
     // ignore
   }
-  return (import.meta.env.VITE_DRIVE_EXPORT_WEBHOOK_URL as string) || '';
+  return (import.meta.env.VITE_DRIVE_EXPORT_WEBHOOK_URL as string) || DEFAULT_DRIVE_WEBHOOK_URL;
 }
 
 export function setDriveWebhookUrl(url: string) {

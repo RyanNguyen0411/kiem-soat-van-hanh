@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { 
   GOOGLE_DRIVE_EXPORT_FOLDER_URL, 
+  DEFAULT_DRIVE_WEBHOOK_URL,
   getDriveWebhookUrl, 
   setDriveWebhookUrl 
 } from '../../services/excelExportService';
@@ -206,20 +207,27 @@ function doPost(e) {
               </a>
             </div>
 
-            {/* Form nhập Webhook Apps Script nếu có */}
+            {/* Form nhập Webhook Apps Script */}
             <form onSubmit={handleSaveWebhook} className="space-y-2">
-              <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                URL Google Apps Script Web App (Tùy chọn để upload tự động vào thư mục):
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                  URL Google Apps Script Web App (Tự động tải & lưu vào Drive):
+                </label>
+                {webhookInput === DEFAULT_DRIVE_WEBHOOK_URL && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                    ✓ Link chính thức
+                  </span>
+                )}
+              </div>
               <input
                 type="url"
                 value={webhookInput}
                 onChange={e => setWebhookInput(e.target.value)}
-                placeholder="https://script.google.com/macros/s/.../exec"
+                placeholder={DEFAULT_DRIVE_WEBHOOK_URL}
                 className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono"
               />
               <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                Nếu để trống, khi bấm xuất Excel dashboard sẽ tải file về máy và tự động mở thư mục Google Drive ở tab mới để AM Huy xem ngay lập tức.
+                Dashboard đã tích hợp sẵn Web App của AM Huy. Khi xuất Excel, hệ thống sẽ tự động đẩy file lên Google Drive và mở ngay ở tab mới.
               </p>
 
               <div className="flex items-center justify-between pt-1">
@@ -229,18 +237,16 @@ function doPost(e) {
                 >
                   {saveSuccess ? 'Đã lưu cấu hình ✓' : 'Lưu Cấu Hình'}
                 </button>
-                {webhookInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWebhookInput('');
-                      setDriveWebhookUrl('');
-                    }}
-                    className="text-[10.5px] text-rose-500 hover:underline cursor-pointer"
-                  >
-                    Xóa URL Webhook
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWebhookInput(DEFAULT_DRIVE_WEBHOOK_URL);
+                    setDriveWebhookUrl(DEFAULT_DRIVE_WEBHOOK_URL);
+                  }}
+                  className="text-[10.5px] text-orange-600 dark:text-orange-400 hover:underline cursor-pointer font-medium"
+                >
+                  Khôi phục link mặc định
+                </button>
               </div>
             </form>
 

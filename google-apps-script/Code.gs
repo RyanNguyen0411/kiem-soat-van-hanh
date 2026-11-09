@@ -3,18 +3,16 @@
  * GOOGLE APPS SCRIPT CHO GHN OPERATION CONTROL (AM HUY - ĐNB)
  * Tự động nhận file Excel/CSV từ Dashboard và lưu vào thư mục Google Drive:
  * https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing
+ * 
+ * URL ĐÃ TRIỂN KHAI HOẠT ĐỘNG:
+ * https://script.google.com/macros/s/AKfycbxn90MNH1IukX8UMqsZDUqLhlpnsnme_MCzHdKbfkNgZ08w0O_Kpe-PHUsEobA72BUduA/exec
  * =========================================================================================
  *
- * HƯỚNG DẪN CÀI ĐẶT NHANH (1 PHÚT):
- * 1. Mở Google Sheet nguồn hoặc truy cập https://script.google.com tạo dự án mới.
- * 2. Copy toàn bộ nội dung file này dán vào tệp Code.gs.
- * 3. Bấm "Triển khai" (Deploy) > "Triển khai mới" (New deployment).
- * 4. Chọn loại: "Ứng dụng web" (Web app).
- *    - Mô tả: GHN Dashboard Excel Drive Exporter
- *    - Thực thi dưới dạng (Execute as): "Tôi" (Me)
+ * HƯỚNG DẪN CẬP NHẬT / KIỂM TRA QUYỀN TRUY CẬP:
+ * 1. Mở dự án tại https://script.google.com
+ * 2. Đảm bảo phần Triển khai (Deploy) > Quản lý bản triển khai (Manage deployments):
  *    - Ai có quyền truy cập (Who has access): "Bất kỳ ai" (Anyone)
- * 5. Bấm "Triển khai" và cấp quyền truy cập Google Drive khi được hỏi.
- * 6. Copy URL Ứng dụng web (kết thúc bằng /exec) và dán vào Dashboard GHN để kích hoạt tự động lưu trực tiếp!
+ * 3. Mỗi khi chỉnh sửa mã script, tạo Phiên bản mới (New version) để web app cập nhật logic mới nhất.
  */
 
 const TARGET_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
