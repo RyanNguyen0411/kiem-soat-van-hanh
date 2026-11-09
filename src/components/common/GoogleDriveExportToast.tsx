@@ -80,7 +80,11 @@ function doPost(e) {
     const folder = DriveApp.getFolderById(payload.folderId || TARGET_FOLDER_ID);
     const blob = Utilities.newBlob('\\uFEFF' + payload.content, 'text/csv;charset=utf-8', payload.filename);
     const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {
+      // Quyền chia sẻ mặc định trong tổ chức
+    }
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
       fileUrl: file.getUrl(),
@@ -90,6 +94,10 @@ function doPost(e) {
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ status: 'ACTIVE', folder: TARGET_FOLDER_ID })).setMimeType(ContentService.MimeType.JSON);
 }`;
 
   const handleCopyScript = () => {
@@ -111,10 +119,13 @@ function doPost(e) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-black text-white uppercase tracking-wider">
-                  Đã Xuất File &amp; Mở Google Drive
+                  Đã Gửi Lên Google Drive
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
                   {toastData.totalRows.toLocaleString('vi-VN')} dòng
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-orange-500/30 text-orange-300 border border-orange-500/40">
+                  Đã chặn tải về máy
                 </span>
               </div>
 
@@ -123,7 +134,7 @@ function doPost(e) {
               </div>
 
               <p className="text-[10.5px] text-slate-300 mt-1 leading-snug">
-                Data đã được định danh không trùng lặp và mở trực tiếp tại tab mới trên Google Drive của AM Huy.
+                Dữ liệu được lưu trữ trực tiếp vào Thư Mục Driver của AM Huy và tự động mở tại tab mới. Tuyệt đối không gửi file về máy tính.
               </p>
 
               <div className="flex items-center gap-2 mt-2">
@@ -265,12 +276,17 @@ function doPost(e) {
                   <span>{isCopied ? 'Đã sao chép' : 'Sao chép mã'}</span>
                 </button>
               </div>
-              <ol className="list-decimal list-inside text-[10px] text-slate-600 dark:text-slate-400 space-y-0.5 leading-relaxed">
+              <ol className="list-decimal list-inside text-[10px] text-slate-600 dark:text-slate-400 space-y-1 leading-relaxed">
                 <li>Mở file Google Sheet nguồn &gt; chọn <strong>Tiện ích mở rộng (Extensions)</strong> &gt; <strong>Apps Script</strong>.</li>
-                <li>Dán đoạn mã trên vào file <code>Code.gs</code>.</li>
+                <li>Dán đoạn mã trên vào file <code>Code.gs</code> rồi bấm lưu (Ctrl + S).</li>
                 <li>Bấm <strong>Triển khai (Deploy)</strong> &gt; <strong>Triển khai mới (New deployment)</strong> &gt; Chọn <strong>Ứng dụng web (Web app)</strong>.</li>
-                <li>Mục <em>Ai có quyền truy cập</em> chọn: <strong>Bất kỳ ai (Anyone)</strong> &gt; Bấm <strong>Triển khai</strong>.</li>
-                <li>Copy URL web app (kết thúc bằng <code>/exec</code>) và dán vào ô bên trên.</li>
+                <li>
+                  <strong>Cấu hình bắt buộc để không bị chặn lỗi 401:</strong>
+                  <br />• <em>Thực thi dưới dạng (Execute as):</em> Chọn <strong>"Tôi" (Me)</strong>
+                  <br />• <em>Ai có quyền truy cập (Who has access):</em> Chọn <strong>"Bất kỳ ai" (Anyone)</strong>
+                </li>
+                <li>Bấm <strong>Triển khai (Deploy)</strong> và cấp quyền Google Drive khi được yêu cầu.</li>
+                <li>Copy URL Web App kết thúc bằng <code>/exec</code> dán vào ô bên trên để kích hoạt.</li>
               </ol>
             </div>
           </div>

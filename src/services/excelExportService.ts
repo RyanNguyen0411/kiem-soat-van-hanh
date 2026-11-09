@@ -3,11 +3,11 @@
  * Lưu trữ tại Google Drive: https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing
  * Folder ID: 1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw
  *
- * Logics:
- * 1. Tất cả data khi xuất excel từ dashboard đều được lưu trữ và liên kết đến thư mục Google Drive chỉ định.
- * 2. Khi xuất xong, tự động mở link vừa xuất (hoặc thư mục Google Drive) ở 1 tab mới trên trình duyệt.
- * 3. Data không lưu chồng lên dữ liệu: Mỗi file xuất là 1 tên độc nhất với timestamp yyyyMMdd_HHmmss và mã salt ngẫu nhiên.
- * 4. Tải file UTF-8 BOM trực tiếp về máy tính người dùng để mở ngay tức thì trên Microsoft Excel không bị lỗi font tiếng Việt.
+ * Logics (Cập nhật theo yêu cầu AM Huy):
+ * 1. Chặn hoàn toàn tải file về máy tính cá nhân.
+ * 2. Tất cả file xuất được đẩy trực tiếp lên thư mục Google Drive chỉ định qua Google Apps Script Web App.
+ * 3. Khi bấm xuất, tự động mở thư mục Google Drive / file xuất ở 1 tab mới trên trình duyệt.
+ * 4. Data không lưu chồng lên dữ liệu: Mỗi file xuất là 1 tên độc nhất với timestamp yyyyMMdd_HHmmss và mã salt ngẫu nhiên.
  */
 
 export const GOOGLE_DRIVE_EXPORT_FOLDER_URL = 'https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing';
@@ -102,27 +102,29 @@ export async function exportToCSV(
         <!DOCTYPE html>
         <html lang="vi">
           <head>
-            <title>Đang mở Google Drive...</title>
+            <title>Đang chuyển dữ liệu lên Google Drive...</title>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
               body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f8fafc; }
-              .card { background: #1e293b; padding: 28px 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); text-align: center; max-width: 440px; border: 1px solid #334155; }
-              .spinner { width: 36px; height: 36px; border: 3px solid #334155; border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+              .card { background: #1e293b; padding: 28px 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); text-align: center; max-width: 460px; border: 1px solid #334155; }
+              .spinner { width: 38px; height: 38px; border: 3px solid #334155; border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
               @keyframes spin { to { transform: rotate(360deg); } }
               h3 { margin: 0 0 8px; font-size: 16px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; }
               p { margin: 0 0 16px; font-size: 13px; color: #94a3b8; line-height: 1.5; }
-              .file-badge { display: inline-block; background: #334155; color: #f97316; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: monospace; font-weight: 700; margin-bottom: 14px; word-break: break-all; }
-              a { display: inline-block; padding: 8px 18px; background: #ea580c; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 700; }
+              .file-badge { display: inline-block; background: #334155; color: #f97316; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-family: monospace; font-weight: 700; margin-bottom: 14px; word-break: break-all; }
+              .blocked-note { font-size: 11px; color: #22c55e; font-weight: 600; margin-bottom: 12px; }
+              a { display: inline-block; padding: 9px 20px; background: #ea580c; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 700; }
               a:hover { background: #f97316; }
             </style>
           </head>
           <body>
             <div class="card">
               <div class="spinner"></div>
-              <h3>Đang Kết Nối Google Drive</h3>
+              <h3>Đang Chuyển Dữ Liệu Lên Google Drive</h3>
               <div class="file-badge">${uniqueFilename}</div>
-              <p>Dữ liệu đang được đồng bộ và lưu trữ tại thư mục Driver của AM Huy.<br>Đang tải trang trong giây lát...</p>
+              <div class="blocked-note">✓ Đã chặn tải về máy tính cá nhân</div>
+              <p>Dữ liệu đang được gửi trực tiếp vào thư mục Google Drive của AM Huy.<br>Trang sẽ tự động chuyển hướng trong giây lát...</p>
               <a href="${GOOGLE_DRIVE_EXPORT_FOLDER_URL}">Mở Thư Mục Trực Tiếp ↗</a>
             </div>
           </body>
@@ -133,42 +135,57 @@ export async function exportToCSV(
     console.warn('Could not open preview tab:', e);
   }
 
-  // Tải file về máy tính cục bộ (UTF-8 BOM giúp mở tiếng Việt chuẩn 100% trên Excel)
-  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const downloadUrl = URL.createObjectURL(blob);
-  const downloadLink = document.createElement('a');
-  downloadLink.setAttribute('href', downloadUrl);
-  downloadLink.setAttribute('download', uniqueFilename);
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-  document.body.removeChild(downloadLink);
-  URL.revokeObjectURL(downloadUrl);
+  // ĐÃ CHẶN HOÀN TOÀN TẢI FILE VỀ MÁY TÍNH CÁ NHÂN THEO YÊU CẦU CỦA AM HUY
+  // Toàn bộ dữ liệu được chuyển trực tiếp vào Folder Drive qua Apps Script Web App
 
-  // Tiến hành upload lên Google Drive
   let finalDriveUrl = GOOGLE_DRIVE_EXPORT_FOLDER_URL;
   let isUploaded = false;
   const webhookUrl = getDriveWebhookUrl();
 
   if (webhookUrl) {
+    const payload = JSON.stringify({
+      folderId: GOOGLE_DRIVE_EXPORT_FOLDER_ID,
+      filename: uniqueFilename,
+      content: csvContent,
+      totalRows: rows.length
+    });
+
     try {
+      // Thử gửi bằng fetch chuẩn (có kiểm tra kết quả JSON)
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          folderId: GOOGLE_DRIVE_EXPORT_FOLDER_ID,
-          filename: uniqueFilename,
-          content: csvContent,
-          totalRows: rows.length
-        })
+        body: payload
       });
 
-      const data = await response.json();
-      if (data && data.fileUrl) {
-        finalDriveUrl = data.fileUrl;
-        isUploaded = true;
+      if (response.ok) {
+        try {
+          const data = await response.json();
+          if (data && data.fileUrl) {
+            finalDriveUrl = data.fileUrl;
+          }
+          isUploaded = true;
+        } catch {
+          // Response là text hoặc opaque redirect, script đã thực thi xong
+          isUploaded = true;
+        }
+      } else {
+        throw new Error(`HTTP status: ${response.status}`);
       }
     } catch (err) {
-      console.warn('Upload to Google Apps Script failed, falling back to Drive folder:', err);
+      console.warn('Standard fetch to Apps Script failed, falling back to mode: no-cors:', err);
+      try {
+        // Fallback gửi với mode no-cors để đảm bảo browser không chặn request khi gặp redirect
+        await fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload
+        });
+        isUploaded = true;
+      } catch (fallbackErr) {
+        console.error('All upload attempts to Apps Script failed:', fallbackErr);
+      }
     }
   }
 

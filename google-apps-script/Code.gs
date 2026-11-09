@@ -34,8 +34,12 @@ function doPost(e) {
     const blob = Utilities.newBlob('\uFEFF' + content, 'text/csv;charset=utf-8', filename);
     const file = folder.createFile(blob);
 
-    // Cài đặt quyền xem cho người có liên kết
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Cài đặt quyền xem cho người có liên kết (bọc try-catch nếu tổ chức giới hạn chia sẻ bên ngoài)
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {
+      // Giữ quyền mặc định của thư mục
+    }
 
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
