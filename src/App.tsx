@@ -18,6 +18,7 @@ import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryM
 import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
 import { TelegramReportModal } from './components/common/TelegramReportModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
+import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -163,6 +164,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Trung Tâm Kiểm Định Dữ Liệu & Đối Chiếu Vận Hành (DQ Audit Center) */}
       <DataQualityModal />
+
+      {/* Modal Bảo Vệ Link Nguồn Google Sheets (Yêu cầu mật khẩu dashboard) */}
+      <GoogleSheetsLockModal />
     </div>
   );
 };

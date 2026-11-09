@@ -22,8 +22,7 @@ export const Header: React.FC = () => {
     setDarkMode, 
     setIsSidebarOpen,
     isSidebarCollapsed,
-    setIsSidebarCollapsed,
-    spreadsheetId
+    setIsSidebarCollapsed
   } = useDashboard();
 
   const handleToggleSidebar = () => {
@@ -133,17 +132,16 @@ export const Header: React.FC = () => {
             <span className="hidden md:inline">Gemini AI</span>
           </button>
 
-          {/* View Google Sheets Link */}
-          <a
-            href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden lg:flex items-center gap-1 text-[11px]"
-            title="Mở Google Sheets gốc"
+          {/* View Google Sheets Link (Được Khóa Bảo Mật - Cần Nhập Mật Khẩu Dashboard) */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-google-sheets-lock'))}
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden lg:flex items-center gap-1 text-[11px] cursor-pointer"
+            title="Mở Google Sheets gốc (Yêu cầu mật khẩu quản trị để bảo vệ dữ liệu)"
           >
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-3 h-3 text-amber-400" />
             <span>Nguồn Sheets</span>
-          </a>
+          </button>
 
           {/* Dark Mode Toggle */}
           <button

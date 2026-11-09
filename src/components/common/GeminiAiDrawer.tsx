@@ -292,30 +292,46 @@ AM Huy cần tôi đưa ra góc nhìn phân tích điểm nghẽn, kế hoạch 
     try {
       const operationalContext = buildOperationalContext(dataset);
       let aiResponseText = '';
+      let followUps: string[] = [];
 
       if (apiKey.trim()) {
-        aiResponseText = await askGeminiAPI(text, operationalContext, apiKey);
+        try {
+          aiResponseText = await askGeminiAPI(text, operationalContext, apiKey, messages);
+          // Gợi ý follow-up thông minh dựa trên nội dung câu hỏi
+          const localIntelligence = generateLocalOperationalIntelligence(text, dataset);
+          followUps = localIntelligence.followUps;
+        } catch (apiErr: any) {
+          console.warn('Gemini API call failed, falling back to local analytical engine:', apiErr);
+          const fallback = generateLocalOperationalIntelligence(text, dataset);
+          aiResponseText = fallback.text;
+          followUps = fallback.followUps;
+        }
       } else {
-        await new Promise(r => setTimeout(r, 700)); // Nhịp phân tích tự nhiên
-        aiResponseText = generateLocalOperationalIntelligence(text, dataset);
+        await new Promise(r => setTimeout(r, 600)); // Nhịp phân tích tự nhiên
+        const localIntelligence = generateLocalOperationalIntelligence(text, dataset);
+        aiResponseText = localIntelligence.text;
+        followUps = localIntelligence.followUps;
       }
 
       const geminiMsg: ChatMessage = {
         id: `gemini-${Date.now()}`,
         sender: 'gemini',
         text: aiResponseText,
+        followUps,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages(prev => [...prev, geminiMsg]);
     } catch (err: any) {
-      const errorMsg: ChatMessage = {
-        id: `gemini-error-${Date.now()}`,
+      const fallback = generateLocalOperationalIntelligence(text, dataset);
+      const geminiMsg: ChatMessage = {
+        id: `gemini-${Date.now()}`,
         sender: 'gemini',
-        text: `### ⚠️ THÔNG BÁO KẾT NỐI GEMINI\n\n${err.message || 'Không thể liên lạc máy chủ Gemini.'}\n\n*Hệ thống đã tự động chuyển sang Chế độ Phân tích Vận hành Chuyên Sâu Nội Bộ để phục vụ AM Huy.*`,
+        text: fallback.text,
+        followUps: fallback.followUps,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages(prev => [...prev, geminiMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -523,6 +539,28 @@ AM Huy cần tôi đưa ra góc nhìn phân tích điểm nghẽn, kế hoạch 
                         )}
 
                         <FormattedMessage text={msg.text} isUser={isUser} />
+
+                        {/* Interactive Follow-up Suggestion Chips */}
+                        {!isUser && msg.followUps && msg.followUps.length > 0 && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700/80">
+                            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                              <Sparkles className="w-3 h-3 text-purple-500" />
+                              Gợi ý đào sâu câu hỏi:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {msg.followUps.map((chip, chipIdx) => (
+                                <button
+                                  key={chipIdx}
+                                  type="button"
+                                  onClick={() => handleSendMessage(chip)}
+                                  className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/80 rounded-lg px-2.5 py-1 text-left transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                                >
+                                  ↳ {chip}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
