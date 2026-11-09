@@ -61,7 +61,8 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
   availableWeeks,
   availableMonths
 }) => {
-  const [viewMode, setViewMode] = useState<'week' | 'month' | 'day'>('week');
+  // Mặc định hiển thị theo Tháng theo chỉ đạo của AM Huy (ĐNB)
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'day'>('month');
 
   // Danh sách toàn bộ các ngày duy nhất sắp xếp từ mới nhất -> cũ nhất (gần nhất -> xa nhất)
   const allUniqueDatesDesc = useMemo(() => {
@@ -70,20 +71,59 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
     return sortDatesDesc(unique);
   }, [gtcBcList]);
 
-  // Selected weeks for comparison (default: all)
+  // Selected weeks for comparison (default: 4 tuần gần nhất hoặc tất cả)
   const [selectedWeekKeys, setSelectedWeekKeys] = useState<string[]>(() => {
-    return availableWeeks.map(w => w.key);
+    return availableWeeks.length > 0 ? availableWeeks.slice(0, 4).map(w => w.key) : [];
   });
 
-  // Selected months for comparison (default: all)
+  // Selected months for comparison (default: Mặc định hiển thị 2 tháng gần nhất theo chỉ đạo của AM Huy)
   const [selectedMonthKeys, setSelectedMonthKeys] = useState<string[]>(() => {
-    return availableMonths.map(m => m.key);
+    return availableMonths.length > 0 ? availableMonths.slice(0, 2).map(m => m.key) : [];
   });
 
   // Selected days for comparison (default: 7 ngày gần nhất)
   const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>(() => {
     return allUniqueDatesDesc.slice(0, 7);
   });
+
+  // Đồng bộ mặc định 2 tháng gần nhất khi availableMonths load dữ liệu
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      setSelectedMonthKeys(prev => {
+        const valid = prev.filter(k => availableMonths.some(m => m.key === k));
+        if (valid.length === 0) {
+          return availableMonths.slice(0, 2).map(m => m.key);
+        }
+        return valid;
+      });
+    }
+  }, [availableMonths]);
+
+  // Đồng bộ mặc định tuần khi availableWeeks load dữ liệu
+  useEffect(() => {
+    if (availableWeeks.length > 0) {
+      setSelectedWeekKeys(prev => {
+        const valid = prev.filter(k => availableWeeks.some(w => w.key === k));
+        if (valid.length === 0) {
+          return availableWeeks.slice(0, 4).map(w => w.key);
+        }
+        return valid;
+      });
+    }
+  }, [availableWeeks]);
+
+  // Đồng bộ ngày khi allUniqueDatesDesc load dữ liệu
+  useEffect(() => {
+    if (allUniqueDatesDesc.length > 0) {
+      setSelectedDateKeys(prev => {
+        const valid = prev.filter(d => allUniqueDatesDesc.includes(d));
+        if (valid.length === 0) {
+          return allUniqueDatesDesc.slice(0, 7);
+        }
+        return valid;
+      });
+    }
+  }, [allUniqueDatesDesc]);
 
   // Quản lý dropdown dạng cuộn mở (tuần, tháng, ngày)
   const [openDropdown, setOpenDropdown] = useState<'week' | 'month' | 'day' | null>(null);
@@ -657,17 +697,25 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                   <div className="flex items-center justify-between gap-1 text-[11px] bg-slate-50 dark:bg-slate-750 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
                     <button
                       type="button"
-                      onClick={selectAllMonths}
-                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold border border-slate-200 dark:border-slate-600 cursor-pointer"
+                      onClick={() => setSelectedMonthKeys(availableMonths.slice(0, 2).map(m => m.key))}
+                      className="px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300 font-bold border border-orange-200 dark:border-orange-800 hover:bg-orange-200 cursor-pointer text-[10px]"
+                      title="Mặc định hiển thị 2 tháng gần nhất theo chỉ đạo của AM"
                     >
-                      Chọn tất cả
+                      2 tháng gần nhất
+                    </button>
+                    <button
+                      type="button"
+                      onClick={selectAllMonths}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold border border-slate-200 dark:border-slate-600 cursor-pointer text-[10px]"
+                    >
+                      Tất cả
                     </button>
                     <button
                       type="button"
                       onClick={clearAllMonths}
-                      className="text-slate-500 hover:text-orange-600 dark:text-slate-400 font-medium underline cursor-pointer"
+                      className="text-slate-500 hover:text-orange-600 dark:text-slate-400 font-medium underline cursor-pointer text-[10px]"
                     >
-                      Chỉ tháng mới nhất
+                      1 tháng
                     </button>
                   </div>
 

@@ -7,11 +7,14 @@ import {
   Menu, 
   AlertCircle,
   Sparkles,
-  FolderTree 
+  FolderTree,
+  LogOut 
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 
 export const Header: React.FC = () => {
+  const { logout } = useAuth();
   const { 
     syncStatus, 
     refreshData, 
@@ -145,11 +148,28 @@ export const Header: React.FC = () => {
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
             title={darkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
           >
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
+
+          {/* User Profile & Logout Button */}
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-700">
+            <div className="hidden xl:flex flex-col text-right">
+              <span className="text-[11px] font-bold text-white leading-tight">AM Huy (ĐNB)</span>
+              <span className="text-[9px] text-emerald-400 font-semibold leading-tight">Area Manager &bull; Long An</span>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+              title="Đăng xuất khỏi hệ thống quản trị"
+            >
+              <LogOut className="w-4 h-4 text-red-400" />
+              <span className="hidden sm:inline text-[11px] text-slate-300 hover:text-red-300">Đăng xuất</span>
+            </button>
+          </div>
         </div>
       </div>
 

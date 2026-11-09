@@ -7,6 +7,8 @@ import {
   Menu 
 } from 'lucide-react';
 import { DashboardProvider, useDashboard } from './context/DashboardContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './components/auth/LoginScreen';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import { GlobalSpotlightSearch } from './components/common/GlobalSpotlightSearch';
@@ -165,10 +167,24 @@ const DashboardContent: React.FC = () => {
   );
 };
 
-export default function App() {
+const RootContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
   return (
     <DashboardProvider>
       <DashboardContent />
     </DashboardProvider>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <RootContent />
+    </AuthProvider>
   );
 }
