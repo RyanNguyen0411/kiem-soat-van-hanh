@@ -2,31 +2,29 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldAlert, 
   Lock, 
-  KeyRound, 
   ExternalLink, 
   X, 
-  Eye, 
-  EyeOff, 
-  AlertCircle 
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
-
-const ADMIN_PASSWORD = '@Huycan95#';
+import { useAuth } from '../../context/AuthContext';
 
 export const GoogleSheetsLockModal: React.FC = () => {
   const { spreadsheetId } = useDashboard();
+  const { currentUser, hasRole } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [confirmationChecked, setConfirmationChecked] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleOpen = () => {
       setIsOpen(true);
-      setPassword('');
+      setConfirmationChecked(false);
       setErrorMessage(null);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => confirmBtnRef.current?.focus(), 100);
     };
 
     window.addEventListener('open-google-sheets-lock', handleOpen);
@@ -35,24 +33,34 @@ export const GoogleSheetsLockModal: React.FC = () => {
 
   const handleClose = () => {
     setIsOpen(false);
-    setPassword('');
+    setConfirmationChecked(false);
     setErrorMessage(null);
   };
 
   const handleVerifyAndOpen = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) {
-      setErrorMessage('Vui lòng nhập mật khẩu quản trị!');
+
+    // Check RBAC Authorization
+    if (!hasRole(['admin', 'area_manager'])) {
+      setErrorMessage('Tài khoản của bạn không có quyền truy cập trực tiếp file dữ liệu gốc!');
       return;
     }
 
-    if (password.trim() === ADMIN_PASSWORD) {
+    if (!confirmationChecked) {
+      setErrorMessage('Vui lòng tích xác nhận đã hiểu rủi ro thay đổi cấu trúc bảng tính!');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
       // Mở link Google Sheets gốc trong tab mới an toàn
       const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
       window.open(url, '_blank', 'noopener,noreferrer');
       handleClose();
-    } else {
-      setErrorMessage('Mật khẩu quản trị không chính xác! Quyền truy cập link gốc bị từ chối.');
+    } catch {
+      setErrorMessage('Không thể mở liên kết bảng tính. Vui lòng kiểm tra quyền trình duyệt.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -98,10 +106,10 @@ export const GoogleSheetsLockModal: React.FC = () => {
               <span>CẢNH BÁO AN TOÀN DỮ LIỆU</span>
             </div>
             <p className="text-[11px] text-red-800 dark:text-red-200/90 leading-relaxed">
-              File Google Sheets gốc chứa toàn bộ dữ liệu 6 bưu cục. Bất kỳ chỉnh sửa hay xóa nhầm cấu trúc cột đều sẽ làm gián đoạn toàn bộ hệ thống Dashboard.
+              File Google Sheets gốc chứa toàn bộ dữ liệu 5 bưu cục đang quản lý. Bất kỳ chỉnh sửa hay xóa nhầm cấu trúc cột đều sẽ làm gián đoạn toàn bộ hệ thống Dashboard.
             </p>
             <p className="text-[10px] text-red-600 dark:text-red-400 font-semibold italic">
-              * Vui lòng nhập mật khẩu quản trị Dashboard của AM Huy để mở file gốc.
+              * Quản trị viên: <strong>{currentUser?.name || 'AM Huy (ĐNB)'}</strong> ({currentUser?.role || 'area_manager'}).
             </p>
           </div>
 
@@ -113,34 +121,22 @@ export const GoogleSheetsLockModal: React.FC = () => {
             </div>
           )}
 
-          {/* Password Input */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-              Mật Khẩu Quản Trị Viên
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <KeyRound className="w-4 h-4" />
-              </div>
+          {/* User Confirmation Checkbox */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl">
+            <label className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
               <input
-                ref={inputRef}
-                type={showPassword ? 'text' : 'password'}
-                value={password}
+                type="checkbox"
+                checked={confirmationChecked}
                 onChange={(e) => {
-                  setPassword(e.target.value);
+                  setConfirmationChecked(e.target.checked);
                   if (errorMessage) setErrorMessage(null);
                 }}
-                placeholder="Nhập mật khẩu quản trị"
-                className="w-full pl-9 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="mt-0.5 w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+              <span className="leading-snug">
+                Tôi xác nhận mở bảng tính gốc với quyền <strong>{currentUser?.role === 'admin' ? 'Quản trị viên cấp cao' : 'Area Manager'}</strong> và cam kết không chỉnh sửa sai tiêu chuẩn dữ liệu.
+              </span>
+            </label>
           </div>
 
           {/* Actions */}
@@ -153,11 +149,22 @@ export const GoogleSheetsLockModal: React.FC = () => {
               Hủy Bỏ
             </button>
             <button
+              ref={confirmBtnRef}
               type="submit"
-              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+              disabled={isVerifying}
+              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Xác Nhận & Mở File Gốc</span>
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Đang mở...</span>
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Xác Nhận & Mở File Gốc</span>
+                </>
+              )}
             </button>
           </div>
         </form>

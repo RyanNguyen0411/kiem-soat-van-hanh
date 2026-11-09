@@ -247,12 +247,12 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div>
-                  <label className="block text-[10.5px] font-bold text-slate-500 mb-0.5">Bot Token:</label>
+                  <label className="block text-[10.5px] font-bold text-slate-500 mb-0.5">Bot Token (Server Secured):</label>
                   <input
                     type="text"
-                    value={config.botToken}
+                    value={config.botToken || ''}
                     onChange={e => setConfig(prev => ({ ...prev, botToken: e.target.value }))}
-                    placeholder="Nhập mã Bot Token..."
+                    placeholder="Quản lý an toàn trên Server / Apps Script..."
                     className="w-full h-8 px-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
                   />
                 </div>

@@ -1543,14 +1543,14 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                       <label className="block text-[10px] font-bold text-slate-500 mb-0.5 uppercase">Bot Token:</label>
                       <input
                         type="text"
-                        value={telegramConfig.botToken}
+                        value={telegramConfig.botToken || ''}
                         onChange={e => {
                           const next = { ...telegramConfig, botToken: e.target.value.trim() };
                           setTelegramConfig(next);
                           saveStoredTelegramConfig(next);
                         }}
                         className="w-full px-2 py-1 font-mono text-[11px] bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500"
-                        placeholder="Nhập mã token bot..."
+                        placeholder="Quản lý an toàn trên Server (hoặc nhập mã tạm thời)..."
                       />
                     </div>
                     <div>

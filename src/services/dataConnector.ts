@@ -19,8 +19,10 @@ import tonDongGltSnapshot from '../data/snapshots/ton_dong_glt.json';
 import tonDongLcSnapshot from '../data/snapshots/ton_dong_lc.json';
 import nhanSuSnapshot from '../data/snapshots/nhan_su.json';
 import nghiViecSnapshot from '../data/snapshots/nghi_viec.json';
+import { SPREADSHEET_ID } from '../config/dashboard.config';
 
-export const SPREADSHEET_ID = '1nolP_Se1J5Cbj7A1CwcqFvau88FrWYVF8aiFM0lGSUY';
+// Re-export SPREADSHEET_ID from the single source of truth in dashboard.config
+export { SPREADSHEET_ID };
 
 // Danh sách nhân sự bị loại bỏ khỏi 100% dữ liệu dashboard theo chỉ đạo của AM Huy (ĐNB)
 // Logic: Các nhân viên này không thuộc bất kỳ bưu cục nào thuộc AM Huy quản lý:
