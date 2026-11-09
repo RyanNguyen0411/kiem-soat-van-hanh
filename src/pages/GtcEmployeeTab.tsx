@@ -4021,14 +4021,14 @@ export const GtcEmployeeTab: React.FC = () => {
                   )}
                 </label>
                 <IndividualFilterDropdown
-                  label="Tất cả tháng"
-                  compact={false}
+                  label="tháng"
+                  compact={true}
                   icon={<Calendar className="w-3.5 h-3.5 text-emerald-600" />}
                   options={availableMonths.map(m => ({ label: `${m.label} (${m.dates.length} ngày)`, value: m.key }))}
                   selectedValues={tableFilterMonths}
                   onChange={vals => setTableFilterMonths(vals)}
                   searchPlaceholder="Tìm tháng..."
-                  minWidth="w-60"
+                  minWidth="w-56"
                 />
               </div>
 
@@ -4041,14 +4041,14 @@ export const GtcEmployeeTab: React.FC = () => {
                   )}
                 </label>
                 <IndividualFilterDropdown
-                  label="Tất cả tuần"
-                  compact={false}
+                  label="tuần"
+                  compact={true}
                   icon={<Clock className="w-3.5 h-3.5 text-purple-600" />}
                   options={availableWeeks.map(w => ({ label: `${w.label} (${w.dates.length} ngày)`, value: w.key }))}
                   selectedValues={tableFilterWeeks}
                   onChange={vals => setTableFilterWeeks(vals)}
                   searchPlaceholder="Tìm tuần..."
-                  minWidth="w-64"
+                  minWidth="w-56"
                 />
               </div>
 
@@ -4061,14 +4061,14 @@ export const GtcEmployeeTab: React.FC = () => {
                   )}
                 </label>
                 <IndividualFilterDropdown
-                  label="Tất cả ngày"
-                  compact={false}
+                  label="ngày"
+                  compact={true}
                   icon={<Calendar className="w-3.5 h-3.5 text-rose-600" />}
                   options={allUniqueDatesDesc.map(d => ({ label: d, value: d }))}
                   selectedValues={tableFilterDates}
                   onChange={vals => setTableFilterDates(vals)}
                   searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
-                  minWidth="w-60"
+                  minWidth="w-56"
                 />
               </div>
             </div>
@@ -4284,7 +4284,7 @@ return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
             {/* Lọc 1: Bưu Cục */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                 <Building2 className="w-3 h-3 text-orange-500" /> Bưu Cục:
                 {ca2FilterBuuCuc.length > 0 && (
                   <span className="ml-1 text-[10px] text-orange-600 font-bold">({ca2FilterBuuCuc.length} BC)</span>
@@ -4292,19 +4292,19 @@ return (
               </label>
               <IndividualFilterDropdown
                 label="bưu cục"
-                compact={false}
+                compact={true}
                 icon={<Building2 className="w-3.5 h-3.5 text-orange-600" />}
                 options={buuCucOptions}
                 selectedValues={ca2FilterBuuCuc}
                 onChange={setCa2FilterBuuCuc}
                 searchPlaceholder="Tìm bưu cục..."
-                minWidth="w-64"
+                minWidth="w-52"
               />
             </div>
 
             {/* Lọc 2: Tháng */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-emerald-500" /> Tháng:
                 {ca2FilterMonths.length > 0 && (
                   <span className="ml-1 text-[10px] text-emerald-600 font-bold">({ca2FilterMonths.length} tháng)</span>
@@ -4312,19 +4312,19 @@ return (
               </label>
               <IndividualFilterDropdown
                 label="tháng"
-                compact={false}
+                compact={true}
                 icon={<Calendar className="w-3.5 h-3.5 text-emerald-600" />}
                 options={availableMonths.map(m => ({ label: `${m.label} (${m.dates.length} ngày)`, value: m.key }))}
                 selectedValues={ca2FilterMonths}
                 onChange={setCa2FilterMonths}
                 searchPlaceholder="Tìm tháng..."
-                minWidth="w-60"
+                minWidth="w-52"
               />
             </div>
 
             {/* Lọc 3: Tuần */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-purple-500" /> Tuần:
                 {ca2FilterWeeks.length > 0 && (
                   <span className="ml-1 text-[10px] text-purple-600 font-bold">({ca2FilterWeeks.length} tuần)</span>
@@ -4332,19 +4332,19 @@ return (
               </label>
               <IndividualFilterDropdown
                 label="tuần"
-                compact={false}
+                compact={true}
                 icon={<Clock className="w-3.5 h-3.5 text-purple-600" />}
                 options={availableWeeks.map(w => ({ label: `${w.label} (${w.dates.length} ngày)`, value: w.key }))}
                 selectedValues={ca2FilterWeeks}
                 onChange={setCa2FilterWeeks}
                 searchPlaceholder="Tìm tuần..."
-                minWidth="w-64"
+                minWidth="w-52"
               />
             </div>
 
             {/* Lọc 4: Ngày */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-rose-500" /> Ngày Vận Hành:
                 {ca2FilterDates.length > 0 && (
                   <span className="ml-1 text-[10px] text-rose-600 font-bold">({ca2FilterDates.length} ngày)</span>
@@ -4352,13 +4352,13 @@ return (
               </label>
               <IndividualFilterDropdown
                 label="ngày"
-                compact={false}
+                compact={true}
                 icon={<Calendar className="w-3.5 h-3.5 text-rose-600" />}
                 options={allUniqueDatesDesc.map(d => ({ label: d, value: d }))}
                 selectedValues={ca2FilterDates}
                 onChange={setCa2FilterDates}
                 searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
-                minWidth="w-60"
+                minWidth="w-52"
               />
             </div>
           </div>
@@ -4470,33 +4470,33 @@ return (
         {/* ========================================================================= */}
         {/* 4. BIỂU ĐỒ MA TRẬN VẬN HÀNH CA 2: VOLUME, GÁN, %GTC & MỨC ĐỘ CHÊNH LỆCH GÁN VS VOL (THU GỌN) */}
         {/* ========================================================================= */}
-        <div id="section-ca2-matrix-chart" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 md:p-3.5 space-y-2.5 scroll-mt-16">
+        <div id="section-ca2-matrix-chart" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-2 sm:p-2.5 space-y-2 scroll-mt-16">
           {/* Header Biểu Đồ & Chế Độ Xem (Thu gọn) */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-700 pb-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-1.5 border-b border-slate-100 dark:border-slate-700 pb-1.5">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600">
-                  <BarChart3 className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="p-1 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600">
+                  <BarChart3 className="w-3.5 h-3.5" />
                 </div>
-                <h3 className="text-xs md:text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                <h3 className="text-xs sm:text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
                   Biểu Đồ Ma Trận Vận Hành Ca 2: Volume, Gán, %GTC &amp; Chênh Lệch Gán vs Vol
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300">
+                <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300">
                   Phân Tích Chiều Sâu Hàng Mới Ca 2
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
                 Đối chiếu trực quan giữa <strong>Volume Ca 2</strong> (sản lượng nhập), <strong>SLĐ Gán</strong> (xuất tuyến), <strong>% GTC</strong> và <strong>Độ Chênh Lệch (Vol - Gán)</strong> để kiểm soát dồn ứ tồn sàn chia chọn
               </p>
             </div>
 
             {/* Chế độ xem: Theo Ngày hoặc Theo 5 Bưu Cục */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg text-xs font-semibold">
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-700 p-0.5 rounded-md text-[10.5px] font-semibold">
                 <button
                   type="button"
                   onClick={() => setMatrixCa2ViewMode('by_date')}
-                  className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px] ${
+                  className={`px-2 py-0.5 rounded transition-all flex items-center gap-1 text-[10.5px] ${
                     matrixCa2ViewMode === 'by_date'
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -4509,7 +4509,7 @@ return (
                 <button
                   type="button"
                   onClick={() => setMatrixCa2ViewMode('by_buu_cuc')}
-                  className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px] ${
+                  className={`px-2 py-0.5 rounded transition-all flex items-center gap-1 text-[10.5px] ${
                     matrixCa2ViewMode === 'by_buu_cuc'
                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -4523,25 +4523,25 @@ return (
 
               {/* Nút chọn nhanh ngày */}
               {matrixCa2ViewMode === 'by_date' && (
-                <div className="hidden sm:flex items-center gap-1 text-[11px]">
+                <div className="hidden sm:flex items-center gap-1 text-[10.5px]">
                   <button
                     type="button"
                     onClick={() => handleQuickSetMatrixCa2Dates(7)}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10.5px]"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     7 Ngày
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickSetMatrixCa2Dates(14)}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10.5px]"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     14 Ngày
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickSetMatrixCa2Dates('all')}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10.5px]"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     Tất cả
                   </button>
@@ -4551,24 +4551,24 @@ return (
           </div>
 
           {/* BỘ LỌC ĐA CHỌN CỦA BIỂU ĐỒ: TICK CHỌN BƯU CỤC, THÁNG, TUẦN, NGÀY THEO Ý (Thu gọn) */}
-          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-750/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-200/80 dark:border-slate-700/80 pb-1.5">
+          <div className="p-1.5 sm:p-2 rounded-lg bg-slate-50/80 dark:bg-slate-750/60 border border-slate-200 dark:border-slate-700 space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-1 border-b border-slate-200/80 dark:border-slate-700/80 pb-1">
               <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                <Filter className="w-3 h-3 text-indigo-600" />
+                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
                   Bộ Lọc Biểu Đồ Ma Trận Ca 2: Bưu Cục, Tháng, Tuần &amp; Ngày
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {(matrixCa2FilterBuuCuc.length > 0 || matrixCa2FilterMonths.length > 0 || matrixCa2FilterWeeks.length > 0 || matrixCa2FilterDates.length > 0) && (
                   <button
                     type="button"
                     onClick={handleResetMatrixCa2Filter}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 rounded-lg transition-colors border border-rose-200 dark:border-rose-900/50 cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.2 text-[10.5px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 rounded transition-colors border border-rose-200 dark:border-rose-900/50 cursor-pointer shadow-2xs"
                     title="Đặt lại toàn bộ bộ lọc biểu đồ"
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-2.5 h-2.5" />
                     <span>Xóa lọc</span>
                   </button>
                 )}
@@ -4578,107 +4578,107 @@ return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
               {/* Lọc Bưu Cục */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-orange-500" /> Bưu Cục:
                   {matrixCa2FilterBuuCuc.length > 0 && (
-                    <span className="ml-1 text-[10px] text-orange-600 font-bold">({matrixCa2FilterBuuCuc.length} BC)</span>
+                    <span className="ml-1 text-[9.5px] text-orange-600 font-bold">({matrixCa2FilterBuuCuc.length} BC)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="bưu cục"
-                  compact={false}
-                  icon={<Building2 className="w-3.5 h-3.5 text-orange-600" />}
+                  compact={true}
+                  icon={<Building2 className="w-3 h-3 text-orange-600" />}
                   options={buuCucOptions}
                   selectedValues={matrixCa2FilterBuuCuc}
                   onChange={setMatrixCa2FilterBuuCuc}
                   searchPlaceholder="Tìm bưu cục..."
-                  minWidth="w-64"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Tháng */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-emerald-500" /> Tháng:
                   {matrixCa2FilterMonths.length > 0 && (
-                    <span className="ml-1 text-[10px] text-emerald-600 font-bold">({matrixCa2FilterMonths.length} tháng)</span>
+                    <span className="ml-1 text-[9.5px] text-emerald-600 font-bold">({matrixCa2FilterMonths.length} tháng)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="tháng"
-                  compact={false}
-                  icon={<Calendar className="w-3.5 h-3.5 text-emerald-600" />}
+                  compact={true}
+                  icon={<Calendar className="w-3 h-3 text-emerald-600" />}
                   options={availableMonths.map(m => ({ label: `${m.label} (${m.dates.length} ngày)`, value: m.key }))}
                   selectedValues={matrixCa2FilterMonths}
                   onChange={setMatrixCa2FilterMonths}
                   searchPlaceholder="Tìm tháng..."
-                  minWidth="w-60"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Tuần */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Clock className="w-3 h-3 text-purple-500" /> Tuần:
                   {matrixCa2FilterWeeks.length > 0 && (
-                    <span className="ml-1 text-[10px] text-purple-600 font-bold">({matrixCa2FilterWeeks.length} tuần)</span>
+                    <span className="ml-1 text-[9.5px] text-purple-600 font-bold">({matrixCa2FilterWeeks.length} tuần)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="tuần"
-                  compact={false}
-                  icon={<Clock className="w-3.5 h-3.5 text-purple-600" />}
+                  compact={true}
+                  icon={<Clock className="w-3 h-3 text-purple-600" />}
                   options={availableWeeks.map(w => ({ label: `${w.label} (${w.dates.length} ngày)`, value: w.key }))}
                   selectedValues={matrixCa2FilterWeeks}
                   onChange={setMatrixCa2FilterWeeks}
                   searchPlaceholder="Tìm tuần..."
-                  minWidth="w-64"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Ngày */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-rose-500" /> Ngày Vận Hành:
                   {matrixCa2FilterDates.length > 0 && (
-                    <span className="ml-1 text-[10px] text-rose-600 font-bold">({matrixCa2FilterDates.length} ngày)</span>
+                    <span className="ml-1 text-[9.5px] text-rose-600 font-bold">({matrixCa2FilterDates.length} ngày)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="ngày"
-                  compact={false}
-                  icon={<Calendar className="w-3.5 h-3.5 text-rose-600" />}
+                  compact={true}
+                  icon={<Calendar className="w-3 h-3 text-rose-600" />}
                   options={allUniqueDatesDesc.map(d => ({ label: d, value: d }))}
                   selectedValues={matrixCa2FilterDates}
                   onChange={setMatrixCa2FilterDates}
                   searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
-                  minWidth="w-60"
+                  minWidth="w-52"
                 />
               </div>
             </div>
           </div>
 
           {/* 4 THẺ CHỈ SỐ TỔNG QUAN TÁC CHIẾN CỦA BIỂU ĐỒ - CÓ THỂ NHẤN ĐỂ ĐIỀU HƯỚNG & ĐỐI SOÁT CHI TIẾT BẢNG */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5">
             {/* Card 1: Volume Nhập Ca 2 */}
             <button
               type="button"
               onClick={() => handleSelectCa2Kpi('volume')}
-              className={`p-2 sm:p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer border group ${
+              className={`p-1.5 sm:p-2 rounded-lg text-left transition-all duration-200 cursor-pointer border group ${
                 activeCa2KpiFocus === 'volume'
                   ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 ring-2 ring-indigo-500 shadow-md scale-[1.01]'
                   : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-2xs'
               }`}
               title="Nhấn để xem chi tiết cột Volume Nhập Ca 2 tại bảng bên dưới"
             >
-              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+              <div className="flex items-center justify-between text-[9.5px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                 <span>Volume Nhập Ca 2</span>
-                <span className={`w-2 h-2 rounded-full transition-all ${activeCa2KpiFocus === 'volume' ? 'bg-indigo-600 ring-3 ring-indigo-200 dark:ring-indigo-900 animate-pulse' : 'bg-indigo-500'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full transition-all ${activeCa2KpiFocus === 'volume' ? 'bg-indigo-600 ring-2 ring-indigo-200 dark:ring-indigo-900 animate-pulse' : 'bg-indigo-500'}`} />
               </div>
-              <div className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">
+              <div className="text-sm sm:text-base font-black text-indigo-700 dark:text-indigo-300 mt-0.2">
                 {matrixCa2Data.totalVol.toLocaleString('vi-VN')}
               </div>
-              <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] mt-0.5">
+              <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] mt-0.2">
                 <span className="text-slate-400">Tổng sản lượng ca</span>
                 <span className={`font-semibold flex items-center gap-0.5 transition-colors ${activeCa2KpiFocus === 'volume' ? 'text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-400 group-hover:text-indigo-600'}`}>
                   {activeCa2KpiFocus === 'volume' ? 'Đang xem ↓' : 'Xem bảng →'}
@@ -4690,21 +4690,21 @@ return (
             <button
               type="button"
               onClick={() => handleSelectCa2Kpi('gan')}
-              className={`p-2 sm:p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer border group ${
+              className={`p-1.5 sm:p-2 rounded-lg text-left transition-all duration-200 cursor-pointer border group ${
                 activeCa2KpiFocus === 'gan'
                   ? 'bg-orange-50/95 dark:bg-orange-950/70 border-orange-500 ring-2 ring-orange-500 shadow-md scale-[1.01]'
                   : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-2xs'
               }`}
               title="Nhấn để xem chi tiết cột SLĐ Đã Gán Ra Tuyến tại bảng bên dưới"
             >
-              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+              <div className="flex items-center justify-between text-[9.5px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                 <span>SLĐ Đã Gán Ra Tuyến</span>
-                <span className={`w-2 h-2 rounded-full transition-all ${activeCa2KpiFocus === 'gan' ? 'bg-orange-600 ring-3 ring-orange-200 dark:ring-orange-900 animate-pulse' : 'bg-orange-500'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full transition-all ${activeCa2KpiFocus === 'gan' ? 'bg-orange-600 ring-2 ring-orange-200 dark:ring-orange-900 animate-pulse' : 'bg-orange-500'}`} />
               </div>
-              <div className="text-base sm:text-lg font-black text-orange-600 dark:text-orange-400 mt-0.5">
+              <div className="text-sm sm:text-base font-black text-orange-600 dark:text-orange-400 mt-0.2">
                 {matrixCa2Data.totalGan.toLocaleString('vi-VN')}
               </div>
-              <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] text-slate-500 dark:text-slate-400 mt-0.2">
                 <span>Gán: <strong className="text-orange-600">{matrixCa2Data.avgRateGan}%</strong> Vol</span>
                 <span className={`font-semibold flex items-center gap-0.5 transition-colors ${activeCa2KpiFocus === 'gan' ? 'text-orange-700 dark:text-orange-300 font-bold' : 'text-slate-400 group-hover:text-orange-600'}`}>
                   {activeCa2KpiFocus === 'gan' ? 'Đang xem ↓' : 'Xem bảng →'}
@@ -4716,21 +4716,21 @@ return (
             <button
               type="button"
               onClick={() => handleSelectCa2Kpi('gap')}
-              className={`p-2 sm:p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer border group ${
+              className={`p-1.5 sm:p-2 rounded-lg text-left transition-all duration-200 cursor-pointer border group ${
                 activeCa2KpiFocus === 'gap'
                   ? 'bg-rose-100/95 dark:bg-rose-950/80 border-rose-500 ring-2 ring-rose-500 shadow-md scale-[1.01]'
                   : 'bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 hover:border-rose-400 hover:shadow-2xs'
               }`}
               title="Nhấn để xem chi tiết Tồn Đọng & Chênh Lệch tại bảng bên dưới (tự động ưu tiên bưu cục dồn ứ lên trên)"
             >
-              <div className="flex items-center justify-between text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase">
+              <div className="flex items-center justify-between text-[9.5px] font-bold text-rose-700 dark:text-rose-400 uppercase">
                 <span>Chênh Lệch (Chưa Gán)</span>
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
               </div>
-              <div className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5">
+              <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 mt-0.2">
                 {matrixCa2Data.totalGap.toLocaleString('vi-VN')}
               </div>
-              <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] text-rose-700 dark:text-rose-400 font-bold mt-0.5">
+              <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] text-rose-700 dark:text-rose-400 font-bold mt-0.2">
                 <span>{matrixCa2Data.avgRateGap}% ứ sàn</span>
                 <span className="flex items-center gap-0.5 underline">
                   {activeCa2KpiFocus === 'gap' ? 'Đang xem ↓' : 'Xem bảng →'}
@@ -4742,21 +4742,21 @@ return (
             <button
               type="button"
               onClick={() => handleSelectCa2Kpi('gtc')}
-              className={`p-2 sm:p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer border group ${
+              className={`p-1.5 sm:p-2 rounded-lg text-left transition-all duration-200 cursor-pointer border group ${
                 activeCa2KpiFocus === 'gtc'
                   ? 'bg-emerald-100/95 dark:bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500 shadow-md scale-[1.01]'
                   : 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 hover:border-emerald-400 hover:shadow-2xs'
               }`}
               title="Nhấn để xem chi tiết Giao Thành Công & % GTC tại bảng bên dưới"
             >
-              <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">
+              <div className="flex items-center justify-between text-[9.5px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">
                 <span>Giao Thành Công (GTC)</span>
-                <span className={`w-2 h-2 rounded-full transition-all ${activeCa2KpiFocus === 'gtc' ? 'bg-emerald-600 ring-3 ring-emerald-200 dark:ring-emerald-900 animate-pulse' : 'bg-emerald-500'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full transition-all ${activeCa2KpiFocus === 'gtc' ? 'bg-emerald-600 ring-2 ring-emerald-200 dark:ring-emerald-900 animate-pulse' : 'bg-emerald-500'}`} />
               </div>
-              <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.2">
                 {matrixCa2Data.totalGtc.toLocaleString('vi-VN')}
               </div>
-              <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">
+              <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] text-emerald-700 dark:text-emerald-400 font-bold mt-0.2">
                 <span>Đạt {matrixCa2Data.avgRateGtc}% trên gán</span>
                 <span className="flex items-center gap-0.5">
                   {activeCa2KpiFocus === 'gtc' ? 'Đang xem ↓' : 'Xem bảng →'}
@@ -4766,23 +4766,23 @@ return (
           </div>
 
           {/* KHUNG BIỂU ĐỒ RECHARTS COMPOSED CHART */}
-          <div className="bg-slate-50/50 dark:bg-slate-750/30 p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+          <div className="bg-slate-50/50 dark:bg-slate-750/30 p-2 sm:p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10.5px] sm:text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                   {matrixCa2ViewMode === 'by_date' ? 'Diễn Biến Volume, Gán, GTC & Mức Độ Chênh Lệch Qua Các Ngày' : 'So Sánh Sức Chứa Volume, Gán & Tỷ Lệ Giải Phóng Hàng Giữa 5 Bưu Cục'}
                 </span>
-                <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
                   Mục tiêu ca: Độ phủ NV ≥ 70% • Tỷ lệ gán ≥ 50% Vol
                 </span>
               </div>
-              <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold">
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold">
                 {matrixCa2ViewMode === 'by_date' ? 'Hiển thị: Từ ngày gần nhất đến xa nhất • ' : ''}
                 Trục trái: Đơn &bull; Trục phải: % Tỷ lệ
               </span>
             </div>
 
-            <div className="h-64 sm:h-72 w-full">
+            <div className="h-52 sm:h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                   data={matrixCa2ViewMode === 'by_date' ? matrixCa2Data.dateList : matrixCa2Data.buuCucList}
@@ -4899,7 +4899,7 @@ return (
                     }}
                   />
                   <Legend 
-                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                    wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                     formatter={(val) => <span className="text-slate-700 dark:text-slate-200 font-semibold">{val}</span>}
                   />
                   <Bar 
@@ -4907,21 +4907,21 @@ return (
                     dataKey="volume" 
                     name="Volume Nhập Ca 2" 
                     fill="#6366F1" 
-                    radius={[3, 3, 0, 0]} 
+                    radius={[2, 2, 0, 0]} 
                   />
                   <Bar 
                     yAxisId="left" 
                     dataKey="sldGan" 
                     name="SLĐ Gán Xuất Tuyến" 
                     fill="#F97316" 
-                    radius={[3, 3, 0, 0]} 
+                    radius={[2, 2, 0, 0]} 
                   />
                   <Bar 
                     yAxisId="left" 
                     dataKey="sldGTC" 
                     name="SLĐ GTC Ca 2" 
                     fill="#10B981" 
-                    radius={[3, 3, 0, 0]} 
+                    radius={[2, 2, 0, 0]} 
                   />
                   <Line 
                     yAxisId="right" 
@@ -4929,8 +4929,8 @@ return (
                     dataKey="rateCoverage" 
                     name="Độ Phủ NV Giao Ca 2 (%)" 
                     stroke="#4F46E5" 
-                    strokeWidth={3} 
-                    dot={{ r: 4, fill: '#4F46E5', stroke: '#fff', strokeWidth: 1.5 }} 
+                    strokeWidth={2.5} 
+                    dot={{ r: 3, fill: '#4F46E5', stroke: '#fff', strokeWidth: 1 }} 
                   />
                   <Line 
                     yAxisId="right" 
@@ -4938,9 +4938,9 @@ return (
                     dataKey="rateGan" 
                     name="Tỷ Lệ Gán / Vol (%)" 
                     stroke="#F97316" 
-                    strokeWidth={3} 
+                    strokeWidth={2.5} 
                     strokeDasharray="4 2"
-                    dot={{ r: 4, fill: '#F97316', stroke: '#fff', strokeWidth: 1.5 }} 
+                    dot={{ r: 3, fill: '#F97316', stroke: '#fff', strokeWidth: 1 }} 
                   />
                   <Line 
                     yAxisId="right" 
@@ -4950,7 +4950,7 @@ return (
                     stroke="#059669" 
                     strokeWidth={2} 
                     strokeDasharray="3 3"
-                    dot={{ r: 3, fill: '#059669', stroke: '#fff', strokeWidth: 1 }} 
+                    dot={{ r: 2.5, fill: '#059669', stroke: '#fff', strokeWidth: 1 }} 
                   />
                   {/* ĐƯỜNG MỤC TIÊU VẬN HÀNH CA 2: ĐỘ PHỦ NV >= 70% & TỶ LỆ GÁN >= 50% */}
                   <ReferenceLine 
@@ -4958,16 +4958,16 @@ return (
                     y={70} 
                     stroke="#4F46E5" 
                     strokeDasharray="4 4" 
-                    strokeWidth={2}
-                    label={{ value: 'Mục tiêu Độ phủ NV ≥70%', position: 'insideTopRight', fill: '#4338CA', fontSize: 10, fontWeight: 800 }}
+                    strokeWidth={1.5}
+                    label={{ value: 'Mục tiêu Độ phủ NV ≥70%', position: 'insideTopRight', fill: '#4338CA', fontSize: 9.5, fontWeight: 800 }}
                   />
                   <ReferenceLine 
                     yAxisId="right" 
                     y={50} 
                     stroke="#EA580C" 
                     strokeDasharray="4 4" 
-                    strokeWidth={2}
-                    label={{ value: 'Mục tiêu Tỷ lệ Gán ≥50%', position: 'insideBottomRight', fill: '#C2410C', fontSize: 10, fontWeight: 800 }}
+                    strokeWidth={1.5}
+                    label={{ value: 'Mục tiêu Tỷ lệ Gán ≥50%', position: 'insideBottomRight', fill: '#C2410C', fontSize: 9.5, fontWeight: 800 }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -4975,15 +4975,15 @@ return (
           </div>
 
           {/* KHỐI NHẬN ĐỊNH VẬN HÀNH THỰC TẾ & HƯỚNG XỬ LÝ ĐIỂM NGHẼN CHÊNH LỆCH */}
-          <div className="bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-slate-50 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-3.5 space-y-2 text-xs text-slate-700 dark:text-slate-300">
-            <div className="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-400 text-xs uppercase tracking-wide">
-              <Zap className="w-4 h-4 text-indigo-600 shrink-0" />
+          <div className="bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-slate-50 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-lg p-2 sm:p-2.5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+            <div className="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-400 text-[11px] uppercase tracking-wide">
+              <Zap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               <span>Đánh Giá Thực Trạng &amp; Hướng Thúc Đẩy Mức Độ Chênh Lệch Gán vs Vol</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11.5px] leading-relaxed">
-              <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-950 shadow-2xs space-y-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10.5px] leading-relaxed">
+              <div className="bg-white/90 dark:bg-slate-800/90 p-2 rounded-md border border-indigo-100 dark:border-indigo-950 shadow-2xs space-y-0.5">
                 <div className="flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400">
-                  <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                  <ShieldAlert className="w-3 h-3 shrink-0 text-indigo-600" />
                   <span>Điểm Nghẽn Kho Trưa: Chênh Lệch {matrixCa2Data.totalGap.toLocaleString('vi-VN')} Đơn</span>
                 </div>
                 <p>
@@ -4991,9 +4991,9 @@ return (
                 </p>
               </div>
 
-              <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-amber-100 dark:border-amber-950 shadow-2xs space-y-1">
+              <div className="bg-white/90 dark:bg-slate-800/90 p-2 rounded-md border border-amber-100 dark:border-amber-950 shadow-2xs space-y-0.5">
                 <div className="flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                  <AlertTriangle className="w-3 h-3 shrink-0 text-amber-600" />
                   <span>Điểm Thắt Lớn Nhất: {matrixCa2Data.worstBc ? matrixCa2Data.worstBc.shortName : 'Bưu cục trọng điểm'}</span>
                 </div>
                 <p>
@@ -5007,9 +5007,9 @@ return (
                 </p>
               </div>
 
-              <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-950 shadow-2xs space-y-1">
+              <div className="bg-white/90 dark:bg-slate-800/90 p-2 rounded-md border border-emerald-100 dark:border-emerald-950 shadow-2xs space-y-0.5">
                 <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" />
                   <span>Giải Pháp Hành Động AM Huy</span>
                 </div>
                 <p>
@@ -5022,22 +5022,22 @@ return (
 
         {/* 5. BẢNG TỔNG HỢP CHỈ SỐ VẬN HÀNH & ĐỘ PHỦ CA 2 THEO BƯU CỤC (LÀM NỔI TIÊU ĐỀ & CÓ BỘ LỌC ĐA CHỌN) */}
         <div id="section-ca2-summary-table" className="space-y-2.5 scroll-mt-20">
-          {/* TIÊU ĐỀ BẢNG LÀM NỔI BẬT VỚI GRADIENT BANNER & ICON */}
-          <div className="py-2.5 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-indigo-700 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-2.5 border border-orange-400/30">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white shadow-inner shrink-0">
-                <Building2 className="w-5 h-5" />
+          {/* TIÊU ĐỀ BẢNG LÀM NỔI BẬT VỚI GRADIENT BANNER & ICON (THU GỌN THANH LỊCH) */}
+          <div className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-orange-600 via-amber-600 to-indigo-700 text-white shadow-xs flex flex-wrap items-center justify-between gap-1.5 border border-orange-400/30">
+            <div className="flex items-center gap-2">
+              <div className="p-1 bg-white/20 backdrop-blur-md rounded text-white shadow-inner shrink-0">
+                <Building2 className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xs sm:text-sm font-black tracking-wide uppercase">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-xs sm:text-[13px] font-black tracking-wide uppercase">
                     BẢNG TỔNG HỢP CHỈ SỐ VẬN HÀNH HÀNG MỚI CA 2 &amp; ĐỘ PHỦ THEO BƯU CỤC
                   </h3>
-                  <span className="px-2 py-0.2 rounded-full text-[9px] font-black bg-white/25 text-white backdrop-blur-sm border border-white/30 uppercase tracking-wider">
+                  <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-black bg-white/25 text-white backdrop-blur-sm border border-white/30 uppercase tracking-wider">
                     5 Bưu Cục Khu Vực
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-[10.5px] text-orange-100 font-medium mt-0.5">
+                <p className="text-[10px] text-orange-100 font-normal mt-0.2 hidden sm:block">
                   Chỉ số Volume, Gán, GTC, Tồn đọng được đối soát trực tiếp từ <strong>Hàng Mới Ca 2</strong> &bull; Đánh giá tỷ lệ phủ sóng bưu tá và năng lực giải phóng đơn ca chiều/tối
                 </p>
               </div>
@@ -5045,9 +5045,9 @@ return (
 
             {/* Trạng thái xem tiêu chí Focus từ 4 Thẻ KPI */}
             {activeCa2KpiFocus !== 'all' && (
-              <div className="shrink-0 flex items-center gap-2 bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/30">
-                <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-spin" />
-                <span className="text-[11px] font-bold">
+              <div className="shrink-0 flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-2 py-0.5 rounded border border-white/30">
+                <Sparkles className="w-3 h-3 text-amber-200 animate-spin" />
+                <span className="text-[10px] font-bold">
                   Đang tập trung cột:{' '}
                   {activeCa2KpiFocus === 'volume' ? 'Volume Nhập Ca 2' :
                    activeCa2KpiFocus === 'gan' ? 'SLĐ Gán Ra Tuyến' :
@@ -5056,7 +5056,7 @@ return (
                 <button
                   type="button"
                   onClick={() => setActiveCa2KpiFocus('all')}
-                  className="ml-1 text-[10px] underline hover:text-orange-200 cursor-pointer font-bold"
+                  className="ml-1 text-[9.5px] underline hover:text-orange-200 cursor-pointer font-bold"
                 >
                   (Xem tất cả)
                 </button>
@@ -5064,39 +5064,39 @@ return (
             )}
           </div>
 
-          {/* BỘ LỌC ĐA CHỌN RIÊNG BIỆT CHO BẢNG: TICK CHỌN BƯU CỤC, THÁNG, TUẦN, NGÀY THEO Ý */}
-          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2 shadow-2xs">
-            <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-200/80 dark:border-slate-700/80 pb-1.5">
-              <div className="flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5 text-orange-600" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+          {/* BỘ LỌC ĐA CHỌN RIÊNG BIỆT CHO BẢNG: TICK CHỌN BƯU CỤC, THÁNG, TUẦN, NGÀY THEO Ý (Thu gọn) */}
+          <div className="p-1.5 sm:p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-1 border-b border-slate-200/80 dark:border-slate-700/80 pb-1">
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3 h-3 text-orange-600" />
+                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
                   Bộ Lọc Bảng Tổng Hợp Ca 2: Bưu Cục, Tháng, Tuần &amp; Ngày Theo Ý
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-slate-400">
-                  (Tick chọn đa tiêu chí để tùy biến dữ liệu đối soát bảng)
+                <span className="text-[10px] text-slate-400 hidden sm:inline">
+                  (Tick chọn đa tiêu chí để đối soát)
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-[10.5px]">
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 text-[10px]">
                   <button
                     type="button"
                     onClick={() => handleQuickSetTableCa2Dates(7)}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     7 Ngày
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickSetTableCa2Dates(14)}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     14 Ngày
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickSetTableCa2Dates('all')}
-                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer text-[10px]"
                   >
                     Tất cả
                   </button>
@@ -5106,10 +5106,10 @@ return (
                   <button
                     type="button"
                     onClick={handleResetTableCa2Filter}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 rounded-lg transition-colors border border-rose-200 dark:border-rose-900/50 cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.2 text-[10.5px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 rounded transition-colors border border-rose-200 dark:border-rose-900/50 cursor-pointer shadow-2xs"
                     title="Đặt lại toàn bộ bộ lọc bảng"
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-2.5 h-2.5" />
                     <span>Xóa lọc</span>
                   </button>
                 )}
@@ -5119,81 +5119,81 @@ return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
               {/* Lọc Bưu Cục */}
               <div>
-                <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-orange-500" /> Bưu Cục:
                   {tableCa2FilterBuuCuc.length > 0 && (
-                    <span className="ml-1 text-[10px] text-orange-600 font-bold">({tableCa2FilterBuuCuc.length} BC)</span>
+                    <span className="ml-1 text-[9.5px] text-orange-600 font-bold">({tableCa2FilterBuuCuc.length} BC)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="bưu cục"
-                  compact={false}
-                  icon={<Building2 className="w-3.5 h-3.5 text-orange-600" />}
+                  compact={true}
+                  icon={<Building2 className="w-3 h-3 text-orange-600" />}
                   options={buuCucOptions}
                   selectedValues={tableCa2FilterBuuCuc}
                   onChange={setTableCa2FilterBuuCuc}
                   searchPlaceholder="Tìm bưu cục..."
-                  minWidth="w-64"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Tháng */}
               <div>
-                <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-emerald-500" /> Tháng:
                   {tableCa2FilterMonths.length > 0 && (
-                    <span className="ml-1 text-[10px] text-emerald-600 font-bold">({tableCa2FilterMonths.length} tháng)</span>
+                    <span className="ml-1 text-[9.5px] text-emerald-600 font-bold">({tableCa2FilterMonths.length} tháng)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="tháng"
-                  compact={false}
+                  compact={true}
                   icon={<Calendar className="w-3.5 h-3.5 text-emerald-600" />}
                   options={availableMonths.map(m => ({ label: `${m.label} (${m.dates.length} ngày)`, value: m.key }))}
                   selectedValues={tableCa2FilterMonths}
                   onChange={setTableCa2FilterMonths}
                   searchPlaceholder="Tìm tháng..."
-                  minWidth="w-60"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Tuần */}
               <div>
-                <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Clock className="w-3 h-3 text-purple-500" /> Tuần:
                   {tableCa2FilterWeeks.length > 0 && (
-                    <span className="ml-1 text-[10px] text-purple-600 font-bold">({tableCa2FilterWeeks.length} tuần)</span>
+                    <span className="ml-1 text-[9.5px] text-purple-600 font-bold">({tableCa2FilterWeeks.length} tuần)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="tuần"
-                  compact={false}
+                  compact={true}
                   icon={<Clock className="w-3.5 h-3.5 text-purple-600" />}
                   options={availableWeeks.map(w => ({ label: `${w.label} (${w.dates.length} ngày)`, value: w.key }))}
                   selectedValues={tableCa2FilterWeeks}
                   onChange={setTableCa2FilterWeeks}
                   searchPlaceholder="Tìm tuần..."
-                  minWidth="w-64"
+                  minWidth="w-52"
                 />
               </div>
 
               {/* Lọc Ngày */}
               <div>
-                <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-0.5 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-rose-500" /> Ngày Vận Hành:
                   {tableCa2FilterDates.length > 0 && (
-                    <span className="ml-1 text-[10px] text-rose-600 font-bold">({tableCa2FilterDates.length} ngày)</span>
+                    <span className="ml-1 text-[9.5px] text-rose-600 font-bold">({tableCa2FilterDates.length} ngày)</span>
                   )}
                 </label>
                 <IndividualFilterDropdown
                   label="ngày"
-                  compact={false}
+                  compact={true}
                   icon={<Calendar className="w-3.5 h-3.5 text-rose-600" />}
                   options={allUniqueDatesDesc.map(d => ({ label: d, value: d }))}
                   selectedValues={tableCa2FilterDates}
                   onChange={setTableCa2FilterDates}
                   searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
-                  minWidth="w-60"
+                  minWidth="w-52"
                 />
               </div>
             </div>
@@ -5202,55 +5202,55 @@ return (
           {/* BẢNG SỐ LIỆU ĐƯỢC CĂN GIỮA TIÊU ĐỀ & TOÀN BỘ SỐ LIỆU */}
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             <table className="w-full text-xs text-center border-collapse">
-              <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 text-[10px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="py-2.5 px-2.5 text-center">Bưu Cục</th>
-                  <th className="py-2.5 px-2 text-center" title="Số lượng nhân viên có chuyến đi trong ca">SL NV có CĐ</th>
-                  <th className={`py-2.5 px-2 text-center transition-colors ${activeCa2KpiFocus === 'gan' ? 'bg-orange-200 dark:bg-orange-900/60 text-orange-950 dark:text-orange-100 font-black ring-2 ring-orange-500' : ''}`} title="Số lượng nhân viên được gán đi ca 2 (2 chuyến/ngày)">
+                  <th className="py-1.5 px-2 text-center">Bưu Cục</th>
+                  <th className="py-1.5 px-1.5 text-center" title="Số lượng nhân viên có chuyến đi trong ca">SL NV có CĐ</th>
+                  <th className={`py-1.5 px-1.5 text-center transition-colors ${activeCa2KpiFocus === 'gan' ? 'bg-orange-200 dark:bg-orange-900/60 text-orange-950 dark:text-orange-100 font-black ring-1 ring-orange-500' : ''}`} title="Số lượng nhân viên được gán đi ca 2 (2 chuyến/ngày)">
                     SL NV gán Ca 2
                   </th>
-                  <th className="py-2.5 px-2 text-center">Độ Phủ Ca 2</th>
-                  <th className="py-2.5 px-2 text-center">Chỉ Đi 1 Ca</th>
+                  <th className="py-1.5 px-1.5 text-center">Độ Phủ Ca 2</th>
+                  <th className="py-1.5 px-1.5 text-center">Chỉ Đi 1 Ca</th>
                   {/* TIÊU ĐỀ NỔI BẬT: VOL CA 2, GÁN CA 2, %GTC CA 2 */}
-                  <th className={`py-2.5 px-2.5 text-center transition-all bg-indigo-600 text-white font-black text-xs tracking-wide shadow-xs border-x border-indigo-500 ${activeCa2KpiFocus === 'volume' ? 'ring-2 ring-indigo-300' : ''}`} title="Tổng Volume nhập hàng mới ca chiều/tối">
+                  <th className={`py-1.5 px-2 text-center transition-all bg-indigo-600 text-white font-black text-[11px] tracking-wide shadow-xs border-x border-indigo-500 ${activeCa2KpiFocus === 'volume' ? 'ring-2 ring-indigo-300' : ''}`} title="Tổng Volume nhập hàng mới ca chiều/tối">
                     Vol Ca 2
                   </th>
-                  <th className={`py-2.5 px-2.5 text-center transition-all bg-orange-500 text-white font-black text-xs tracking-wide shadow-xs border-x border-orange-400 ${activeCa2KpiFocus === 'gan' ? 'ring-2 ring-orange-200' : ''}`} title="Số lượng đơn hàng mới đã gán xuất tuyến ca 2 & Tỷ lệ gán trên Volume">
+                  <th className={`py-1.5 px-2 text-center transition-all bg-orange-500 text-white font-black text-[11px] tracking-wide shadow-xs border-x border-orange-400 ${activeCa2KpiFocus === 'gan' ? 'ring-2 ring-orange-200' : ''}`} title="Số lượng đơn hàng mới đã gán xuất tuyến ca 2 & Tỷ lệ gán trên Volume">
                     Gán Ca 2
                   </th>
-                  <th className="py-2.5 px-2 text-center bg-emerald-700 text-white font-black text-xs tracking-wide border-x border-emerald-600">
+                  <th className="py-1.5 px-1.5 text-center bg-emerald-700 text-white font-black text-[11px] tracking-wide border-x border-emerald-600">
                     GTC Ca 2
                   </th>
-                  <th className={`py-2.5 px-2.5 text-center transition-all bg-emerald-600 text-white font-black text-xs tracking-wide shadow-xs border-x border-emerald-500 ${activeCa2KpiFocus === 'gtc' ? 'ring-2 ring-emerald-200' : ''}`} title="Tỷ lệ Giao Thành Công trên số đơn đã gán ca 2">
+                  <th className={`py-1.5 px-2 text-center transition-all bg-emerald-600 text-white font-black text-[11px] tracking-wide shadow-xs border-x border-emerald-500 ${activeCa2KpiFocus === 'gtc' ? 'ring-2 ring-emerald-200' : ''}`} title="Tỷ lệ Giao Thành Công trên số đơn đã gán ca 2">
                     %GTC Ca 2
                   </th>
-                  <th className={`py-2.5 px-2 text-center transition-colors ${activeCa2KpiFocus === 'gap' ? 'bg-rose-200 dark:bg-rose-900/60 text-rose-950 dark:text-rose-100 font-black ring-2 ring-rose-500' : 'bg-orange-50/70 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200'}`}>
+                  <th className={`py-1.5 px-1.5 text-center transition-colors ${activeCa2KpiFocus === 'gap' ? 'bg-rose-200 dark:bg-rose-900/60 text-rose-950 dark:text-rose-100 font-black ring-1 ring-rose-500' : 'bg-orange-50/70 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200'}`}>
                     Tồn Ca 2
                   </th>
-                  <th className="py-2.5 px-3 text-center w-72">Đánh Giá &amp; Hướng Thúc Đẩy</th>
+                  <th className="py-1.5 px-2.5 text-center w-64">Đánh Giá &amp; Hướng Thúc Đẩy</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-700/80 text-[11px]">
                 {ca2SummaryByBuuCuc.rows.map((row) => (
                   <tr key={row.buuCuc} className="hover:bg-slate-50/80 dark:hover:bg-slate-750/50 transition-colors">
-                    <td className="py-2.5 px-2.5 text-center font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                      <div className="inline-flex items-center justify-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                    <td className="py-1.5 px-2 text-center font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-1">
+                        <Building2 className="w-3 h-3 text-orange-500 shrink-0" />
                         <span>{row.buuCuc}</span>
                       </div>
                     </td>
-                    <td className="py-2.5 px-2 text-center font-bold text-slate-800 dark:text-slate-200">
+                    <td className="py-1.5 px-1.5 text-center font-bold text-slate-800 dark:text-slate-200">
                       {row.totalShifts.toLocaleString('vi-VN')}
                     </td>
-                    <td className={`py-2.5 px-2 text-center font-black transition-colors ${
+                    <td className={`py-1.5 px-1.5 text-center font-black transition-colors ${
                       activeCa2KpiFocus === 'gan'
                         ? 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300'
                         : 'text-emerald-600 dark:text-emerald-400'
                     }`}>
                       {row.ca2Shifts.toLocaleString('vi-VN')}
                     </td>
-                    <td className="py-2.5 px-2 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-black ${
+                    <td className="py-1.5 px-1.5 text-center">
+                      <span className={`inline-block px-1.5 py-0.2 rounded-full text-[10.5px] font-black ${
                         row.rateCa2 >= 70
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           : row.rateCa2 >= 55
@@ -5260,24 +5260,24 @@ return (
                         {row.rateCa2.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="py-2.5 px-2 text-center font-bold text-amber-600 dark:text-amber-400">
+                    <td className="py-1.5 px-1.5 text-center font-bold text-amber-600 dark:text-amber-400">
                       {row.ca1Shifts.toLocaleString('vi-VN')}
                     </td>
                     {/* Các cột chỉ số vận hành lấy từ "Hàng Mới Ca 2" - LÀM NỔI BẬT CHỈ SỐ VOL, GÁN, %GTC */}
-                    <td className="py-2.5 px-2 text-center font-black text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/40 border-x border-indigo-100 dark:border-indigo-900/50">
-                      <span className="text-[13px]">{row.volumeCa2.toLocaleString('vi-VN')}</span>
+                    <td className="py-1.5 px-2 text-center font-black text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/40 border-x border-indigo-100 dark:border-indigo-900/50">
+                      <span className="text-xs">{row.volumeCa2.toLocaleString('vi-VN')}</span>
                     </td>
-                    <td className="py-2.5 px-2 text-center font-black text-xs text-orange-700 dark:text-orange-300 bg-orange-50/90 dark:bg-orange-950/40 border-x border-orange-100 dark:border-orange-900/50">
-                      <span className="text-[13px]">{row.sldGanCa2.toLocaleString('vi-VN')}</span>
-                      <span className="block text-[10px] text-orange-600 dark:text-orange-400 font-bold mt-0.5">
+                    <td className="py-1.5 px-2 text-center font-black text-xs text-orange-700 dark:text-orange-300 bg-orange-50/90 dark:bg-orange-950/40 border-x border-orange-100 dark:border-orange-900/50">
+                      <span className="text-xs">{row.sldGanCa2.toLocaleString('vi-VN')}</span>
+                      <span className="block text-[9.5px] text-orange-600 dark:text-orange-400 font-bold mt-0.2">
                         ({row.rateGanCa2.toFixed(1)}% Vol)
                       </span>
                     </td>
-                    <td className="py-2.5 px-2 text-center font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 border-x border-emerald-100 dark:border-emerald-900/50">
+                    <td className="py-1.5 px-1.5 text-center font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 border-x border-emerald-100 dark:border-emerald-900/50">
                       {row.sldGtcCa2.toLocaleString('vi-VN')}
                     </td>
-                    <td className="py-2.5 px-2 text-center bg-emerald-50/90 dark:bg-emerald-950/40 border-x border-emerald-100 dark:border-emerald-900/50">
-                      <span className={`inline-block px-2.5 py-1 rounded-md font-black text-xs shadow-2xs ${
+                    <td className="py-1.5 px-2 text-center bg-emerald-50/90 dark:bg-emerald-950/40 border-x border-emerald-100 dark:border-emerald-900/50">
+                      <span className={`inline-block px-2 py-0.5 rounded font-black text-[11px] shadow-2xs ${
                         row.rateGtcCa2 >= 85
                           ? 'bg-emerald-600 text-white'
                           : row.rateGtcCa2 >= 70
@@ -5287,7 +5287,7 @@ return (
                         {row.rateGtcCa2.toFixed(1)}%
                       </span>
                     </td>
-                    <td className={`py-2.5 px-2 text-center font-black transition-colors ${
+                    <td className={`py-1.5 px-1.5 text-center font-black transition-colors ${
                       activeCa2KpiFocus === 'gap'
                         ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400'
                         : 'text-rose-600 dark:text-rose-400 bg-orange-50/40 dark:bg-orange-950/10'
@@ -5295,69 +5295,69 @@ return (
                       {row.tonDongCa2.toLocaleString('vi-VN')}
                     </td>
                     {/* CỘT ĐÁNH GIÁ & HƯỚNG THÚC ĐẨY: HIGHLIGHT CẢNH BÁO */}
-                    <td className="py-2 px-2.5 text-left">
+                    <td className="py-1.5 px-2 text-left">
                       {row.statusLevel === 'alert' ? (
-                        <div className="p-2 rounded-lg bg-rose-100/90 dark:bg-rose-950/80 border-2 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-100 shadow-2xs">
-                          <div className="flex items-center gap-1 font-black text-[11px] text-rose-700 dark:text-rose-300 mb-0.5">
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0 animate-bounce" />
+                        <div className="p-1.5 rounded-md bg-rose-100/90 dark:bg-rose-950/80 border border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-100 shadow-2xs">
+                          <div className="flex items-center gap-1 font-black text-[10px] text-rose-700 dark:text-rose-300 mb-0.2">
+                            <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
                             <span>{row.evalBadge}</span>
                           </div>
-                          <div className="text-[11px] font-bold leading-tight">{row.recommendation}</div>
+                          <div className="text-[10px] font-bold leading-tight">{row.recommendation}</div>
                         </div>
                       ) : row.statusLevel === 'warning' ? (
-                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100">
-                          <div className="flex items-center gap-1 font-bold text-[11px] text-amber-700 dark:text-amber-300 mb-0.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100">
+                          <div className="flex items-center gap-1 font-bold text-[10px] text-amber-700 dark:text-amber-300 mb-0.2">
+                            <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
                             <span>{row.evalBadge}</span>
                           </div>
-                          <div className="text-[11px] leading-tight font-medium">{row.recommendation}</div>
+                          <div className="text-[10px] leading-tight font-medium">{row.recommendation}</div>
                         </div>
                       ) : (
-                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100">
-                          <div className="flex items-center gap-1 font-bold text-[11px] text-emerald-700 dark:text-emerald-300 mb-0.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100">
+                          <div className="flex items-center gap-1 font-bold text-[10px] text-emerald-700 dark:text-emerald-300 mb-0.2">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                             <span>{row.evalBadge}</span>
                           </div>
-                          <div className="text-[11px] leading-tight font-medium">{row.recommendation}</div>
+                          <div className="text-[10px] leading-tight font-medium">{row.recommendation}</div>
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-slate-100 dark:bg-slate-750 font-black border-t-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100">
+              <tfoot className="bg-slate-100 dark:bg-slate-750 font-black border-t-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 text-[11px]">
                 <tr>
-                  <td className="py-2.5 px-2.5 text-center uppercase tracking-wider text-orange-600 dark:text-orange-400 font-black">
+                  <td className="py-2 px-2 text-center uppercase tracking-wider text-orange-600 dark:text-orange-400 font-black">
                     TOÀN KHU VỰC
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black">
+                  <td className="py-2 px-1.5 text-center font-black">
                     {ca2SummaryByBuuCuc.totalAll.totalShifts.toLocaleString('vi-VN')}
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black text-emerald-600 dark:text-emerald-400">
+                  <td className="py-2 px-1.5 text-center font-black text-emerald-600 dark:text-emerald-400">
                     {ca2SummaryByBuuCuc.totalAll.ca2Shifts.toLocaleString('vi-VN')}
                   </td>
-                  <td className="py-2.5 px-2 text-center">
-                    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-600 text-white shadow-2xs">
+                  <td className="py-2 px-1.5 text-center">
+                    <span className="inline-block px-2 py-0.2 rounded-full text-[10.5px] font-black bg-indigo-600 text-white shadow-2xs">
                       {ca2SummaryByBuuCuc.totalAll.overallRateCa2.toFixed(1)}%
                     </span>
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black text-amber-600 dark:text-amber-400">
+                  <td className="py-2 px-1.5 text-center font-black text-amber-600 dark:text-amber-400">
                     {ca2SummaryByBuuCuc.totalAll.ca1Shifts.toLocaleString('vi-VN')}
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black bg-indigo-600 text-white border-x border-indigo-700">
+                  <td className="py-2 px-2 text-center font-black bg-indigo-600 text-white border-x border-indigo-700">
                     <span className="text-xs">{ca2SummaryByBuuCuc.totalAll.volumeCa2.toLocaleString('vi-VN')}</span>
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black bg-orange-500 text-white border-x border-orange-600">
+                  <td className="py-2 px-2 text-center font-black bg-orange-500 text-white border-x border-orange-600">
                     <span className="text-xs">{ca2SummaryByBuuCuc.totalAll.sldGanCa2.toLocaleString('vi-VN')}</span>
-                    <span className="block text-[10px] text-orange-100 font-bold mt-0.5">
+                    <span className="block text-[9.5px] text-orange-100 font-bold mt-0.2">
                       ({((ca2SummaryByBuuCuc.totalAll.sldGanCa2 / (ca2SummaryByBuuCuc.totalAll.volumeCa2 || 1)) * 100).toFixed(1)}% Vol)
                     </span>
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black text-emerald-600 dark:text-emerald-400 bg-orange-100/70 dark:bg-orange-950/40">
+                  <td className="py-2 px-1.5 text-center font-black text-emerald-600 dark:text-emerald-400 bg-orange-100/70 dark:bg-orange-950/40">
                     {ca2SummaryByBuuCuc.totalAll.sldGtcCa2.toLocaleString('vi-VN')}
                   </td>
-                  <td className="py-2.5 px-2 text-center font-black bg-emerald-600 text-white border-x border-emerald-700">
-                    <span className="bg-white/20 px-2 py-0.5 rounded text-xs">
+                  <td className="py-2 px-2 text-center font-black bg-emerald-600 text-white border-x border-emerald-700">
+                    <span className="bg-white/20 px-1.5 py-0.2 rounded text-[10.5px]">
                       {ca2SummaryByBuuCuc.totalAll.overallRateGtcCa2.toFixed(1)}%
                     </span>
                   </td>

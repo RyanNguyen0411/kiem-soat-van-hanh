@@ -67,12 +67,15 @@ export const IndividualFilterDropdown: React.FC<IndividualFilterDropdownProps> =
   };
 
   const displayText = useMemo(() => {
-    if (selectedValues.length === 0) return compact ? label : `Tất cả ${label}`;
+    const cleanLabel = label.replace(/^Tất cả\s+/i, '');
+    if (selectedValues.length === 0) {
+      return compact ? cleanLabel : `Tất cả ${cleanLabel}`;
+    }
     if (selectedValues.length === 1) {
       const found = options.find(o => o.value === selectedValues[0]);
       return found ? found.label.replace('(LAN) ', '') : selectedValues[0];
     }
-    return `${label} (${selectedValues.length})`;
+    return `${cleanLabel} (${selectedValues.length})`;
   }, [selectedValues, options, label, compact]);
 
   return (
