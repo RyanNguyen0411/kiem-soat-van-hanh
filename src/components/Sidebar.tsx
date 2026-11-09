@@ -15,8 +15,7 @@ import {
   UserCheck,
   UserMinus,
   ChevronDown,
-  X,
-  FolderTree
+  X
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import type { TabType } from '../types/dashboard';
@@ -259,33 +258,6 @@ export const Sidebar: React.FC = () => {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Nút Mở Sơ Đồ Cây Cơ Cấu (Menu Tổng Hợp) - Giúp AM Huy kiểm soát toàn bộ 10 phân hệ */}
-        <div className="p-2 border-b border-slate-800 bg-slate-950/40 shrink-0">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-executive-directory'))}
-            className={`w-full flex items-center rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold shadow-md hover:shadow-lg transition-all cursor-pointer group ${
-              isSidebarCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 py-2 text-xs'
-            }`}
-            title="Mở Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M)"
-          >
-            <div className={`flex items-center min-w-0 ${isSidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
-              <FolderTree className="w-4 h-4 text-white group-hover:scale-110 transition-transform shrink-0" />
-              {!isSidebarCollapsed && (
-                <div className="text-left min-w-0">
-                  <div className="text-[11px] font-black uppercase tracking-wide truncate">Cây Cơ Cấu Dashboard</div>
-                  <div className="text-[9px] text-orange-100 font-medium truncate">Menu Tổng Hợp 10 Phân Hệ</div>
-                </div>
-              )}
-            </div>
-            {!isSidebarCollapsed && (
-              <span className="px-1.5 py-0.2 rounded bg-black/25 text-[9px] font-mono text-white/90 border border-white/20 shrink-0">
-                Ctrl+M
-              </span>
-            )}
-          </button>
         </div>
 
         {/* Menu Items - Nhóm theo phân hệ */}
