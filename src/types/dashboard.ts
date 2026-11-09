@@ -40,6 +40,9 @@ export interface GtcEmployeeRecord {
   tonDong: number;
   ngay: string;
   thu: string;
+  ganLay?: number;
+  layTC?: number;
+  tiLeLTC?: string;
 }
 
 export interface DailySalaryRecord {

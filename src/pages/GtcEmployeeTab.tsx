@@ -28,6 +28,7 @@ import {
   Flame,
   AlertCircle,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -53,6 +54,7 @@ import type { Column } from '../components/common/DataTable';
 import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
 import { sortDatesDesc, extractMonths, extractWeeks } from '../utils/dateEngine';
+import { exportToCSV } from '../services/excelExportService';
 
 const PO_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4'];
 
@@ -965,22 +967,117 @@ export const GtcEmployeeTab: React.FC = () => {
     });
   }, [matrixData.postOffices, matrixSearch]);
 
+  // Thao tác tải Excel cho Bảng Ma Trận Hiệu Suất GTC Bưu Cục & Chi Tiết Nhân Viên
+  const handleExportMatrixExcel = () => {
+    const headers = [
+      'Phân Loại',
+      'Bưu Cục',
+      'Mã NV',
+      'Họ Tên Bưu Tá',
+      'Tổng Đơn (Kỳ)',
+      'Tổng GTC (Kỳ)',
+      '% GTC (Kỳ)',
+      ...matrixDates.map(d => `${d} (%GTC)`),
+      ...matrixDates.map(d => `${d} (GTC / Tổng)`)
+    ];
+
+    const rows: (string | number)[][] = [];
+
+    // 1. Dòng Tổng Toàn Khu Vực
+    const regionGtcRate = `${matrixData.regionTotal.avgGtcRate.toFixed(2)}%`;
+    const regionDatePct = matrixDates.map(d => {
+      const rec = matrixData.regionTotal.daily[d];
+      return rec ? `${rec.gtcRate.toFixed(2)}%` : '-';
+    });
+    const regionDateFraction = matrixDates.map(d => {
+      const rec = matrixData.regionTotal.daily[d];
+      return rec ? `${rec.tongDonGTC}/${rec.tongDon}` : '-';
+    });
+
+    rows.push([
+      'TOÀN KHU VỰC',
+      'Toàn bộ 5 Bưu cục',
+      '-',
+      '-',
+      matrixData.regionTotal.totalDon,
+      matrixData.regionTotal.totalDonGTC,
+      regionGtcRate,
+      ...regionDatePct,
+      ...regionDateFraction
+    ]);
+
+    // 2. Từng Bưu Cục & Danh Sách Bưu Tá Thuộc Bưu Cục
+    filteredMatrixPos.forEach(po => {
+      const poGtcRate = `${po.avgGtcRate.toFixed(2)}%`;
+      const poDatePct = matrixDates.map(d => {
+        const rec = po.daily[d];
+        return rec ? `${rec.gtcRate.toFixed(2)}%` : '-';
+      });
+      const poDateFraction = matrixDates.map(d => {
+        const rec = po.daily[d];
+        return rec ? `${rec.tongDonGTC}/${rec.tongDon}` : '-';
+      });
+
+      // Dòng Bưu cục
+      rows.push([
+        'BƯU CỤC',
+        po.buuCuc,
+        '-',
+        `Tổng ${po.staffCount} bưu tá`,
+        po.totalDon,
+        po.totalDonGTC,
+        poGtcRate,
+        ...poDatePct,
+        ...poDateFraction
+      ]);
+
+      // Dòng từng Nhân viên
+      Object.values(po.employees)
+        .sort((a, b) => b.totalDon - a.totalDon)
+        .forEach(emp => {
+          const empGtcRate = `${emp.avgGtcRate.toFixed(2)}%`;
+          const empDatePct = matrixDates.map(d => {
+            const rec = emp.daily[d];
+            return rec && rec.tongDon > 0 ? `${((rec.tongDonGTC / rec.tongDon) * 100).toFixed(2)}%` : '-';
+          });
+          const empDateFraction = matrixDates.map(d => {
+            const rec = emp.daily[d];
+            return rec ? `${rec.tongDonGTC}/${rec.tongDon}` : '-';
+          });
+
+          rows.push([
+            'BƯU TÁ',
+            po.buuCuc,
+            emp.maNV,
+            emp.tenNV,
+            emp.totalDon,
+            emp.totalDonGTC,
+            empGtcRate,
+            ...empDatePct,
+            ...empDateFraction
+          ]);
+        });
+    });
+
+    exportToCSV('ma_tran_gtc_buu_cuc_nhan_vien_ghn', headers, rows);
+  };
+
   // =========================================================================
   // REQUIREMENT 3: BẢNG CHI TIẾT GTC NHÂN VIÊN THEO NGÀY (CÓ BỘ LỌC ĐỘC LẬP)
-  // (Tạo bộ lọc riêng cho bảng: Ngày, Tuần, Tháng, Bưu cục)
+  // (Tạo bộ lọc riêng cho bảng: Ngày, Tuần, Tháng, Bưu cục dạng tick chọn)
   // =========================================================================
   const [tableFilterBuuCuc, setTableFilterBuuCuc] = useState<string>('all');
   const [tableFilterEmployees, setTableFilterEmployees] = useState<string[]>([]);
-  const [tableFilterMonth, setTableFilterMonth] = useState<string>('all');
-  const [tableFilterWeek, setTableFilterWeek] = useState<string>('all');
-  const [tableFilterDate, setTableFilterDate] = useState<string>('all');
+  const [tableFilterMonths, setTableFilterMonths] = useState<string[]>([]);
+  const [tableFilterWeeks, setTableFilterWeeks] = useState<string[]>([]);
+  const [tableFilterDates, setTableFilterDates] = useState<string[]>([]);
 
   const handleResetTableFilter = () => {
     setTableFilterBuuCuc('all');
     setTableFilterEmployees([]);
-    setTableFilterMonth('all');
-    setTableFilterWeek('all');
-    setTableFilterDate('all');
+    setTableFilterMonths([]);
+    setTableFilterWeeks([]);
+    setTableFilterDates([]);
   };
 
   // Danh sách nhân viên để tick chọn (tự động thu hẹp theo Bưu cục nếu đang chọn bưu cục cụ thể)
@@ -1000,33 +1097,6 @@ export const GtcEmployeeTab: React.FC = () => {
       .sort((a, b) => a.label.localeCompare(b.label, 'vi'));
   }, [dataset.gtcNhanVien, tableFilterBuuCuc]);
 
-  const tableFilteredData = useMemo(() => {
-    return dataset.gtcNhanVien.filter(r => {
-      // 1. Bưu Cục
-      if (tableFilterBuuCuc !== 'all' && r.buuCuc !== tableFilterBuuCuc) return false;
-
-      // 2. Nhân viên (Tick chọn nhiều nhân viên)
-      if (tableFilterEmployees.length > 0 && !tableFilterEmployees.includes(r.maNV)) return false;
-
-      // 3. Tháng
-      if (tableFilterMonth !== 'all') {
-        const targetMonth = availableMonths.find(m => m.key === tableFilterMonth);
-        if (targetMonth && !targetMonth.dates.includes(r.ngay)) return false;
-      }
-
-      // 4. Tuần
-      if (tableFilterWeek !== 'all') {
-        const targetWeek = availableWeeks.find(w => w.key === tableFilterWeek);
-        if (targetWeek && !targetWeek.dates.includes(r.ngay)) return false;
-      }
-
-      // 5. Ngày (Cột J)
-      if (tableFilterDate !== 'all' && r.ngay !== tableFilterDate) return false;
-
-      return true;
-    });
-  }, [dataset.gtcNhanVien, tableFilterBuuCuc, tableFilterEmployees, tableFilterMonth, tableFilterWeek, tableFilterDate, availableMonths, availableWeeks]);
-
   // Map tra cứu nhanh Hoa Hồng Ngày theo mã nhân viên và ngày vận hành
   const hoaHongMap = useMemo(() => {
     const map = new Map<string, DailySalaryRecord>();
@@ -1038,49 +1108,105 @@ export const GtcEmployeeTab: React.FC = () => {
     return map;
   }, [dataset.hoaHongNgay]);
 
-  // Columns for DataTable - Thu gọn tối đa, cân đối không thừa khoảng trống, không trượt ngang
+  const tableFilteredData = useMemo(() => {
+    return dataset.gtcNhanVien.filter(r => {
+      // 1. Bưu Cục
+      if (tableFilterBuuCuc !== 'all' && r.buuCuc !== tableFilterBuuCuc) return false;
+
+      // 2. Nhân viên (Tick chọn nhiều nhân viên)
+      if (tableFilterEmployees.length > 0 && !tableFilterEmployees.includes(r.maNV)) return false;
+
+      // 3. Lọc Tháng (Tick chọn tháng)
+      if (tableFilterMonths.length > 0) {
+        const matchesMonth = tableFilterMonths.some(mKey => {
+          const targetMonth = availableMonths.find(m => m.key === mKey);
+          return targetMonth ? targetMonth.dates.includes(r.ngay) : false;
+        });
+        if (!matchesMonth) return false;
+      }
+
+      // 4. Lọc Tuần (Tick chọn tuần)
+      if (tableFilterWeeks.length > 0) {
+        const matchesWeek = tableFilterWeeks.some(wKey => {
+          const targetWeek = availableWeeks.find(w => w.key === wKey);
+          return targetWeek ? targetWeek.dates.includes(r.ngay) : false;
+        });
+        if (!matchesWeek) return false;
+      }
+
+      // 5. Lọc Ngày (Tick chọn ngày)
+      if (tableFilterDates.length > 0 && !tableFilterDates.includes(r.ngay)) return false;
+
+      return true;
+    }).map(r => {
+      const hh = hoaHongMap.get(`${r.maNV}_${r.ngay}`);
+      const ganLay = hh ? (hh.soDonGanLay || 0) : 0;
+      const layTC = hh ? (hh.donLayTinhLuong || 0) : 0;
+      const tiLeLTC = ganLay > 0 ? `${((layTC / ganLay) * 100).toFixed(1)}%` : '0%';
+      return {
+        ...r,
+        ganLay,
+        layTC,
+        tiLeLTC
+      };
+    });
+  }, [
+    dataset.gtcNhanVien, 
+    tableFilterBuuCuc, 
+    tableFilterEmployees, 
+    tableFilterMonths, 
+    tableFilterWeeks, 
+    tableFilterDates, 
+    availableMonths, 
+    availableWeeks,
+    hoaHongMap
+  ]);
+
+  // Columns for DataTable - Căn giữa số liệu, cân đối và bố trí 3 cột Lấy ngay sau %GTC
   const columns: Column<GtcEmployeeRecord>[] = [
     {
       key: 'maNV',
       header: 'Mã NV',
       width: '78px',
+      align: 'center',
       sortable: true,
       render: r => <span className="font-mono text-slate-500 dark:text-slate-400 font-bold">{r.maNV}</span>
     },
     {
       key: 'tenNV',
       header: 'Họ Tên Bưu Tá',
-      width: '155px',
+      width: '150px',
       sortable: true,
-      render: r => <span className="font-bold text-slate-900 dark:text-white truncate block max-w-[155px]" title={r.tenNV}>{r.tenNV}</span>
+      render: r => <span className="font-bold text-slate-900 dark:text-white truncate block max-w-[150px]" title={r.tenNV}>{r.tenNV}</span>
     },
     {
       key: 'buuCuc',
       header: 'Bưu Cục',
-      width: '115px',
+      width: '110px',
       sortable: true,
       render: r => <span className="text-slate-700 dark:text-slate-300 font-medium">{r.buuCuc.replace('(LAN) ', '')}</span>
     },
     {
       key: 'ngay',
       header: 'Ngày Vận Hành',
-      width: '125px',
+      width: '120px',
+      align: 'center',
       sortable: true,
       render: r => <span>{r.ngay} <span className="text-slate-400 font-normal">({r.thu})</span></span>
     },
     {
       key: 'tongDon',
       header: 'Tổng Đơn',
-      width: '80px',
-      align: 'right',
+      width: '75px',
+      align: 'center',
       sortable: true,
       render: r => <span className="font-bold">{r.tongDon.toLocaleString('vi-VN')}</span>
     },
     {
       key: 'tongDonGTC',
       header: 'Đơn GTC',
-      width: '80px',
-      align: 'right',
+      width: '75px',
+      align: 'center',
       sortable: true,
       render: r => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.tongDonGTC.toLocaleString('vi-VN')}</span>
     },
@@ -1088,7 +1214,7 @@ export const GtcEmployeeTab: React.FC = () => {
       key: 'tiLeGTC',
       header: '% GTC',
       width: '75px',
-      align: 'right',
+      align: 'center',
       sortable: true,
       render: r => {
         const val = parseFloat(r.tiLeGTC?.replace(',', '.') || '0');
@@ -1104,17 +1230,56 @@ export const GtcEmployeeTab: React.FC = () => {
       }
     },
     {
+      key: 'ganLay',
+      header: 'Gán Lấy',
+      width: '72px',
+      align: 'center',
+      sortable: true,
+      render: r => <span className="font-semibold text-slate-800 dark:text-slate-200">{(r.ganLay || 0).toLocaleString('vi-VN')}</span>
+    },
+    {
+      key: 'layTC',
+      header: 'Lấy TC',
+      width: '72px',
+      align: 'center',
+      sortable: true,
+      render: r => <span className="font-semibold text-blue-600 dark:text-blue-400">{(r.layTC || 0).toLocaleString('vi-VN')}</span>
+    },
+    {
+      key: 'tiLeLTC',
+      header: '% LTC',
+      width: '75px',
+      align: 'center',
+      sortable: true,
+      render: r => {
+        const gan = r.ganLay || 0;
+        const raw = parseFloat(r.tiLeLTC?.replace('%', '') || '0');
+        if (gan === 0) {
+          return <span className="text-slate-400 text-[10.5px]">-</span>;
+        }
+        return (
+          <span className={`font-bold px-1.5 py-0.5 rounded text-[10.5px] ${
+            raw < 70 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+            raw < 85 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+            'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+          }`}>
+            {r.tiLeLTC}
+          </span>
+        );
+      }
+    },
+    {
       key: 'leadtime',
       header: 'Leadtime',
-      width: '78px',
-      align: 'right',
+      width: '75px',
+      align: 'center',
       sortable: true,
       render: r => <span className="font-semibold text-slate-700 dark:text-slate-300">{r.leadtime.toFixed(1)}h</span>
     },
     {
       key: 'chuyenDi',
       header: 'Chuyến',
-      width: '68px',
+      width: '65px',
       align: 'center',
       sortable: true,
       render: r => <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-bold text-[11px]">{r.chuyenDi}</span>
@@ -1123,7 +1288,7 @@ export const GtcEmployeeTab: React.FC = () => {
       key: 'tonDong',
       header: 'Tồn Đọng',
       width: '75px',
-      align: 'right',
+      align: 'center',
       sortable: true,
       render: r => <span className="text-rose-600 dark:text-rose-400 font-bold">{r.tonDong}</span>
     }
@@ -2937,6 +3102,17 @@ export const GtcEmployeeTab: React.FC = () => {
                 <span>Thu gọn</span>
               </button>
             </div>
+
+            {/* Thao tác tải Excel Ma Trận */}
+            <button
+              type="button"
+              onClick={handleExportMatrixExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all shadow-2xs cursor-pointer"
+              title="Tải toàn bộ dữ liệu Ma Trận Hiệu Suất GTC Bưu Cục & Chi Tiết Nhân Viên về file Excel/CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Tải Excel</span>
+            </button>
           </div>
         </div>
 
@@ -3162,7 +3338,7 @@ export const GtcEmployeeTab: React.FC = () => {
                 <span className="text-[11px] px-2.5 py-0.5 rounded font-semibold bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
                   Hiển thị: <strong className="text-orange-600 dark:text-orange-400 font-bold">{tableFilteredData.length.toLocaleString('vi-VN')}</strong> / {dataset.gtcNhanVien.length.toLocaleString('vi-VN')} ca phát
                 </span>
-                {(tableFilterBuuCuc !== 'all' || tableFilterEmployees.length > 0 || tableFilterMonth !== 'all' || tableFilterWeek !== 'all' || tableFilterDate !== 'all') && (
+                {(tableFilterBuuCuc !== 'all' || tableFilterEmployees.length > 0 || tableFilterMonths.length > 0 || tableFilterWeeks.length > 0 || tableFilterDates.length > 0) && (
                   <button
                     type="button"
                     onClick={handleResetTableFilter}
@@ -3197,7 +3373,7 @@ export const GtcEmployeeTab: React.FC = () => {
                 </select>
               </div>
 
-              {/* 2. Bộ Lọc Tick Chọn Nhân Viên (MỚI) */}
+              {/* 2. Bộ Lọc Tick Chọn Nhân Viên */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
                   <Users className="w-3 h-3 text-blue-500" /> Nhân Viên:
@@ -3217,62 +3393,64 @@ export const GtcEmployeeTab: React.FC = () => {
                 />
               </div>
 
-              {/* 3. Thời gian: Tháng */}
+              {/* 3. Lọc Tháng (Tick chọn tháng) */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-emerald-500" /> Thời gian (Tháng):
+                  <Calendar className="w-3 h-3 text-emerald-500" /> Lọc Tháng:
+                  {tableFilterMonths.length > 0 && (
+                    <span className="ml-1 text-[10px] text-emerald-600 font-bold">({tableFilterMonths.length})</span>
+                  )}
                 </label>
-                <select
-                  value={tableFilterMonth}
-                  onChange={e => {
-                    setTableFilterMonth(e.target.value);
-                    setTableFilterWeek('all');
-                    setTableFilterDate('all');
-                  }}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
-                >
-                  <option value="all">Tất cả các tháng</option>
-                  {availableMonths.map(m => (
-                    <option key={m.key} value={m.key}>{m.label} ({m.dates.length} ngày)</option>
-                  ))}
-                </select>
+                <IndividualFilterDropdown
+                  label="Tất cả tháng"
+                  compact={false}
+                  icon={<Calendar className="w-3.5 h-3.5 text-emerald-600" />}
+                  options={availableMonths.map(m => ({ label: `${m.label} (${m.dates.length} ngày)`, value: m.key }))}
+                  selectedValues={tableFilterMonths}
+                  onChange={vals => setTableFilterMonths(vals)}
+                  searchPlaceholder="Tìm tháng..."
+                  minWidth="w-60"
+                />
               </div>
 
-              {/* 4. Thời gian: Tuần */}
+              {/* 4. Lọc Tuần (Tick chọn tuần) */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-purple-500" /> Thời gian (Tuần):
+                  <Clock className="w-3 h-3 text-purple-500" /> Lọc Tuần:
+                  {tableFilterWeeks.length > 0 && (
+                    <span className="ml-1 text-[10px] text-purple-600 font-bold">({tableFilterWeeks.length})</span>
+                  )}
                 </label>
-                <select
-                  value={tableFilterWeek}
-                  onChange={e => {
-                    setTableFilterWeek(e.target.value);
-                    setTableFilterDate('all');
-                  }}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
-                >
-                  <option value="all">Tất cả các tuần</option>
-                  {availableWeeks.map(w => (
-                    <option key={w.key} value={w.key}>{w.label} ({w.dates.length} ngày)</option>
-                  ))}
-                </select>
+                <IndividualFilterDropdown
+                  label="Tất cả tuần"
+                  compact={false}
+                  icon={<Clock className="w-3.5 h-3.5 text-purple-600" />}
+                  options={availableWeeks.map(w => ({ label: `${w.label} (${w.dates.length} ngày)`, value: w.key }))}
+                  selectedValues={tableFilterWeeks}
+                  onChange={vals => setTableFilterWeeks(vals)}
+                  searchPlaceholder="Tìm tuần..."
+                  minWidth="w-64"
+                />
               </div>
 
-              {/* 5. Thời gian: Ngày vận hành (Cột J) */}
+              {/* 5. Lọc Ngày (Tick chọn ngày) */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-rose-500" /> Ngày (Cột J):
+                  <Calendar className="w-3 h-3 text-rose-500" /> Lọc Ngày:
+                  {tableFilterDates.length > 0 && (
+                    <span className="ml-1 text-[10px] text-rose-600 font-bold">({tableFilterDates.length})</span>
+                  )}
                 </label>
-                <select
-                  value={tableFilterDate}
-                  onChange={e => setTableFilterDate(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
-                >
-                  <option value="all">Tất cả các ngày</option>
-                  {allUniqueDatesDesc.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                <IndividualFilterDropdown
+                  label="Tất cả ngày"
+                  compact={false}
+                  icon={<Calendar className="w-3.5 h-3.5 text-rose-600" />}
+                  options={allUniqueDatesDesc.map(d => ({ label: d, value: d }))}
+                  selectedValues={tableFilterDates}
+                  onChange={vals => setTableFilterDates(vals)}
+                  searchPlaceholder="Tìm ngày (dd/mm/yyyy)..."
+                  minWidth="w-60"
+                />
               </div>
             </div>
           </div>
