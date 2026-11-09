@@ -15,6 +15,8 @@ import {
   ChevronRight,
   ChevronDown,
   Calendar,
+  CalendarDays,
+  CalendarRange,
   RotateCcw,
   Filter,
   X,
@@ -22,7 +24,9 @@ import {
   FileSpreadsheet,
   Target,
   Compass,
-  HeartPulse
+  HeartPulse,
+  Info,
+  PackageX
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -83,24 +87,24 @@ export const OverviewTab: React.FC = () => {
   const [filterDates, setFilterDates] = useState<string[]>([]);
   const [filterLoaiHang, setFilterLoaiHang] = useState<string>('all');
 
-  // Popover dạng sổ tick chọn ngày
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState<boolean>(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
+  // Quản lý trạng thái mở dạng cuộn cho 3 bộ lọc: Tháng, Tuần, Ngày
+  const [openDropdown, setOpenDropdown] = useState<'month' | 'week' | 'date' | null>(null);
+  const filterBarRef = useRef<HTMLDivElement>(null);
 
-  // Tự động thu gọn popover ngày khi nhấn ra ngoài
+  // Tự động thu gọn bộ lọc khi nhấn bất kỳ nơi nào trên màn hình
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-        setIsDatePickerOpen(false);
+      if (filterBarRef.current && !filterBarRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
       }
     };
-    if (isDatePickerOpen) {
+    if (openDropdown !== null) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDatePickerOpen]);
+  }, [openDropdown]);
 
   // Extract all available dates sorted from newest to oldest (Gần nhất -> Xa nhất)
   const allUniqueDatesDesc = useMemo(() => {
@@ -118,26 +122,36 @@ export const OverviewTab: React.FC = () => {
     return extractWeeks(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
 
-  // Handle Month Selection
+  // Handle Month Selection (Dạng cuộn)
   const handleSelectMonth = (monthKey: string) => {
     setFilterMonth(monthKey);
     setFilterWeek('all'); // reset week
     setFilterDates([]); // clear custom date ticks
+    setOpenDropdown(null);
   };
 
-  // Handle Week Selection
+  // Handle Week Selection (Dạng cuộn)
   const handleSelectWeek = (weekKey: string) => {
     setFilterWeek(weekKey);
+    setFilterMonth('all'); // reset month
     setFilterDates([]); // clear custom date ticks
+    setOpenDropdown(null);
   };
 
-  // Toggle single date tick
+  // Toggle single date tick - Fix triệt để lỗi không tick được ngày, cho phép chọn ngày mong muốn
   const handleToggleDate = (dateStr: string) => {
+    setFilterMonth('all');
+    setFilterWeek('all');
     setFilterDates(prev => {
+      if (prev.length === 0) {
+        // Đang xem tất cả các ngày, khi tick vào 1 ngày thì chỉ lọc riêng ngày đó
+        return [dateStr];
+      }
       if (prev.includes(dateStr)) {
-        return prev.filter(d => d !== dateStr);
+        const next = prev.filter(d => d !== dateStr);
+        return next;
       } else {
-        return [...prev, dateStr];
+        return sortDatesDesc([...prev, dateStr]);
       }
     });
   };
@@ -149,7 +163,7 @@ export const OverviewTab: React.FC = () => {
     setFilterWeek('all');
     setFilterDates([]);
     setFilterLoaiHang('all');
-    setIsDatePickerOpen(false);
+    setOpenDropdown(null);
   };
 
   // Check if any filter is actively applied
@@ -867,8 +881,8 @@ export const OverviewTab: React.FC = () => {
             </span>
           </div>
 
-          {/* Cụm Bộ Lọc Inline Thu Gọn (1 Hàng Tiện Ích) */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          {/* Cụm Bộ Lọc Inline Thu Gọn (1 Hàng Tiện Ích, Dạng Cuộn Chuyên Nghiệp) */}
+          <div className="flex flex-wrap items-center gap-2 text-xs" ref={filterBarRef}>
             <div className="flex items-center gap-1 text-slate-500 font-bold text-[11px] uppercase tracking-wide">
               <Filter className="w-3.5 h-3.5 text-orange-600" />
               <span className="hidden sm:inline">Lọc:</span>
@@ -896,59 +910,193 @@ export const OverviewTab: React.FC = () => {
               </select>
             </div>
 
-            {/* 2. Lọc Tháng */}
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400 text-[11px] hidden lg:inline">Tháng:</span>
-              <select
-                value={filterMonth}
-                onChange={e => handleSelectMonth(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
-                title="Lọc theo tháng"
-              >
-                <option value="all">Tất cả các tháng</option>
-                {availableMonths.map(m => (
-                  <option key={m.key} value={m.key}>
-                    {m.label} ({m.dates.length} ngày)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3. Lọc Tuần */}
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400 text-[11px] hidden lg:inline">Tuần:</span>
-              <select
-                value={filterWeek}
-                onChange={e => handleSelectWeek(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
-                title="Lọc theo tuần"
-              >
-                <option value="all">Tất cả các tuần</option>
-                {availableWeeks.map(w => (
-                  <option key={w.key} value={w.key}>
-                    {w.label} ({w.dates.length} ngày)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 4. Dropdown Dạng Sổ: Tick Chọn Ngày Vận Hành */}
-            <div className="relative inline-block text-left" ref={datePickerRef}>
+            {/* 2. Lọc Tháng Dạng Cuộn (Tiết Kiệm Không Gian, Tự Động Ẩn Khi Nhấn Ngoài) */}
+            <div className="relative inline-block text-left">
               <button
                 type="button"
-                onClick={() => setIsDatePickerOpen(prev => !prev)}
+                onClick={() => setOpenDropdown(prev => prev === 'month' ? null : 'month')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  filterMonth !== 'all'
+                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
+                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
+                }`}
+                title="Nhấn để mở danh sách dạng cuộn và chọn Tháng vận hành"
+              >
+                <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {filterMonth === 'all' 
+                    ? 'Tất cả các tháng' 
+                    : availableMonths.find(m => m.key === filterMonth)?.label || filterMonth}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'month' ? 'rotate-180 text-orange-600' : ''}`} />
+              </button>
+
+              {/* Popover Dạng Cuộn Chọn Tháng */}
+              {openDropdown === 'month' && (
+                <div className="absolute left-0 mt-1.5 w-60 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-700">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
+                      Chọn Tháng Vận Hành
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition-colors"
+                      title="Đóng menu"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMonth('all')}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer text-left ${
+                        filterMonth === 'all'
+                          ? 'bg-orange-500 text-white font-bold shadow-2xs'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span>Tất cả các tháng</span>
+                      {filterMonth === 'all' && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                    </button>
+
+                    {availableMonths.map(m => {
+                      const isSelected = filterMonth === m.key;
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => handleSelectMonth(m.key)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer text-left ${
+                            isSelected
+                              ? 'bg-orange-500 text-white font-bold shadow-2xs'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <span className="font-medium">{m.label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                              isSelected ? 'bg-orange-600 text-white' : 'bg-slate-100 dark:bg-slate-750 text-slate-500 dark:text-slate-400'
+                            }`}>
+                              {m.dates.length} ngày
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="pt-1 border-t border-slate-100 dark:border-slate-700">
+                    <span className="text-[9.5px] text-slate-400 italic block">* Nhấn bất kỳ nơi nào để tự động ẩn</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Lọc Tuần Dạng Cuộn (Tiết Kiệm Không Gian, Tự Động Ẩn Khi Nhấn Ngoài) */}
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(prev => prev === 'week' ? null : 'week')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                  filterWeek !== 'all'
+                    ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
+                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
+                }`}
+                title="Nhấn để mở danh sách dạng cuộn và chọn Tuần vận hành"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-orange-600" />
+                <span>
+                  {filterWeek === 'all' 
+                    ? 'Tất cả các tuần' 
+                    : availableWeeks.find(w => w.key === filterWeek)?.label || filterWeek}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'week' ? 'rotate-180 text-orange-600' : ''}`} />
+              </button>
+
+              {/* Popover Dạng Cuộn Chọn Tuần */}
+              {openDropdown === 'week' && (
+                <div className="absolute left-0 mt-1.5 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-slate-100 dark:border-slate-700">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
+                      Chọn Tuần Vận Hành
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition-colors"
+                      title="Đóng menu"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectWeek('all')}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer text-left ${
+                        filterWeek === 'all'
+                          ? 'bg-orange-500 text-white font-bold shadow-2xs'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span>Tất cả các tuần</span>
+                      {filterWeek === 'all' && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                    </button>
+
+                    {availableWeeks.map(w => {
+                      const isSelected = filterWeek === w.key;
+                      return (
+                        <button
+                          key={w.key}
+                          type="button"
+                          onClick={() => handleSelectWeek(w.key)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer text-left ${
+                            isSelected
+                              ? 'bg-orange-500 text-white font-bold shadow-2xs'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <span className="font-medium">{w.label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                              isSelected ? 'bg-orange-600 text-white' : 'bg-slate-100 dark:bg-slate-750 text-slate-500 dark:text-slate-400'
+                            }`}>
+                              {w.dates.length} ngày
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="pt-1 border-t border-slate-100 dark:border-slate-700">
+                    <span className="text-[9.5px] text-slate-400 italic block">* Nhấn bất kỳ nơi nào để tự động ẩn</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Dropdown Dạng Cuộn: Tick Chọn Ngày Vận Hành (Đã Fix Lỗi Không Tick Được Ngày, Cuộn Gọn Gàng) */}
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(prev => prev === 'date' ? null : 'date')}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
                   filterDates.length > 0
                     ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
                     : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
                 }`}
-                title="Nhấn để mở danh sách dạng sổ và tick chọn ngày"
+                title="Nhấn để mở danh sách dạng cuộn và tick chọn ngày"
               >
-                <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                <CalendarRange className="w-3.5 h-3.5 text-orange-600" />
                 <span>
                   {filterDates.length === 0
                     ? effectiveDates.length > 0 && effectiveDates.length < allUniqueDatesDesc.length
-                      ? `${effectiveDates.length} ngày`
+                      ? `${effectiveDates.length} ngày (${filterMonth !== 'all' ? 'Tháng' : 'Tuần'})`
                       : 'Tất cả các ngày'
                     : `Đã tick ${filterDates.length} ngày`}
                 </span>
@@ -957,25 +1105,25 @@ export const OverviewTab: React.FC = () => {
                     {filterDates.length}
                   </span>
                 )}
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isDatePickerOpen ? 'rotate-180 text-orange-600' : ''}`} />
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${openDropdown === 'date' ? 'rotate-180 text-orange-600' : ''}`} />
               </button>
 
-              {/* Menu Dạng Sổ Xuống */}
-              {isDatePickerOpen && (
-                <div className="absolute right-0 sm:left-0 mt-1.5 w-[320px] sm:w-[480px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+              {/* Menu Dạng Cuộn Sổ Xuống Cho Danh Sách Ngày */}
+              {openDropdown === 'date' && (
+                <div className="absolute right-0 sm:left-0 mt-1.5 w-[310px] sm:w-[350px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-orange-600" />
+                      <CalendarRange className="w-4 h-4 text-orange-600" />
                       <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wide">
-                        Tick Chọn Ngày Vận Hành
+                        Tick Chọn Ngày
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        (Gần nhất &rarr; Xa nhất)
+                        ({filterDates.length === 0 ? 'Mặc định: Tất cả' : `${filterDates.length} ngày đã chọn`})
                       </span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsDatePickerOpen(false)}
+                      onClick={() => setOpenDropdown(null)}
                       className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition-colors"
                       title="Đóng bảng sổ"
                     >
@@ -1021,46 +1169,53 @@ export const OverviewTab: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Danh sách các ô tick ngày (Sắp xếp từ ngày gần nhất đến xa nhất) */}
-                  <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {allUniqueDatesDesc.map(d => {
+                  {/* Danh sách các ô tick ngày dạng cuộn dọc (Tiết kiệm không gian, chuyên nghiệp, phản hồi click tức thì) */}
+                  <div className="max-h-60 overflow-y-auto scrollbar-thin space-y-1 pr-1">
+                    {allUniqueDatesDesc.map((d, idx) => {
+                      const isChecked = filterDates.includes(d);
                       return (
-                        <label
+                        <button
                           key={d}
-                          onClick={() => {
-                            if (filterDates.length === 0) {
-                              setFilterDates([d]);
-                              setFilterMonth('all');
-                              setFilterWeek('all');
-                            } else {
-                              handleToggleDate(d);
-                            }
-                          }}
-                          className={`flex items-center gap-2 p-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all ${
-                            filterDates.includes(d)
+                          type="button"
+                          onClick={() => handleToggleDate(d)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all text-left ${
+                            isChecked
                               ? 'bg-orange-500 text-white font-bold border-orange-600 shadow-2xs'
-                              : filterDates.length === 0
-                              ? 'bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-orange-300'
-                              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                              : 'bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={filterDates.length === 0 ? false : filterDates.includes(d)}
-                            onChange={() => {}}
-                            className="sr-only"
-                          />
-                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                            filterDates.includes(d)
-                              ? 'bg-white text-orange-600 border-white'
-                              : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'
-                          }`}>
-                            {filterDates.includes(d) && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                              isChecked
+                                ? 'bg-white text-orange-600 border-white'
+                                : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'
+                            }`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                            <span className="font-mono text-xs">{d}</span>
                           </div>
-                          <span className="truncate">{d}</span>
-                        </label>
+                          {idx === 0 && (
+                            <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
+                              isChecked ? 'bg-orange-600 text-white' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            }`}>
+                              Gần nhất
+                            </span>
+                          )}
+                        </button>
                       );
                     })}
+                  </div>
+
+                  {/* Footer đóng nhanh & ghi chú tự động ẩn */}
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400">
+                    <span className="italic">* Nhấn bất kỳ nơi nào để tự động ẩn</span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(null)}
+                      className="px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-2xs cursor-pointer transition-colors"
+                    >
+                      Áp dụng ({filterDates.length === 0 ? 'Tất cả' : `${filterDates.length} ngày`})
+                    </button>
                   </div>
                 </div>
               )}
@@ -1915,127 +2070,136 @@ export const OverviewTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Bảng Chi Tiết Ma Trận Sức Khỏe Vận Hành (Canh chỉnh chuẩn Data Analyst, không ngắt dòng làm dãn khoảng cách) */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
-          <table className="w-full text-xs text-left border-collapse">
+        {/* Bảng Chi Tiết Ma Trận Sức Khỏe Vận Hành (Cân đối 100% chiều ngang, không dùng thanh trượt ngang) */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs overflow-hidden">
+          <table className="w-full text-xs text-left border-collapse table-fixed">
             <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-2.5 px-3 w-[15%] min-w-[150px] whitespace-nowrap">Bưu Cục &amp; Xếp Hạng</th>
-                <th className="py-2.5 px-3 w-[9%] min-w-[90px] text-center whitespace-nowrap">Volume &amp; % Gán</th>
-                <th className="py-2.5 px-3 w-[10%] min-w-[100px] text-center whitespace-nowrap">% GTC &amp; Khoảng Cách</th>
-                <th className="py-2.5 px-3 w-[13%] min-w-[130px] text-center whitespace-nowrap">Tồn Đọng (GLT + LC)</th>
-                <th className="py-2.5 px-3 w-[11%] min-w-[110px] text-center whitespace-nowrap">Nhân Sự &amp; Chuyên Cần</th>
-                <th className="py-2.5 px-3 w-[9%] min-w-[90px] text-center whitespace-nowrap">Hiệu Quả Ca 2</th>
-                <th className="py-2.5 px-3 w-[21%] min-w-[220px] text-left">Chỉ Đạo Điều Hành Khuyến Nghị</th>
-                <th className="py-2.5 px-3 w-[12%] min-w-[140px] text-center whitespace-nowrap">Điều Hướng Nhanh</th>
+                <th className="py-2.5 px-2.5 w-[17%]">Bưu Cục &amp; Xếp Hạng</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">Volume &amp; % Gán</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">% GTC &amp; So Target</th>
+                <th className="py-2.5 px-2 w-[13%] text-center">Tồn Đọng (GLT + LC)</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">Nhân Sự &amp; Chuyên Cần</th>
+                <th className="py-2.5 px-2 w-[10%] text-center">Hiệu Quả Ca 2</th>
+                <th className="py-2.5 px-2.5 w-[18%] text-left">Định Hướng &amp; Chỉ Đạo AM</th>
+                <th className="py-2.5 px-1.5 w-[9%] text-center">Chi Tiết</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {operationalScorecard.map((item) => (
+              {operationalScorecard.map((item, idx) => (
                 <tr key={item.buuCuc} className="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 transition-colors">
                   {/* 1. Bưu Cục & Xếp Hạng */}
-                  <td className="py-2.5 px-3 whitespace-nowrap">
-                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                      <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                      <span>{item.buuCuc}</span>
+                  <td className="py-2.5 px-2.5">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-xs">
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
+                        idx === 0 
+                          ? 'bg-amber-500 text-white shadow-2xs' 
+                          : idx === 1 
+                          ? 'bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-200' 
+                          : idx === 2 
+                          ? 'bg-amber-700 text-white' 
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}>
+                        {idx + 1}
+                      </span>
+                      <span className="truncate">{item.buuCuc}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`px-2 py-0.2 rounded-full text-[9.5px] font-extrabold border whitespace-nowrap ${item.tierBadge}`}>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-extrabold border shrink-0 ${item.tierBadge}`}>
                         {item.tierLabel}
                       </span>
-                      <span className="font-mono font-bold text-[10.5px] text-slate-600 dark:text-slate-400">
+                      <span className="font-mono font-bold text-[10px] text-slate-600 dark:text-slate-400">
                         {item.healthScore}/100đ
                       </span>
                     </div>
                   </td>
 
                   {/* 2. Volume & % Gán */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-slate-900 dark:text-white text-xs">
                       {item.totalVol.toLocaleString('vi-VN')}
                     </div>
-                    <div className="text-[10.5px] text-slate-500 font-medium">
+                    <div className="text-[10px] text-slate-500 font-medium">
                       Gán: <strong className="text-blue-600 dark:text-blue-400">{item.assignedRate.toFixed(1)}%</strong>
                     </div>
                   </td>
 
                   {/* 3. % GTC & Khoảng Cách */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-2 text-center">
                     <div className="font-black text-xs text-slate-900 dark:text-white">
                       {item.gtcRate.toFixed(2)}%
                     </div>
-                    <div className={`text-[10px] font-bold ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <div className={`text-[9.5px] font-bold ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}% vượt` : `${item.gtcGap.toFixed(1)}% vs chuẩn`}
                     </div>
                   </td>
 
                   {/* 4. Tồn Đọng (GLT + LC) */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-2 text-center">
                     <div className={`font-bold text-xs ${item.totalBacklog > 2000 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
                       {item.totalBacklog.toLocaleString('vi-VN')} đơn
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium">
+                    <div className="text-[9.5px] text-slate-500 font-medium truncate">
                       {item.gltCount.toLocaleString('vi-VN')} GLT &bull; {item.lcCount} LC ({item.backlogRate.toFixed(1)}%)
                     </div>
                   </td>
 
                   {/* 5. Nhân Sự & Chuyên Cần */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-slate-900 dark:text-white text-xs">
                       {item.totalStaff} NV
                     </div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <div className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
                       {item.activeStaffInPeriod} đi làm ({item.attendanceRate.toFixed(0)}%)
                     </div>
                   </td>
 
                   {/* 6. Hiệu Quả Ca 2 */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xs">
                       {item.ca2Rate.toFixed(1)}% GTC
                     </div>
-                    <div className="text-[10px] text-slate-500">
-                      Vol: {item.ca2Vol.toLocaleString('vi-VN')} đơn
+                    <div className="text-[9.5px] text-slate-500 truncate">
+                      Vol: {item.ca2Vol.toLocaleString('vi-VN')}
                     </div>
                   </td>
 
-                  {/* 7. Chỉ Đạo Điều Hành Khuyến Nghị (Trình bày gọn gàng, không dãn hàng) */}
-                  <td className="py-2.5 px-3 text-left">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <Target className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
-                      <span className="font-bold text-orange-600 dark:text-orange-400 text-[11px] whitespace-nowrap">
+                  {/* 7. Định Hướng Vận Hành & Chỉ Đạo AM */}
+                  <td className="py-2.5 px-2.5 text-left">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <Target className="w-3 h-3 text-orange-600 dark:text-orange-400 shrink-0" />
+                      <span className="font-bold text-orange-600 dark:text-orange-400 text-[10px] truncate">
                         {item.quadrant}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal">
+                    <div className="text-[10px] text-slate-600 dark:text-slate-300 leading-snug line-clamp-2">
                       {item.actionDirective}
                     </div>
                   </td>
 
-                  {/* 8. Điều Hướng Nhanh (Sắp xếp hàng ngang tinh gọn, giảm 50% chiều cao hàng) */}
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  {/* 8. Điều Hướng Nhanh (Tinh Gọn) */}
+                  <td className="py-2.5 px-1.5 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => navigateToTab('bao_cao_gtc_bc', { buuCuc: item.buuCuc })}
-                        className="px-2 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
-                        title={`Xem chi tiết Báo Cáo GTC BC ${item.buuCuc}`}
+                        className="p-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold transition-all shadow-2xs cursor-pointer"
+                        title={`Xem Báo Cáo GTC BC ${item.buuCuc}`}
                       >
-                        <FileSpreadsheet className="w-3 h-3" />
-                        <span>Báo Cáo BC</span>
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => navigateToTab('gtc_nhan_vien', { buuCuc: item.buuCuc })}
-                        className="px-1.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-[9.5px] font-bold transition-all cursor-pointer"
-                        title="Xem Bưu tá"
+                        className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer"
+                        title={`Xem Bưu tá ${item.buuCuc}`}
                       >
-                        Bưu tá
+                        <Users className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => navigateToTab('ton_dong_glt', { buuCuc: item.buuCuc })}
-                        className="px-1.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 text-[9.5px] font-bold transition-all cursor-pointer"
-                        title="Xem Tồn GLT"
+                        className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer"
+                        title={`Xem Tồn kho GLT ${item.buuCuc}`}
                       >
-                        Tồn kho
+                        <PackageX className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -2043,6 +2207,69 @@ export const OverviewTab: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* GHI CHÚ CHUYÊN MÔN DATA ANALYST: LOGIC TÍNH TOÁN, XẾP LOẠI, CÁCH SẮP XẾP & ĐÁNH GIÁ MA TRẬN SỨC KHỎE */}
+        <div className="mt-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-750/50 border border-slate-200 dark:border-slate-700/80 text-[10px] text-slate-600 dark:text-slate-400 space-y-2">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide text-[10.5px]">
+            <Info className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+            <span>Ghi Chú Logic Tính Toán, Xếp Loại &amp; Đánh Giá Ma Trận Sức Khỏe (Data Analyst Methodology)</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 leading-relaxed">
+            {/* Cột 1: Công Thức Trọng Số */}
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-800 dark:text-slate-200 text-[10.5px] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                <span>1. Logic Tính Điểm Sức Khỏe (Thang 100đ):</span>
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 pl-0.5 text-[9.5px]">
+                <li><strong>Tỷ lệ GTC (Trọng số 45%):</strong> Chuẩn 70% đạt trọn 45đ: <code className="bg-slate-200/70 dark:bg-slate-700 px-1 py-0.2 rounded font-mono">(%GTC / 70%) &times; 45</code>.</li>
+                <li><strong>Tồn kho GLT + LC (Trọng số 25%):</strong> Khấu trừ theo tỷ lệ tồn: <code className="bg-slate-200/70 dark:bg-slate-700 px-1 py-0.2 rounded font-mono">max(0, 25 - %Tồn &times; 3.5)</code>. Tồn &le; 1.5% giữ điểm tối đa.</li>
+                <li><strong>Tỷ lệ Gán đơn (Trọng số 15%):</strong> Chuẩn &ge; 95% đạt trọn 15đ: <code className="bg-slate-200/70 dark:bg-slate-700 px-1 py-0.2 rounded font-mono">(%Gán / 95%) &times; 15</code>.</li>
+                <li><strong>Hiệu quả Ca 2 (Trọng số 15%):</strong> Chuẩn GTC Ca 2 &ge; 60% đạt trọn 15đ: <code className="bg-slate-200/70 dark:bg-slate-700 px-1 py-0.2 rounded font-mono">(%GTC_Ca2 / 60%) &times; 15</code>.</li>
+              </ul>
+            </div>
+
+            {/* Cột 2: Quy Chuẩn Xếp Hạng */}
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-800 dark:text-slate-200 text-[10.5px] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                <span>2. Tiêu Chí Xếp Loại (Tier Classification):</span>
+              </div>
+              <div className="space-y-1 text-[9.5px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 shrink-0">Hạng A &ge; 75đ</span>
+                  <span>Xuất sắc &bull; Vận hành ổn định, GTC cao, tồn kho thấp.</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-bold border border-blue-300 shrink-0">Hạng B 65-74đ</span>
+                  <span>Ổn định &bull; Đạt chuẩn vận hành, cần đẩy mạnh giao ca 2.</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold border border-amber-300 shrink-0">Hạng C 55-64đ</span>
+                  <span>Cần cải thiện &bull; Tỷ lệ GTC thấp hoặc tồn kho tăng cao.</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-bold border border-rose-300 shrink-0">Hạng D &lt; 55đ</span>
+                  <span>Báo động &bull; Nghẽn hàng tồn hoặc vi phạm SLA nghiêm trọng.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cột 3: Cách Sắp Xếp & Đánh Giá */}
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-800 dark:text-slate-200 text-[10.5px] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                <span>3. Cách Sắp Xếp &amp; Đánh Giá Điều Hành:</span>
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 pl-0.5 text-[9.5px]">
+                <li><strong>Thứ tự sắp xếp:</strong> Tự động xếp hạng ưu tiên theo <em>Điểm Sức Khỏe tổng hợp từ cao xuống thấp (#1 &rarr; #5)</em> giúp AM nhận diện tức thì bưu cục xuất sắc và bưu cục cần can thiệp.</li>
+                <li><strong>Phân vùng 4 ô chiến lược:</strong> Định vị bưu cục theo 2 trục Volume (&ge; 48k) &times; %GTC (&ge; 66%): <em>Leader</em> (Dẫn đầu), <em>Bottleneck</em> (Điểm nghẽn), <em>Agile</em> (Tinh gọn), <em>Struggling</em> (Cần vực dậy).</li>
+                <li><strong>Chỉ đạo của AM:</strong> Ưu tiên can thiệp dứt điểm các bưu cục có điểm trừ tồn kho lớn (GLT &gt; 2.000 đơn hoặc LC &gt; 24h) trước khi xử lý điều phối tuyến.</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
