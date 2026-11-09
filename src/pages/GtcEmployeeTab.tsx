@@ -3727,7 +3727,7 @@ export const GtcEmployeeTab: React.FC = () => {
               type="button"
               onClick={handleExportMatrixExcel}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all shadow-2xs cursor-pointer"
-              title="Tải toàn bộ dữ liệu Ma Trận Hiệu Suất GTC Bưu Cục & Chi Tiết Nhân Viên về file Excel/CSV"
+              title="Tải toàn bộ dữ liệu Ma Trận Hiệu Suất GTC Bưu Cục &amp; Chi Tiết Nhân Viên ra file Excel, tự động lưu trữ Google Drive &amp; mở tab mới"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Tải Excel</span>

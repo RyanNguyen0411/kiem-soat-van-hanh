@@ -19,6 +19,7 @@ import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbB
 import { TelegramReportModal } from './components/common/TelegramReportModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
 import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
+import { GoogleDriveExportToast } from './components/common/GoogleDriveExportToast';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -167,6 +168,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Modal Bảo Vệ Link Nguồn Google Sheets (Yêu cầu mật khẩu dashboard) */}
       <GoogleSheetsLockModal />
+
+      {/* Thông báo & Quản lý Xuất Dữ Liệu Lưu Trữ Google Drive */}
+      <GoogleDriveExportToast />
     </div>
   );
 };

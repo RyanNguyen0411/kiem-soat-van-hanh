@@ -870,7 +870,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               type="button"
               onClick={handleExportExcel}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-              title="Xuất bảng chi tiết vận hành bưu cục ra file Excel"
+              title="Xuất bảng chi tiết vận hành bưu cục ra file Excel, tự động lưu trữ Google Drive &amp; mở tab mới"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Xuất Excel</span>

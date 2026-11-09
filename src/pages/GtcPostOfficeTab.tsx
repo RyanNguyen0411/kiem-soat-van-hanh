@@ -2217,7 +2217,7 @@ export const GtcPostOfficeTab: React.FC = () => {
               type="button"
               onClick={handleExportGtcDeliveryExcel}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-sm transition-colors cursor-pointer"
-              title="Xuất bảng Giao Thành Công Bưu Cục ra định dạng Excel / CSV"
+              title="Xuất bảng Giao Thành Công Bưu Cục ra file Excel, tự động lưu trữ Google Drive &amp; mở tab mới"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600" />
               <span>Xuất Excel ({filteredGtcDeliveryDaily.length})</span>

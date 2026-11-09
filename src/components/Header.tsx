@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Sparkles,
   FolderTree,
+  FolderOpen,
   LogOut 
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
@@ -142,6 +143,18 @@ export const Header: React.FC = () => {
             <ExternalLink className="w-3 h-3 text-amber-400" />
             <span>Nguồn Sheets</span>
           </button>
+
+          {/* Thư mục lưu trữ Excel trên Google Drive của AM Huy */}
+          <a
+            href="https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden xl:flex items-center gap-1 text-[11px] cursor-pointer"
+            title="Mở Thư mục lưu trữ file Excel xuất từ dashboard trên Google Drive"
+          >
+            <FolderOpen className="w-3 h-3 text-emerald-400" />
+            <span>Thư mục Drive</span>
+          </a>
 
           {/* Dark Mode Toggle */}
           <button
