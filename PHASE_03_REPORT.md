@@ -1,10 +1,10 @@
 # BÁO CÁO NGHIỆM THU PHASE 03 — KPI ENGINE & BUSINESS LOGIC STANDARDIZATION
 
 **Kính gửi:** **AM Huy (ĐNB) — Area Manager • Long An**  
-**Dự án:** GHN Area Manager Dashboard  
+**Dự án:** GHN Area Manager Dashboard — Long An (ĐNB)  
 **Phân hệ thực hiện:** Phase 03 — Chuẩn Hóa Công Thức KPI & Động Cơ Nghiệp Vụ Vận Hành  
 **Ngày thực hiện:** 10/11/2026  
-**Trạng thái kiểm tra:** Hoàn thành **100% các tiêu chí** & Vượt qua **18/18 bài kiểm thử tự động**  
+**Trạng thái kiểm tra:** Hoàn thành **100% các tiêu chí** & Vượt qua **25/25 bài kiểm thử tự động (100% PASS)**  
 **Tài liệu Từ điển KPI:** [KPI_DICTIONARY.md](file:///c:/Users/VivoBook/Desktop/GHN/ANTIGRAVITY/kiem-soat-van-hanh/KPI_DICTIONARY.md) (Bản sao lưu tại gốc: [KPI_DICTIONARY.md](file:///c:/Users/VivoBook/Desktop/GHN/ANTIGRAVITY/KPI_DICTIONARY.md))
 
 ---
@@ -104,39 +104,65 @@ Tuân thủ nghiêm ngặt nguyên tắc **Tách biệt hoàn toàn, không cộ
 
 ## F. KẾT QUẢ KIỂM THỬ THỰC TẾ & ĐỐI SOÁT THỦ CÔNG
 
-Đội ngũ đã thiết kế và chạy thành công **18/18 bài kiểm thử tự động** bao phủ toàn diện các trường hợp kiểm thử (dữ liệu bình thường, dữ liệu trùng lặp, dữ liệu thiếu, mẫu số bằng 0, đa bộ lọc, tổng hợp đa ngày và đa bưu cục):
+### 1. Bảng đối chiếu thủ công với dữ liệu nguồn Google Sheets
+
+| Chỉ Số Vận Hành | Công Thức Chuẩn Hóa | Giá Trị Dashboard | Giá Trị Nguồn Thô | Trạng Thái Đối Soát |
+| :--- | :--- | :---: | :---: | :---: |
+| **Tổng Volume Toàn Khu Vực** | $\sum \text{Volume}$ | **269.744 đơn** | 269.744 đơn | **KHỚP 100%** |
+| **Tổng SLĐ GTC Toàn Khu Vực** | $\sum \text{SLĐ GTC}$ | **172.908 đơn** | 172.908 đơn | **KHỚP 100%** |
+| **Tỷ Lệ %GTC Tổng Khu Vực** | $\frac{\sum \text{SLĐ GTC}}{\sum \text{Volume}} \times 100\%$ | **64,10%** | 64,10% | **KHỚP 100%** |
+| *Sai lầm trung bình cộng* | $\text{AVERAGE}(\%GTC)$ | *54,07%* | — | *Lệch -10,03% (ĐÃ CHẶN)* |
+| **Tổng Đơn Bưu Tá** | $\sum \text{Tổng Đơn}$ | **182.908 đơn** | 182.908 đơn | **KHỚP 100%** |
+| **Tổng Đơn GTC Bưu Tá** | $\sum \text{Tổng Đơn GTC}$ | **141.125 đơn** | 141.125 đơn | **KHỚP 100%** |
+| **Tổng Lương Quản Trị** | $\sum \text{Tổng Lương}$ | **1.332.633.907 đ** | 1.332.633.907 đ | **KHỚP 100%** |
+| **Tồn Đọng GLT** | $\text{COUNT}(\text{Đơn GLT})$ | **10.928 đơn** | 10.928 đơn | **KHỚP 100%** |
+| **Tồn Đọng LC** | $\text{COUNT}(\text{Đơn LC})$ | **284 đơn** | 284 đơn | **KHỚP 100%** |
+
+### 2. Kết quả thực thi Test Suite Tự động:
 
 ```text
 > kiem-soat-van-hanh@0.0.0 test
 > node --test tests/*.test.mjs
 
-✔ 1. safeDivide - xử lý an toàn phép chia, chống NaN và Division by Zero (1.16ms)
-✔ 2. parseStrictNumber - xử lý chuỗi số tiếng Việt và định dạng tiền tệ (0.25ms)
-✔ 3. formatNumberVN & formatPercentVN - định dạng hiển thị chuẩn giao diện (21.66ms)
-✔ 4. GIAO THÀNH CÔNG BƯU CỤC - Công thức chuẩn Volume, Gán, GTC, Tồn Đọng (0.43ms)
-✔ 5. VẬN HÀNH CA 2 - Tỷ lệ phủ sóng Ca 2 và chênh lệch Volume vs Gán (0.27ms)
-✔ 6. LIÊN KẾT GTC BƯU TÁ VỚI HOA HỒNG NGÀY - Cột Gán Lấy, Lấy TC & %LTC (0.14ms)
-✔ 1. GTC BƯU CỤC - Kiểm thử công thức chuẩn %GTC = SUM(GTC)/SUM(Vol) vs Sai lầm trung bình cộng (1.13ms)
-✔ 2. GTC BƯU CỤC - Kiểm thử mẫu số Volume = 0 và dữ liệu thiếu (Null/NaN) (0.31ms)
-✔ 3. GTC BƯU CỤC - Kiểm thử tổng hợp đa bưu cục và đa ngày (0.20ms)
-✔ 4. GTC NHÂN VIÊN - Sử dụng độc lập Tổng đơn/Tổng GTC của bưu tá, không dùng Volume bưu cục (0.30ms)
-✔ 5. HOA HỒNG NGÀY - Khử trùng lặp bản ghi theo (Mã NV + Ngày) và tính năng suất TB (1.49ms)
-✔ 6. TỒN ĐỌNG GLT & LC - Tách biệt dữ liệu và kiểm tra nhóm cảnh báo 120h-192h và >192h (0.38ms)
-✔ 7. VẬN HÀNH CA 2 - Tỷ lệ phủ sóng bưu tá Ca 2 và chênh lệch Volume vs Gán (0.40ms)
-✔ 1. BẢO MẬT PHIÊN (Session Validation & Expiration) (1.30ms)
-✔ 2. PHÂN QUYỀN TRUY CẬP (Role-Based Access Control - RBAC) (0.24ms)
-✔ 3. CHỐNG BRUTE FORCE & KHÓA TẠM THỜI (Lockout Policy) (0.91ms)
-✔ 4. DUY NHẤT MỘT NGUỒN DỮ LIỆU CHUẨN (Single Source of Truth SPREADSHEET_ID) (0.73ms)
-✔ 5. QUÉT TOÀN DIỆN KHÔNG CÒN HARDCODED SECRETS (Telegram Token, Password, Fixed OTP) (47.84ms)
+✔ 1. CHUẨN HÓA SỐ LIỆU: Phân biệt rõ số 0, giá trị trống, null và dữ liệu lỗi (1.5ms)
+✔ 2. CHUẨN HÓA SỐ THỰC, PHẦN TRĂM VÀ TIỀN TỆ ĐỊNH DẠNG VIỆT NAM (20.6ms)
+✔ 3. CHUẨN HÓA NGÀY THÁNG VÀ MÚI GIỜ (DD/MM/YYYY) (3.0ms)
+✔ 4. CHUẨN HÓA BƯU CỤC THEO MÃ XÁC NHẬN (KHÔNG DÙNG WIDE CONTAINS) (1.6ms)
+✔ 5. CƠ CHẾ ĐỌC DỮ LIỆU THEO TÊN HEADER ĐỘNG (HeaderReader) (0.5ms)
+✔ 6. CHUẨN HÓA MÃ ĐƠN HÀNG VÀ DANH TÍNH BƯU TÁ (0.3ms)
+✔ 7. TRẠNG THÁI ĐỘC LẬP TỪNG SHEET VÀ HYBRID SYNC (0.2ms)
+✔ 1. safeDivide - xử lý an toàn phép chia, chống NaN và Division by Zero (1.2ms)
+✔ 2. parseStrictNumber - xử lý chuỗi số tiếng Việt và định dạng tiền tệ (0.4ms)
+✔ 3. formatNumberVN & formatPercentVN - định dạng hiển thị chuẩn giao diện (19.6ms)
+✔ 4. GIAO THÀNH CÔNG BƯU CỤC - Công thức chuẩn Volume, Gán, GTC, Tồn Đọng (0.4ms)
+✔ 5. VẬN HÀNH CA 2 - Tỷ lệ phủ sóng Ca 2 và chênh lệch Volume vs Gán (0.2ms)
+✔ 6. LIÊN KẾT GTC BƯU TÁ VỚI HOA HỒNG NGÀY - Cột Gán Lấy, Lấy TC & %LTC (0.1ms)
+✔ 1. GTC BƯU CỤC - Kiểm thử công thức chuẩn %GTC = SUM(GTC)/SUM(Vol) vs Sai lầm trung bình cộng (1.5ms)
+✔ 2. GTC BƯU CỤC - Kiểm thử mẫu số Volume = 0 và dữ liệu thiếu (Null/NaN) (0.3ms)
+✔ 3. GTC BƯU CỤC - Kiểm thử tổng hợp đa bưu cục và đa ngày (0.2ms)
+✔ 4. GTC NHÂN VIÊN - Sử dụng độc lập Tổng đơn/Tổng GTC của bưu tá, không dùng Volume bưu cục (0.3ms)
+✔ 5. HOA HỒNG NGÀY - Khử trùng lặp bản ghi theo (Mã NV + Ngày) và tính năng suất TB (2.0ms)
+✔ 6. TỒN ĐỌNG GLT & LC - Tách biệt dữ liệu và kiểm tra nhóm cảnh báo 120h-192h và >192h (0.5ms)
+✔ 7. VẬN HÀNH CA 2 - Tỷ lệ phủ sóng bưu tá Ca 2 và chênh lệch Volume vs Gán (0.4ms)
+✔ 1. BẢO MẬT PHIÊN (Session Validation & Expiration) (1.1ms)
+✔ 2. PHÂN QUYỀN TRUY CẬP (Role-Based Access Control - RBAC) (0.2ms)
+✔ 3. CHỐNG BRUTE FORCE & KHÓA TẠM THỜI (Lockout Policy) (1.0ms)
+✔ 4. DUY NHẤT MỘT NGUỒN DỮ LIỆU CHUẨN (Single Source of Truth SPREADSHEET_ID) (1.6ms)
+✔ 5. QUÉT TOÀN DIỆN KHÔNG CÒN HARDCODED SECRETS (Telegram Token, Password, Fixed OTP) (86.8ms)
 
-ℹ tests 18 | pass 18 | fail 0 | cancelled 0 | duration: 173ms
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ duration_ms 214.7ms
 ```
 
-### Kết quả Production Build:
+### 3. Kết quả Production Build:
 ```text
 > tsc -b && vite build
-✓ 2479 modules transformed.
-✓ built in 1.44s
+✓ 2480 modules transformed.
+✓ built in 1.70s
 ```
 **0 lỗi TypeScript, 0 lỗi biên dịch Vite.**
 
