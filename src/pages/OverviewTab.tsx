@@ -26,8 +26,12 @@ import {
   Compass,
   HeartPulse,
   Info,
-  PackageX
+  PackageX,
+  Database,
+  Eye
 } from 'lucide-react';
+import { UnifiedDrillDownModal } from '../components/common/UnifiedDrillDownModal';
+import type { DrillDownColumn, DrillDownSummaryKpi } from '../components/common/UnifiedDrillDownModal';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -991,9 +995,350 @@ export const OverviewTab: React.FC = () => {
     availableMonths
   ]);
 
+  
+  // =========================================================================
+  // MA TRẬN TUỔI TỒN ĐỌNG × BƯU CỤC (BACKLOG AGING × POST OFFICE MATRIX)
+  // =========================================================================
+  const backlogAgingMatrix = useMemo(() => {
+    return buuCucOptions.map(bc => {
+      const bcGlt = filteredGlt.filter(r => r.buuCuc === bc);
+      const under72 = bcGlt.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) < 72).length;
+      const from72to120 = bcGlt.filter(r => {
+        const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
+        return h >= 72 && h < 120;
+      }).length;
+      const from120to192 = bcGlt.filter(r => {
+        const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
+        return h >= 120 && h <= 192;
+      }).length;
+      const over192 = bcGlt.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) > 192).length;
+      const totalGlt = bcGlt.length;
+
+      const bcLc = filteredLc.filter(r => r.tenBC === bc);
+      const totalLc = bcLc.length;
+      const lcWarning = bcLc.filter(r => {
+        const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
+        return h >= 36 && h <= 48;
+      }).length;
+      const lcOverdue = bcLc.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) > 48).length;
+
+      const totalBacklog = totalGlt + totalLc;
+      const poSummary = poSummaries.find(p => p.buuCuc === bc);
+      const vol = poSummary?.volume || 0;
+      const backlogRate = vol > 0 ? (totalBacklog / vol * 100) : 0;
+
+      let riskLevel = 'Tốt (An toàn)';
+      let riskBadge = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300';
+      if (over192 > 0 || lcOverdue > 0) {
+        riskLevel = 'Báo động (>192h)';
+        riskBadge = 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-black';
+      } else if (from120to192 > 0 || lcWarning > 0 || backlogRate > 5) {
+        riskLevel = 'Cảnh báo (120-192h)';
+        riskBadge = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold';
+      }
+
+      return {
+        buuCuc: bc,
+        totalBacklog,
+        totalGlt,
+        under72,
+        from72to120,
+        from120to192,
+        over192,
+        totalLc,
+        lcWarning,
+        lcOverdue,
+        backlogRate,
+        riskLevel,
+        riskBadge
+      };
+    });
+  }, [buuCucOptions, filteredGlt, filteredLc, poSummaries]);
+
+  // =========================================================================
+  // UNIFIED DRILL-DOWN MODAL STATE & OPERATIONAL EVENT HANDLERS
+  // =========================================================================
+  const [drillDownState, setDrillDownState] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    appliedFilters: { label: string; value: string }[];
+    data: any[];
+    columns: DrillDownColumn<any>[];
+    summaryKpis?: DrillDownSummaryKpi[];
+    exportFileName: string;
+    searchPlaceholder?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    data: [],
+    columns: [],
+    appliedFilters: [],
+    exportFileName: 'GHN_DrillDown'
+  });
+
+  const closeDrillDown = () => {
+    setDrillDownState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDrillDownVolume = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Sản Lượng Volume Vận Hành',
+      subtitle: `Phạm vi: ${filterBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : filterBuuCuc} • ${effectiveDates.length} ngày`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Thời gian', value: filterMonth !== 'all' ? `Tháng ${filterMonth}` : 'Toàn bộ kỳ' }
+      ],
+      data: filteredGtcBc,
+      columns: [
+        { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
+        { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
+        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => r.sldGan.toLocaleString('vi-VN') },
+        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${r.assignedRate.toFixed(1)}%` },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> }
+      ],
+      summaryKpis: [
+        { label: 'Tổng Volume', value: kpis.totalVolume.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-orange-600' },
+        { label: 'Tổng SLĐ Gán', value: kpis.totalSldGan.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-blue-600' },
+        { label: 'Tổng SLĐ GTC', value: kpis.totalSldGTC.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-emerald-600' },
+        { label: '% GTC Chuẩn', value: kpis.gtcRateTotal.toFixed(2) + '%', colorClass: 'text-purple-600' }
+      ],
+      exportFileName: `GHN_Volume_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownGtc = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Giao Thành Công (GTC)',
+      subtitle: `Phạm vi: ${filterBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : filterBuuCuc} • Công thức chuẩn %GTC = SUM(SLĐ GTC) / SUM(Volume)`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Chỉ số', value: '% GTC Chuẩn: ' + kpis.gtcRateTotal.toFixed(2) + '%' }
+      ],
+      data: filteredGtcBc,
+      columns: [
+        { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
+        { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
+        { key: 'gtcRate', header: '% GTC Dòng', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> },
+        { key: 'sldChuyenTra', header: 'Chuyển Trả', align: 'right', sortable: true, render: (r: any) => r.sldChuyenTra.toLocaleString('vi-VN') }
+      ],
+      summaryKpis: [
+        { label: 'Tổng GTC', value: kpis.totalSldGTC.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-emerald-600' },
+        { label: '% GTC Chuẩn', value: kpis.gtcRateTotal.toFixed(2) + '%', colorClass: 'text-purple-600' },
+        { label: 'Khoảng cách vs Chuẩn 70%', value: (kpis.gtcRateTotal - 70).toFixed(1) + '%', colorClass: kpis.gtcRateTotal >= 70 ? 'text-emerald-600' : 'text-rose-600' }
+      ],
+      exportFileName: `GHN_GTC_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownGltBacklog = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Danh Sách Đơn Tồn Đọng GLT (Giao - Lấy - Trả)',
+      subtitle: `Phát hiện: ${filteredGlt.length.toLocaleString('vi-VN')} đơn tồn GLT thực tế`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Phân loại', value: 'GLT Backlog' }
+      ],
+      data: filteredGlt,
+      columns: [
+        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-orange-600">{r.maDonHang}</span> },
+        { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'tenNhanVien', header: 'Bưu Tá Phụ Trách', align: 'left', sortable: true, render: (r: any) => r.tenNhanVien || 'Chưa gán' },
+        { key: 'loaiDon', header: 'Loại Đơn', align: 'center', sortable: true },
+        { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong}h</span> },
+        { key: 'canhBao', header: 'Cảnh Báo', align: 'center', sortable: true, render: (r: any) => {
+          const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
+          return (
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              h > 192 ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+              h >= 120 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+              'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            }`}>
+              {r.canhBao || 'Bình thường'}
+            </span>
+          );
+        }}
+      ],
+      summaryKpis: [
+        { label: 'Tổng Đơn Tồn GLT', value: filteredGlt.length.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-rose-600' },
+        { label: 'Tồn ≥ 120h', value: filteredGlt.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) >= 120).length + ' đơn', colorClass: 'text-amber-600' },
+        { label: 'Tồn > 192h', value: filteredGlt.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) > 192).length + ' đơn', colorClass: 'text-rose-700' }
+      ],
+      exportFileName: `GHN_TonDong_GLT_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownLcBacklog = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Đơn Tồn Đọng Luân Chuyển (LC)',
+      subtitle: `Tổng cộng ${filteredLc.length} đơn tồn kho luân chuyển`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Phân loại', value: 'LC Backlog' }
+      ],
+      data: filteredLc,
+      columns: [
+        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-blue-600">{r.maDonHang}</span> },
+        { key: 'tenBC', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'loaiDon', header: 'Loại Đơn', align: 'center', sortable: true },
+        { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong}h</span> },
+        { key: 'canhBao', header: 'Cảnh Báo', align: 'center', sortable: true, render: (r: any) => {
+          const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
+          return (
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              h > 48 ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+              h >= 36 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+              'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            }`}>
+              {r.canhBao || 'Bình thường'}
+            </span>
+          );
+        }}
+      ],
+      summaryKpis: [
+        { label: 'Tổng Đơn Tồn LC', value: filteredLc.length + ' đơn', colorClass: 'text-blue-600' },
+        { label: 'Tồn ≥ 36h', value: filteredLc.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) >= 36).length + ' đơn', colorClass: 'text-amber-600' }
+      ],
+      exportFileName: 'GHN_TonDong_LC_Drilldown'
+    });
+  };
+
+  const handleDrillDownOverdue = () => {
+    const overdueList = filteredGlt.filter(r => (parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0) >= 120);
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Danh Sách Đơn Tồn Quá Hạn Khẩn Cấp (≥120h)',
+      subtitle: 'Cảnh báo SLA: Cần can thiệp ngay để phòng ngừa khiếu nại và vi phạm cam kết',
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Ngưỡng tuổi tồn', value: '≥ 120 giờ' }
+      ],
+      data: overdueList,
+      columns: [
+        { key: 'maDonHang', header: 'Mã Đơn', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-red-600">{r.maDonHang}</span> },
+        { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'tenNhanVien', header: 'Bưu Tá', align: 'left', sortable: true, render: (r: any) => r.tenNhanVien || 'Chưa gán' },
+        { key: 'sdtNhanVien', header: 'SĐT Bưu Tá', align: 'center', sortable: true, render: (r: any) => r.sdtNhanVien || '-' },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-black text-rose-600">{r.thoiGianTonDong}h</span> },
+        { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
+        { key: 'canhBao', header: 'Mức Cảnh Báo', align: 'center', sortable: true, render: (r: any) => (
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white">
+            {r.canhBao || 'Quá hạn khẩn cấp'}
+          </span>
+        )}
+      ],
+      summaryKpis: [
+        { label: 'Số Đơn Quá Hạn', value: overdueList.length + ' đơn', colorClass: 'text-rose-600' },
+        { label: 'Nguy cơ đền bù', value: 'Cao', colorClass: 'text-rose-700' }
+      ],
+      exportFileName: `GHN_Overdue_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownSalary = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Hoa Hồng & Quỹ Lương Quản Trị',
+      subtitle: `Tổng lương ghi nhận: ${kpis.totalSalary.toLocaleString('vi-VN')} VNĐ`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Phân hệ', value: 'Hoa Hồng Ngày' }
+      ],
+      data: filteredHh,
+      columns: [
+        { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
+        { key: 'tenBC', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'maNV', header: 'Mã NV', align: 'center', sortable: true },
+        { key: 'tenNV', header: 'Tên Nhân Viên', align: 'left', sortable: true },
+        { key: 'tongLuong', header: 'Tổng Lương (VNĐ)', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{r.tongLuong.toLocaleString('vi-VN')}đ</span> },
+        { key: 'donGTC', header: 'Đơn GTC', align: 'right', sortable: true, render: (r: any) => r.donGTC.toLocaleString('vi-VN') },
+        { key: 'donLTC', header: 'Đơn LTC', align: 'right', sortable: true, render: (r: any) => r.donLTC.toLocaleString('vi-VN') }
+      ],
+      summaryKpis: [
+        { label: 'Tổng Quỹ Lương', value: kpis.totalSalary.toLocaleString('vi-VN') + ' đ', colorClass: 'text-emerald-600' },
+        { label: 'Số Lượt Chi Lương', value: filteredHh.length.toLocaleString('vi-VN') + ' lượt', colorClass: 'text-slate-700' }
+      ],
+      exportFileName: `GHN_HoaHong_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownEmployees = () => {
+    setDrillDownState({
+      isOpen: true,
+      title: 'Drill-Down Chi Tiết: Danh Sách Bưu Tá & Hiệu Suất Giao Hàng',
+      subtitle: `Tổng số bưu tá: ${empSummaries.length} nhân sự`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
+        { label: 'Phân hệ', value: 'GTC Nhân Viên' }
+      ],
+      data: empSummaries,
+      columns: [
+        { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
+        { key: 'maNV', header: 'Mã NV', align: 'center', sortable: true },
+        { key: 'tenNV', header: 'Tên Bưu Tá', align: 'left', sortable: true },
+        { key: 'tongDon', header: 'Tổng Đơn', align: 'right', sortable: true, render: (r: any) => r.tongDon.toLocaleString('vi-VN') },
+        { key: 'tongDonGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{r.tongDonGTC.toLocaleString('vi-VN')}</span> },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> },
+        { key: 'soChuyenDi', header: 'Chuyến Đi', align: 'center', sortable: true, render: (r: any) => r.soChuyenDi },
+        { key: 'nangSuatTB', header: 'Năng Suất TB', align: 'right', sortable: true, render: (r: any) => `${r.nangSuatTB.toFixed(0)} đơn/ngày` }
+      ],
+      summaryKpis: [
+        { label: 'Tổng Bưu Tá', value: empSummaries.length + ' NV', colorClass: 'text-purple-600' },
+        { label: 'Bưu Tá Đạt Chuẩn (≥70%)', value: empSummaries.filter(e => e.gtcRate >= 70).length + ' NV', colorClass: 'text-emerald-600' },
+        { label: 'Bưu Tá Dưới Chuẩn (<60%)', value: empSummaries.filter(e => e.gtcRate < 60).length + ' NV', colorClass: 'text-rose-600' }
+      ],
+      exportFileName: `GHN_NhanVien_Drilldown_${filterBuuCuc}`
+    });
+  };
+
+  const handleDrillDownPostOffice = (buuCucName: string) => {
+    const poGtcRows = dataset.gtcBuuCuc.filter(r => r.buuCuc === buuCucName && (effectiveDates.length === 0 || effectiveDates.includes(r.ngay)));
+    const poGltRows = dataset.tonDongGlt.filter(r => r.buuCuc === buuCucName);
+    const poSummary = poSummaries.find(p => p.buuCuc === buuCucName);
+
+    setDrillDownState({
+      isOpen: true,
+      title: `Drill-Down Chi Tiết Vận Hành: ${buuCucName}`,
+      subtitle: `Sản lượng: ${poSummary?.volume.toLocaleString('vi-VN') || 0} đơn • %GTC: ${poSummary?.gtcRate.toFixed(2) || 0}% • Tồn GLT: ${poGltRows.length.toLocaleString('vi-VN')} đơn`,
+      appliedFilters: [
+        { label: 'Bưu cục', value: buuCucName },
+        { label: 'Thời gian', value: filterMonth !== 'all' ? `Tháng ${filterMonth}` : 'Toàn bộ thời gian' }
+      ],
+      data: poGtcRows,
+      columns: [
+        { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
+        { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
+        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => r.sldGan.toLocaleString('vi-VN') },
+        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${r.assignedRate.toFixed(1)}%` },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> }
+      ],
+      summaryKpis: [
+        { label: 'Volume Bưu Cục', value: (poSummary?.volume || 0).toLocaleString('vi-VN') + ' đơn', colorClass: 'text-orange-600' },
+        { label: 'GTC Bưu Cục', value: (poSummary?.sldGTC || 0).toLocaleString('vi-VN') + ' đơn', colorClass: 'text-emerald-600' },
+        { label: '% GTC Chuẩn', value: (poSummary?.gtcRate || 0).toFixed(2) + '%', colorClass: 'text-purple-600' },
+        { label: 'Tồn GLT Thực Tế', value: poGltRows.length.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-rose-600' }
+      ],
+      exportFileName: `GHN_ChiTiet_${buuCucName.replace(/[^a-zA-Z0-9]/g, '_')}`
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
-      {/* =========================================================================
+  {/* =========================================================================
           CỐ ĐỊNH & THU GỌN: HEADER ĐIỀU HÀNH & BỘ LỌC TOÀN DIỆN CHO TASK TỔNG QUAN
           ========================================================================= */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md shadow-md border border-slate-200/90 dark:border-slate-700/90 rounded-xl px-3.5 py-2 transition-all">
@@ -1385,7 +1730,200 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* =========================================================================
+    
+  {/* 12 Executive KPI Cards Grid (Căn giữa số liệu vận hành & kích thước chuẩn) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* KPI 1: Tổng Volume */}
+        <div 
+          onClick={handleDrillDownVolume}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-orange-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down chi tiết sản lượng Volume"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tổng Volume</span>
+            <Package className="w-4 h-4 text-orange-600" />
+          </div>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
+            {kpis.totalVolume.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Đơn nhập vận hành</div>
+        </div>
+
+        {/* KPI 2: Tổng SLĐ GTC */}
+        <div 
+          onClick={handleDrillDownGtc}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down chi tiết Giao Thành Công"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tổng SLĐ GTC</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 text-center">
+            {kpis.totalSldGTC.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Giao thành công</div>
+        </div>
+
+        {/* KPI 3: %GTC tổng (CHÍNH THỨC) */}
+        <div 
+          onClick={handleDrillDownGtc}
+          className="bg-orange-600 text-white p-3.5 rounded-xl shadow-sm text-center border border-orange-500 cursor-pointer hover:bg-orange-700 hover:shadow-md transition-all group relative"
+          title="Nhấn để xem công thức chuẩn %GTC = SUM(GTC)/SUM(Vol)"
+        >
+          <div className="flex items-center justify-between text-orange-100 text-xs font-bold">
+            <span>%GTC TỔNG</span>
+            <TrendingUp className="w-4 h-4 text-white" />
+          </div>
+          <div className="text-2xl font-black mt-1 text-center">
+            {kpis.gtcRateTotal.toFixed(2)}%
+          </div>
+          <div className="text-[10px] text-orange-100 mt-0.5 font-medium text-center">
+            SUM(GTC) / SUM(Vol)
+          </div>
+        </div>
+
+        {/* KPI 4: Tổng SLĐ Gán */}
+        <div 
+          onClick={handleDrillDownVolume}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down đơn đã gán"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tổng SLĐ Gán</span>
+            <Users className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
+            {kpis.totalSldGan.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Đơn đã chia bưu tá</div>
+        </div>
+
+        {/* KPI 5: Tỷ lệ Gán */}
+        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tỷ Lệ Gán</span>
+            <ArrowUpRight className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1 text-center">
+            {kpis.assignedRateTotal.toFixed(2)}%
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Tỷ lệ phân bổ ca</div>
+        </div>
+
+        {/* KPI 6: Tỷ lệ chuyển trả */}
+        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>% Chuyển Trả</span>
+            <ArrowDownRight className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1 text-center">
+            {kpis.returnRateTotal.toFixed(2)}%
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Trích xuất GTC BC</div>
+        </div>
+
+        {/* KPI 7: Tổng Backlog */}
+        <div 
+          onClick={handleDrillDownGltBacklog}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-red-200 dark:border-red-900/60 shadow-sm text-center cursor-pointer hover:border-rose-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down danh sách tồn đọng"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tổng Tồn Đọng</span>
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-1 text-center">
+            {kpis.totalBacklog.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">GLT ({kpis.totalGltBacklog.toLocaleString('vi-VN')}) + LC ({kpis.totalLcBacklog})</div>
+        </div>
+
+        {/* KPI 8: Tồn GLT */}
+        <div 
+          onClick={handleDrillDownGltBacklog}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-rose-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down tồn đọng GLT"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tồn GLT</span>
+            <Package className="w-4 h-4 text-rose-500" />
+          </div>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
+            {kpis.totalGltBacklog.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Giao - Lấy - Trả</div>
+        </div>
+
+        {/* KPI 9: Tồn LC */}
+        <div 
+          onClick={handleDrillDownLcBacklog}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-indigo-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down tồn kho luân chuyển LC"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tồn LC</span>
+            <Clock className="w-4 h-4 text-indigo-500" />
+          </div>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
+            {kpis.totalLcBacklog.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Luân chuyển kho</div>
+        </div>
+
+        {/* KPI 10: Tồn quá hạn khẩn cấp */}
+        <div 
+          onClick={handleDrillDownOverdue}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-red-300 dark:border-red-800 shadow-sm text-center cursor-pointer hover:border-red-600 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down đơn quá hạn ≥120h"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tồn &gt; 120h</span>
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+          </div>
+          <div className="text-xl font-black text-red-600 dark:text-red-400 mt-1 text-center">
+            {kpis.urgentOverdueOrders.toLocaleString('vi-VN')}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Quá hạn khẩn cấp</div>
+        </div>
+
+        {/* KPI 11: Tổng Hoa hồng */}
+        <div 
+          onClick={handleDrillDownSalary}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down quỹ lương hoa hồng"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Tổng Hoa Hồng</span>
+            <Coins className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 text-center">
+            {(kpis.totalSalary / 1e9).toFixed(2)} tỷ
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Tháng 10/2026</div>
+        </div>
+
+        {/* KPI 12: Tổng Bưu tá */}
+        <div 
+          onClick={handleDrillDownEmployees}
+          className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center cursor-pointer hover:border-purple-500 hover:shadow-md transition-all group relative"
+          title="Nhấn để mở drill-down danh sách bưu tá"
+        >
+          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+            <span>Nhân Viên</span>
+            <Users className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
+            {kpis.activeEmployeesCount} bưu tá
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 text-center">
+            {filterBuuCuc === 'all' ? '5 Bưu cục hoạt động' : filterBuuCuc}
+          </div>
+        </div>
+      </div>
+
+    
+  {/* =========================================================================
           CẢNH BÁO VẬN HÀNH TRỌNG YẾU DÀNH CHO AREA MANAGER (ĐỐI SOÁT ĐỘNG THEO BỘ LỌC)
           LOGICS CHUYÊN SÂU DATA ANALYST: TỔNG HỢP GTC, TỒN KHO, SLA >120H & NHÂN SỰ
           ========================================================================= */}
@@ -1451,158 +1989,205 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 12 Executive KPI Cards Grid (Căn giữa số liệu vận hành & kích thước chuẩn) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* KPI 1: Tổng Volume */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tổng Volume</span>
-            <Package className="w-4 h-4 text-orange-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
-            {kpis.totalVolume.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Đơn nhập vận hành</div>
-        </div>
-
-        {/* KPI 2: Tổng SLĐ GTC */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tổng SLĐ GTC</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 text-center">
-            {kpis.totalSldGTC.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Giao thành công</div>
-        </div>
-
-        {/* KPI 3: %GTC tổng (CHÍNH THỨC) */}
-        <div className="bg-gradient-to-br from-orange-500 to-amber-600 text-white p-3.5 rounded-xl shadow-md text-center">
-          <div className="flex items-center justify-between text-orange-100 text-xs font-bold">
-            <span>%GTC TỔNG</span>
-            <TrendingUp className="w-4 h-4 text-white" />
-          </div>
-          <div className="text-2xl font-black mt-1 text-center">
-            {kpis.gtcRateTotal.toFixed(2)}%
-          </div>
-          <div className="text-[10px] text-orange-100 mt-0.5 font-medium text-center">
-            SUM(GTC) / SUM(Vol)
+    
+  {/* Post Office Master Ranking & Inline Expansion Section */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/60 dark:bg-slate-750">
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              Bảng Tổng Hợp Vận Hành 5 Bưu Cục (Nhấn Để Mở Rộng Chi Tiết)
+            </h3>
+            <p className="text-[11px] text-slate-400">
+              Cung cấp khả năng drill-down trực tiếp xuống danh sách nhân viên, cơ cấu ca hàng và đơn tồn
+            </p>
           </div>
         </div>
 
-        {/* KPI 4: Tổng SLĐ Gán */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tổng SLĐ Gán</span>
-            <Users className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
-            {kpis.totalSldGan.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Đơn đã chia bưu tá</div>
-        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead>
+              <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold">
+                <th className="px-3 py-2.5">Bưu Cục</th>
+                <th className="px-3 py-2.5 text-center">Volume</th>
+                <th className="px-3 py-2.5 text-center">SLĐ Gán</th>
+                <th className="px-2.5 py-2.5 text-center">% Gán</th>
+                <th className="px-3 py-2.5 text-center">SLĐ GTC</th>
+                <th className="px-3 py-2.5 text-center">% GTC (Chuẩn)</th>
+                <th className="px-3 py-2.5 text-center">Tồn GLT</th>
+                <th className="px-2.5 py-2.5 text-center">Tồn LC</th>
+                <th className="px-3 py-2.5 text-center">Tổng Lương (VNĐ)</th>
+                <th className="px-3 py-2.5 text-center">Trạng Thái</th>
+                <th className="px-3 py-2.5 text-center">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              {poSummaries.map((po) => {
+                const isSelected = selectedBuuCuc === po.buuCuc;
+                return (
+                  <React.Fragment key={po.buuCuc}>
+                    <tr 
+                      className={`hover:bg-orange-50/40 dark:hover:bg-slate-750 cursor-pointer transition-colors ${
+                        isSelected ? 'bg-orange-50 dark:bg-slate-750 font-semibold' : ''
+                      }`}
+                      onClick={() => setSelectedBuuCuc(isSelected ? null : po.buuCuc)}
+                    >
+                      <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-orange-600" />
+                        <span>{po.buuCuc}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-medium">{po.volume.toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-300">{po.sldGan.toLocaleString('vi-VN')}</td>
+                      <td className="px-2.5 py-2.5 text-center font-medium text-blue-600">{po.assignedRate.toFixed(1)}%</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">{po.sldGTC.toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2.5 text-center font-black text-slate-900 dark:text-white">
+                        <span className={`px-2 py-0.5 rounded-full inline-flex items-center justify-center ${
+                          po.gtcRate < 62 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+                          po.gtcRate < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                          'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}>
+                          {po.gtcRate.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-bold text-rose-600">{po.gltBacklog.toLocaleString('vi-VN')}</td>
+                      <td className="px-2.5 py-2.5 text-center font-bold text-blue-600">{po.lcBacklog}</td>
+                      <td className="px-3 py-2.5 text-center font-medium text-emerald-600">{po.totalSalary.toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          po.status === 'Critical' ? 'bg-red-500 text-white' :
+                          po.status === 'Warning' ? 'bg-amber-500 text-white' :
+                          po.status === 'Excellent' ? 'bg-emerald-500 text-white' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {po.status === 'Critical' ? 'Báo động' : po.status === 'Warning' ? 'Cần chú ý' : 'Tốt'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDrillDownPostOffice(po.buuCuc);
+                            }}
+                            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                            title={`Mở bảng drill-down dữ liệu chi tiết của ${po.buuCuc}`}
+                          >
+                            <Database className="w-3 h-3 text-orange-400" />
+                            <span>Drill-down</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBuuCuc(isSelected ? null : po.buuCuc);
+                            }}
+                            className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-bold cursor-pointer transition-colors"
+                          >
+                            {isSelected ? 'Thu gọn' : 'Mở rộng'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
 
-        {/* KPI 5: Tỷ lệ Gán */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tỷ Lệ Gán</span>
-            <ArrowUpRight className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1 text-center">
-            {kpis.assignedRateTotal.toFixed(2)}%
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Tỷ lệ phân bổ ca</div>
-        </div>
+                    {/* Inline Expanded Details for Post Office */}
+                    {isSelected && (
+                      <tr className="bg-slate-50 dark:bg-slate-850">
+                        <td colSpan={11} className="p-4 border-y border-orange-200 dark:border-slate-700">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                              <h4 className="text-xs font-bold text-orange-600 uppercase flex items-center gap-2">
+                                <span>Chi tiết vận hành nội bộ: {po.buuCuc}</span>
+                              </h4>
+                              <button
+                                onClick={() => setSelectedBuuCuc(null)}
+                                className="text-xs text-slate-400 hover:text-slate-600"
+                              >
+                                ✕ Đóng chi tiết
+                              </button>
+                            </div>
 
-        {/* KPI 6: Tỷ lệ chuyển trả */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>% Chuyển Trả</span>
-            <ArrowDownRight className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1 text-center">
-            {kpis.returnRateTotal.toFixed(2)}%
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Trích xuất GTC BC</div>
-        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                              {/* Ca Hàng Breakdown */}
+                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Cơ cấu ca hàng</h5>
+                                {['Hàng Mới Ca 1', 'Hàng Mới Ca 2', 'Hàng Tồn'].map(cat => {
+                                  const rows = dataset.gtcBuuCuc.filter(r => r.buuCuc === po.buuCuc && r.loaiHang === cat);
+                                  const vol = rows.reduce((acc, r) => acc + r.volume, 0);
+                                  const gtc = rows.reduce((acc, r) => acc + r.sldGTC, 0);
+                                  const rate = vol > 0 ? (gtc / vol * 100).toFixed(1) : '0';
+                                  return (
+                                    <div key={cat} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                                      <span className="text-slate-600 dark:text-slate-400">{cat}:</span>
+                                      <span className="font-bold">{vol.toLocaleString('vi-VN')} đơn (GTC: {rate}%)</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
 
-        {/* KPI 7: Tổng Backlog */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-red-200 dark:border-red-900/60 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tổng Tồn Đọng</span>
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-1 text-center">
-            {kpis.totalBacklog.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">GLT ({kpis.totalGltBacklog.toLocaleString('vi-VN')}) + LC ({kpis.totalLcBacklog})</div>
-        </div>
+                              {/* Top Nhân Viên Của Bưu Cục */}
+                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Nhân viên bưu cục ({empSummaries.filter(e => e.buuCuc === po.buuCuc).length} NV)</h5>
+                                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                  {empSummaries.filter(e => e.buuCuc === po.buuCuc).slice(0, 5).map(e => (
+                                    <div key={e.maNV} className="flex justify-between text-[11px]">
+                                      <span className="truncate">{e.tenNV}:</span>
+                                      <span className="font-bold text-emerald-600">{e.tongDonGTC} đơn ({e.gtcRate.toFixed(1)}%)</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
 
-        {/* KPI 8: Tồn GLT */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tồn GLT</span>
-            <Package className="w-4 h-4 text-rose-500" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
-            {kpis.totalGltBacklog.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Giao - Lấy - Trả</div>
-        </div>
-
-        {/* KPI 9: Tồn LC */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tồn LC</span>
-            <Clock className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
-            {kpis.totalLcBacklog.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Luân chuyển kho</div>
-        </div>
-
-        {/* KPI 10: Tồn quá hạn khẩn cấp */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-red-300 dark:border-red-800 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tồn &gt; 120h</span>
-            <ShieldAlert className="w-4 h-4 text-red-600" />
-          </div>
-          <div className="text-xl font-black text-red-600 dark:text-red-400 mt-1 text-center">
-            {kpis.urgentOverdueOrders.toLocaleString('vi-VN')}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Quá hạn khẩn cấp</div>
-        </div>
-
-        {/* KPI 11: Tổng Hoa hồng */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Tổng Hoa Hồng</span>
-            <Coins className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 text-center">
-            {(kpis.totalSalary / 1e9).toFixed(2)} tỷ
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">Tháng 10/2026</div>
-        </div>
-
-        {/* KPI 12: Tổng Bưu tá */}
-        <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Nhân Viên</span>
-            <Users className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1 text-center">
-            {kpis.activeEmployeesCount} bưu tá
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5 text-center">
-            {filterBuuCuc === 'all' ? '5 Bưu cục hoạt động' : filterBuuCuc}
-          </div>
+                              {/* Tồn đọng & Hành động */}
+                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Hành động điều hành đề xuất</h5>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-2">
+                                  Hiện có {po.gltBacklog} đơn GLT và {po.lcBacklog} đơn LC đang tồn tại bưu cục này.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => navigateToTab('bao_cao_gtc_bc', { buuCuc: po.buuCuc })}
+                                    className="px-2.5 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <FileSpreadsheet className="w-3 h-3" />
+                                    <span>Báo cáo GTC BC</span>
+                                  </button>
+                                  <button
+                                    onClick={() => navigateToTab('gtc_nhan_vien', { buuCuc: po.buuCuc })}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <Users className="w-3 h-3" />
+                                    <span>Bưu tá</span>
+                                  </button>
+                                  <button
+                                    onClick={() => navigateToTab('ton_dong_glt', { buuCuc: po.buuCuc })}
+                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <Package className="w-3 h-3" />
+                                    <span>Tồn GLT</span>
+                                  </button>
+                                  <button
+                                    onClick={() => navigateToTab('nhan_su', { buuCuc: po.buuCuc })}
+                                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <span>Nhân sự</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* =========================================================================
+    
+  {/* =========================================================================
           KHU VỰC: CHỈ SỐ & BIỂU ĐỒ HỖN HỢP VẬN HÀNH HÀNG MỚI CA 2 (CỘT + ĐƯỜNG)
           ========================================================================= */}
       <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
@@ -1778,7 +2363,8 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Row 1 Charts: Volume Trend, GTC Trend, and Rate Trend (SẮP XẾP NGÀY GẦN NHẤT ĐẾN XA NHẤT) */}
+    
+  {/* Row 1 Charts: Volume Trend, GTC Trend, and Rate Trend (SẮP XẾP NGÀY GẦN NHẤT ĐẾN XA NHẤT) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Biểu đồ 1: Xu hướng Volume theo ngày */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -2129,7 +2715,8 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* =========================================================================
+    
+  {/* =========================================================================
           MA TRẬN SỨC KHỎE VẬN HÀNH TOÀN DIỆN 5 BƯU CỤC (OPERATIONAL BALANCED SCORECARD)
           LOGIC CHUYÊN SÂU DATA ANALYST: TỔNG HỢP GTC, TỒN KHO, NHÂN SỰ, CA 2
           ========================================================================= */}
@@ -2573,7 +3160,100 @@ export const OverviewTab: React.FC = () => {
         </div>
       </div>
 
-      {/* PERIODIC COMPARISON SECTION (SO SÁNH THEO TUẦN VÀ THEO THÁNG) */}
+    
+      {/* =========================================================================
+          MA TRẬN TUỔI TỒN ĐỌNG × BƯU CỤC (BACKLOG AGING × POST OFFICE MATRIX)
+          ========================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-4 md:p-5 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
+                <PackageX className="w-4 h-4" />
+              </span>
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                Ma Trận Tuổi Tồn Đọng × 5 Bưu Cục (Aging Backlog Matrix)
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Đối soát chi tiết đơn tồn kho GLT &amp; LC theo các dải thời gian SLA: Trong hạn (&lt;72h), Cận hạn (72h-120h), Cảnh báo cam (120h-192h) và Báo động đỏ (&gt;192h)
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleDrillDownGltBacklog}
+              className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 flex items-center gap-1 cursor-pointer transition-colors"
+              title="Mở drill-down danh sách toàn bộ đơn tồn kho"
+            >
+              <Eye className="w-3 h-3 text-rose-600" />
+              <span>Drill-down Đơn Tồn</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs overflow-hidden">
+          <table className="w-full text-xs text-left border-collapse table-fixed">
+            <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="py-2.5 px-3 w-[18%]">Bưu Cục</th>
+                <th className="py-2.5 px-2 w-[12%] text-center">Tổng Tồn (GLT+LC)</th>
+                <th className="py-2.5 px-2 w-[12%] text-center">&lt; 72h (Trong SLA)</th>
+                <th className="py-2.5 px-2 w-[12%] text-center">72h - 120h (Cận hạn)</th>
+                <th className="py-2.5 px-2 w-[13%] text-center">120h - 192h (Trễ SLA)</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">&gt; 192h (Nguy cấp)</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">Tồn LC</th>
+                <th className="py-2.5 px-2 w-[11%] text-center">Mức Rủi Ro</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {backlogAgingMatrix.map(row => (
+                <tr key={row.buuCuc} className="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 transition-colors">
+                  <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-orange-600" />
+                    <span className="truncate">{row.buuCuc}</span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center font-bold text-slate-900 dark:text-white">
+                    {row.totalBacklog.toLocaleString('vi-VN')}
+                    <span className="text-[10px] text-slate-400 block font-normal">({row.backlogRate.toFixed(1)}% Vol)</span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center font-semibold text-emerald-600 dark:text-emerald-400">
+                    {row.under72.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="py-2.5 px-2 text-center font-semibold text-amber-600 dark:text-amber-400">
+                    {row.from72to120.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    <span className={`px-2 py-0.5 rounded font-bold ${
+                      row.from120to192 > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'text-slate-400'
+                    }`}>
+                      {row.from120to192}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    <span className={`px-2 py-0.5 rounded font-bold ${
+                      row.over192 > 0 ? 'bg-rose-600 text-white animate-pulse' : 'text-slate-400'
+                    }`}>
+                      {row.over192}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center font-medium text-blue-600 dark:text-blue-400">
+                    {row.totalLc}
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.riskBadge}`}>
+                      {row.riskLevel}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+  {/* PERIODIC COMPARISON SECTION (SO SÁNH THEO TUẦN VÀ THEO THÁNG) */}
       <PeriodicComparisonSection
         gtcBcList={dataset.gtcBuuCuc}
         gtcNvList={dataset.gtcNhanVien}
@@ -2582,185 +3262,8 @@ export const OverviewTab: React.FC = () => {
         availableMonths={availableMonths}
       />
 
-      {/* Post Office Master Ranking & Inline Expansion Section */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/60 dark:bg-slate-750">
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Bảng Tổng Hợp Vận Hành 5 Bưu Cục (Nhấn Để Mở Rộng Chi Tiết)
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              Cung cấp khả năng drill-down trực tiếp xuống danh sách nhân viên, cơ cấu ca hàng và đơn tồn
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold">
-                <th className="px-3 py-2.5">Bưu Cục</th>
-                <th className="px-3 py-2.5 text-center">Volume</th>
-                <th className="px-3 py-2.5 text-center">SLĐ Gán</th>
-                <th className="px-2.5 py-2.5 text-center">% Gán</th>
-                <th className="px-3 py-2.5 text-center">SLĐ GTC</th>
-                <th className="px-3 py-2.5 text-center">% GTC (Chuẩn)</th>
-                <th className="px-3 py-2.5 text-center">Tồn GLT</th>
-                <th className="px-2.5 py-2.5 text-center">Tồn LC</th>
-                <th className="px-3 py-2.5 text-center">Tổng Lương (VNĐ)</th>
-                <th className="px-3 py-2.5 text-center">Trạng Thái</th>
-                <th className="px-3 py-2.5 text-center">Hành Động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {poSummaries.map((po) => {
-                const isSelected = selectedBuuCuc === po.buuCuc;
-                return (
-                  <React.Fragment key={po.buuCuc}>
-                    <tr 
-                      className={`hover:bg-orange-50/40 dark:hover:bg-slate-750 cursor-pointer transition-colors ${
-                        isSelected ? 'bg-orange-50 dark:bg-slate-750 font-semibold' : ''
-                      }`}
-                      onClick={() => setSelectedBuuCuc(isSelected ? null : po.buuCuc)}
-                    >
-                      <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-orange-600" />
-                        <span>{po.buuCuc}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center font-medium">{po.volume.toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-300">{po.sldGan.toLocaleString('vi-VN')}</td>
-                      <td className="px-2.5 py-2.5 text-center font-medium text-blue-600">{po.assignedRate.toFixed(1)}%</td>
-                      <td className="px-3 py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">{po.sldGTC.toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2.5 text-center font-black text-slate-900 dark:text-white">
-                        <span className={`px-2 py-0.5 rounded-full inline-flex items-center justify-center ${
-                          po.gtcRate < 62 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
-                          po.gtcRate < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
-                          'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                        }`}>
-                          {po.gtcRate.toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center font-bold text-rose-600">{po.gltBacklog.toLocaleString('vi-VN')}</td>
-                      <td className="px-2.5 py-2.5 text-center font-bold text-blue-600">{po.lcBacklog}</td>
-                      <td className="px-3 py-2.5 text-center font-medium text-emerald-600">{po.totalSalary.toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          po.status === 'Critical' ? 'bg-red-500 text-white' :
-                          po.status === 'Warning' ? 'bg-amber-500 text-white' :
-                          po.status === 'Excellent' ? 'bg-emerald-500 text-white' :
-                          'bg-blue-500 text-white'
-                        }`}>
-                          {po.status === 'Critical' ? 'Báo động' : po.status === 'Warning' ? 'Cần chú ý' : 'Tốt'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <button
-                          type="button"
-                          className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-bold"
-                        >
-                          {isSelected ? 'Thu gọn' : 'Mở rộng'}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Inline Expanded Details for Post Office */}
-                    {isSelected && (
-                      <tr className="bg-slate-50 dark:bg-slate-850">
-                        <td colSpan={11} className="p-4 border-y border-orange-200 dark:border-slate-700">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                              <h4 className="text-xs font-bold text-orange-600 uppercase flex items-center gap-2">
-                                <span>Chi tiết vận hành nội bộ: {po.buuCuc}</span>
-                              </h4>
-                              <button
-                                onClick={() => setSelectedBuuCuc(null)}
-                                className="text-xs text-slate-400 hover:text-slate-600"
-                              >
-                                ✕ Đóng chi tiết
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                              {/* Ca Hàng Breakdown */}
-                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Cơ cấu ca hàng</h5>
-                                {['Hàng Mới Ca 1', 'Hàng Mới Ca 2', 'Hàng Tồn'].map(cat => {
-                                  const rows = dataset.gtcBuuCuc.filter(r => r.buuCuc === po.buuCuc && r.loaiHang === cat);
-                                  const vol = rows.reduce((acc, r) => acc + r.volume, 0);
-                                  const gtc = rows.reduce((acc, r) => acc + r.sldGTC, 0);
-                                  const rate = vol > 0 ? (gtc / vol * 100).toFixed(1) : '0';
-                                  return (
-                                    <div key={cat} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                                      <span className="text-slate-600 dark:text-slate-400">{cat}:</span>
-                                      <span className="font-bold">{vol.toLocaleString('vi-VN')} đơn (GTC: {rate}%)</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Top Nhân Viên Của Bưu Cục */}
-                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Nhân viên bưu cục ({empSummaries.filter(e => e.buuCuc === po.buuCuc).length} NV)</h5>
-                                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                                  {empSummaries.filter(e => e.buuCuc === po.buuCuc).slice(0, 5).map(e => (
-                                    <div key={e.maNV} className="flex justify-between text-[11px]">
-                                      <span className="truncate">{e.tenNV}:</span>
-                                      <span className="font-bold text-emerald-600">{e.tongDonGTC} đơn ({e.gtcRate.toFixed(1)}%)</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Tồn đọng & Hành động */}
-                              <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                                <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Hành động điều hành đề xuất</h5>
-                                <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-2">
-                                  Hiện có {po.gltBacklog} đơn GLT và {po.lcBacklog} đơn LC đang tồn tại bưu cục này.
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    onClick={() => navigateToTab('bao_cao_gtc_bc', { buuCuc: po.buuCuc })}
-                                    className="px-2.5 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                  >
-                                    <FileSpreadsheet className="w-3 h-3" />
-                                    <span>Báo cáo GTC BC</span>
-                                  </button>
-                                  <button
-                                    onClick={() => navigateToTab('gtc_nhan_vien', { buuCuc: po.buuCuc })}
-                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                  >
-                                    <Users className="w-3 h-3" />
-                                    <span>Bưu tá</span>
-                                  </button>
-                                  <button
-                                    onClick={() => navigateToTab('ton_dong_glt', { buuCuc: po.buuCuc })}
-                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                  >
-                                    <Package className="w-3 h-3" />
-                                    <span>Tồn GLT</span>
-                                  </button>
-                                  <button
-                                    onClick={() => navigateToTab('nhan_su', { buuCuc: po.buuCuc })}
-                                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                  >
-                                    <span>Nhân sự</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* =========================================================================
+    
+  {/* =========================================================================
           BẢNG ĐÁNH GIÁ & NHẬN ĐỊNH VẬN HÀNH SẮC BÉN CỦA AREA MANAGER
           TƯ DUY ĐIỀU HÀNH THỰC TẾ • MAP ĐÚNG THEO BỘ LỌC ĐANG CHỌN • BÓC TÁCH BẢN CHẤT
           ========================================================================= */}
@@ -2897,6 +3400,23 @@ export const OverviewTab: React.FC = () => {
           </table>
         </div>
       </div>
+    
+      {/* =========================================================================
+          SECTION 9: UNIFIED DRILL-DOWN MODAL INTERACTION
+          ========================================================================= */}
+      <UnifiedDrillDownModal
+        isOpen={drillDownState.isOpen}
+        onClose={closeDrillDown}
+        title={drillDownState.title}
+        subtitle={drillDownState.subtitle}
+        appliedFilters={drillDownState.appliedFilters}
+        data={drillDownState.data}
+        columns={drillDownState.columns}
+        summaryKpis={drillDownState.summaryKpis}
+        exportFileName={drillDownState.exportFileName}
+        searchPlaceholder={drillDownState.searchPlaceholder}
+      />
+
     </div>
   );
 };
