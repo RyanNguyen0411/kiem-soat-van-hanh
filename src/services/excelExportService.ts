@@ -107,7 +107,7 @@ export async function exportToCSV(
   ].join('\r\n');
 
   // Tạo tên file độc nhất vô nhị
-  const uniqueFilename = generateUniqueExportFilename(filename, 'csv');
+  const uniqueFilename = generateUniqueExportFilename(filename, 'gsheet').replace(/\.gsheet$/i, '');
 
   // Mở tab mới đồng bộ ngay khi bấm click để tránh bị trình duyệt chặn popup
   let driveTab: Window | null = null;
@@ -160,48 +160,31 @@ export async function exportToCSV(
 
   if (webhookUrl) {
     const payload = JSON.stringify({
-      folderId: GOOGLE_DRIVE_EXPORT_FOLDER_ID,
       filename: uniqueFilename,
       content: csvContent,
-      totalRows: rows.length
+      totalRows: rows.length,
     });
 
     try {
-      // Thử gửi bằng fetch chuẩn (có kiểm tra kết quả JSON)
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: payload
+        body: payload,
+        redirect: 'follow'
       });
 
-      if (response.ok) {
-        try {
-          const data = await response.json();
-          if (data && data.fileUrl) {
-            finalDriveUrl = data.fileUrl;
-          }
-          isUploaded = true;
-        } catch {
-          // Response là text hoặc opaque redirect, script đã thực thi xong
-          isUploaded = true;
-        }
-      } else {
-        throw new Error(`HTTP status: ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP status: ${response.status}`);
+      const result = await response.json();
+      if (!result || result.success !== true || !result.fileUrl) {
+        throw new Error(result?.error || 'Google Apps Script không xác nhận đã tạo Google Sheets');
       }
+      finalDriveUrl = result.fileUrl;
+      isUploaded = true;
     } catch (err) {
-      console.warn('Standard fetch to Apps Script failed, falling back to mode: no-cors:', err);
-      try {
-        // Fallback gửi với mode no-cors để đảm bảo browser không chặn request khi gặp redirect
-        await fetch(webhookUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: payload
-        });
-        isUploaded = true;
-      } catch (fallbackErr) {
-        console.error('All upload attempts to Apps Script failed:', fallbackErr);
-      }
+      // Do not retry with no-cors: the first request may already have created a file,
+      // and a blind retry can create duplicate spreadsheets. Also never report success
+      // when the browser cannot read a confirmed Apps Script response.
+      console.error('Google Sheets export could not be confirmed:', err);
     }
   }
 

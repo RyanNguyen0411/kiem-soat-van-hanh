@@ -72,33 +72,38 @@ export const GoogleDriveExportToast: React.FC = () => {
     }, 1500);
   };
 
-  const gasScriptCode = `const TARGET_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
-
+  const gasScriptCode = `/** GHN Dashboard -> native Google Sheets export. Copy the full version from google-apps-script/Code.gs. */
+const TARGET_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
+function jsonResponse(payload) {
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+}
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents) throw new Error('Dữ liệu gửi lên trống');
     const payload = JSON.parse(e.postData.contents);
-    const folder = DriveApp.getFolderById(payload.folderId || TARGET_FOLDER_ID);
-    const blob = Utilities.newBlob('\\uFEFF' + payload.content, 'text/csv;charset=utf-8', payload.filename);
-    const file = folder.createFile(blob);
-    try {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (shareErr) {
-      // Quyền chia sẻ mặc định trong tổ chức
+    if (!payload.content) throw new Error('Thiếu nội dung CSV');
+    const folder = DriveApp.getFolderById(TARGET_FOLDER_ID);
+    const name = String(payload.filename || 'GHN_Export').replace(/\.csv$/i, '');
+    const rows = Utilities.parseCsv(String(payload.content).replace(/^\uFEFF/, ''));
+    if (!rows || !rows.length) throw new Error('Không có dữ liệu');
+    const width = Math.max.apply(null, rows.map(function(row) { return row.length; }));
+    const book = SpreadsheetApp.create(name);
+    const sheet = book.getSheets()[0];
+    sheet.setName('Du lieu xuat');
+    const values = rows.map(function(row) { const r = row.slice(); while (r.length < width) r.push(''); return r; });
+    for (let i = 0; i < values.length; i += 5000) {
+      const batch = values.slice(i, i + 5000);
+      sheet.getRange(i + 1, 1, batch.length, width).setValues(batch);
     }
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      fileUrl: file.getUrl(),
-      fileId: file.getId(),
-      filename: payload.filename
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#f97316').setFontColor('#ffffff');
+    sheet.autoResizeColumns(1, Math.min(width, 30));
+    SpreadsheetApp.flush();
+    DriveApp.getFileById(book.getId()).moveTo(folder);
+    return jsonResponse({ success: true, fileUrl: book.getUrl(), fileId: book.getId(), filename: name });
+  } catch (err) { return jsonResponse({ success: false, error: String(err) }); }
 }
-
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ACTIVE', folder: TARGET_FOLDER_ID })).setMimeType(ContentService.MimeType.JSON);
-}`;
+function doGet() { return jsonResponse({ status: 'ACTIVE', folder: TARGET_FOLDER_ID }); }`;
 
   const handleCopyScript = () => {
     navigator.clipboard.writeText(gasScriptCode);
@@ -110,18 +115,18 @@ function doGet(e) {
     <>
       {/* Toast thông báo xuất file thành công */}
       {toastData && (
-        <div className="fixed bottom-16 lg:bottom-10 right-4 z-50 max-w-md w-full bg-slate-900/95 dark:bg-slate-850/95 text-white rounded-2xl shadow-2xl border border-emerald-500/40 p-3.5 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300">
+        <div className={`fixed bottom-16 lg:bottom-10 right-4 z-50 max-w-md w-full bg-slate-900/95 dark:bg-slate-850/95 text-white rounded-2xl shadow-2xl border ${toastData.isUploadedToDrive ? 'border-emerald-500/40' : 'border-amber-500/40'} p-3.5 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300`}>
           <div className="flex items-start justify-between gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-              <Check className="w-5 h-5 text-emerald-400" />
+            <div className={`p-2 rounded-xl shrink-0 ${toastData.isUploadedToDrive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+              {toastData.isUploadedToDrive ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-black text-white uppercase tracking-wider">
-                  Đã Gửi Lên Google Drive
+                  {toastData.isUploadedToDrive ? 'Đã tạo Google Sheets trên Drive' : 'Chưa xác nhận được file trên Drive'}
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
+                <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-bold ${toastData.isUploadedToDrive ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/30 text-amber-200 border border-amber-500/40'}`}>
                   {toastData.totalRows.toLocaleString('vi-VN')} dòng
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-orange-500/30 text-orange-300 border border-orange-500/40">
@@ -134,7 +139,7 @@ function doGet(e) {
               </div>
 
               <p className="text-[10.5px] text-slate-300 mt-1 leading-snug">
-                Dữ liệu được lưu trữ trực tiếp vào Thư Mục Driver của AM Huy và tự động mở tại tab mới. Tuyệt đối không gửi file về máy tính.
+                {toastData.isUploadedToDrive ? 'Đã nhận xác nhận tạo bảng tính Google Sheets. Bạn có thể mở file bằng liên kết bên dưới.' : 'Trình duyệt chưa nhận được xác nhận từ Apps Script. Hãy kiểm tra thư mục Drive trước khi xuất lại để tránh tạo file trùng.'}
               </p>
 
               <div className="flex items-center gap-2 mt-2">

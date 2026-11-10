@@ -1,21 +1,15 @@
 /**
- * =========================================================================================
- * GOOGLE APPS SCRIPT CHO GHN OPERATION CONTROL (AM HUY - ĐNB)
- * Tự động nhận file Excel/CSV từ Dashboard và lưu vào thư mục Google Drive:
- * https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing
- * 
- * URL ĐÃ TRIỂN KHAI HOẠT ĐỘNG:
- * https://script.google.com/macros/s/AKfycbxn90MNH1IukX8UMqsZDUqLhlpnsnme_MCzHdKbfkNgZ08w0O_Kpe-PHUsEobA72BUduA/exec
- * =========================================================================================
- *
- * HƯỚNG DẪN CẬP NHẬT / KIỂM TRA QUYỀN TRUY CẬP:
- * 1. Mở dự án tại https://script.google.com
- * 2. Đảm bảo phần Triển khai (Deploy) > Quản lý bản triển khai (Manage deployments):
- *    - Ai có quyền truy cập (Who has access): "Bất kỳ ai" (Anyone)
- * 3. Mỗi khi chỉnh sửa mã script, tạo Phiên bản mới (New version) để web app cập nhật logic mới nhất.
+ * GHN Dashboard -> native Google Sheets export.
+ * Each export creates a new Google spreadsheet in the configured Drive folder.
+ * Deploy as a Web App and authorize SpreadsheetApp + DriveApp access.
  */
-
 const TARGET_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
+
+function jsonResponse(payload) {
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
 function doPost(e) {
   try {
@@ -24,45 +18,80 @@ function doPost(e) {
     }
 
     const payload = JSON.parse(e.postData.contents);
-    const folderId = payload.folderId || TARGET_FOLDER_ID;
-    const folder = DriveApp.getFolderById(folderId);
-
-    const filename = payload.filename || ('GHN_Export_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyyyMMdd_HHmmss') + '.csv');
-    const content = payload.content || '';
-
-    // Tạo file CSV chuẩn UTF-8 có BOM để tương thích hoàn toàn tiếng Việt trên Excel
-    const blob = Utilities.newBlob('\uFEFF' + content, 'text/csv;charset=utf-8', filename);
-    const file = folder.createFile(blob);
-
-    // Cài đặt quyền xem cho người có liên kết (bọc try-catch nếu tổ chức giới hạn chia sẻ bên ngoài)
-    try {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (shareErr) {
-      // Giữ quyền mặc định của thư mục
+    if (!payload.content || typeof payload.content !== 'string') {
+      throw new Error('Thiếu nội dung CSV để chuyển thành Google Sheets');
     }
 
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      fileUrl: file.getUrl(),
-      fileId: file.getId(),
-      filename: filename,
-      folderId: folderId,
-      createdAt: new Date().toISOString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    // Always use the configured folder. Do not accept a folder ID from browser input.
+    const folder = DriveApp.getFolderById(TARGET_FOLDER_ID);
+    const requestedName = String(payload.filename || 'GHN_Export_' +
+      Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyyMMdd_HHmmss'));
+    const spreadsheetName = requestedName.replace(/\.csv$/i, '').replace(/\.gsheet$/i, '');
 
+    // Parse the UTF-8 CSV sent by the dashboard and write it into a real Sheets file.
+    const csvText = payload.content.replace(/^\uFEFF/, '');
+    const parsedRows = Utilities.parseCsv(csvText);
+    if (!parsedRows || parsedRows.length === 0) {
+      throw new Error('Không đọc được dòng dữ liệu trong file xuất');
+    }
+
+    const columnCount = Math.max.apply(null, parsedRows.map(function(row) { return row.length; }));
+    if (!columnCount) throw new Error('Không tìm thấy cột dữ liệu');
+
+    const spreadsheet = SpreadsheetApp.create(spreadsheetName);
+    const sheet = spreadsheet.getSheets()[0];
+    sheet.setName('Du lieu xuat');
+
+    // Google Sheets requires a rectangular 2D array for setValues.
+    const normalizedRows = parsedRows.map(function(row) {
+      const copy = row.slice();
+      while (copy.length < columnCount) copy.push('');
+      return copy;
+    });
+
+    const batchSize = 5000;
+    for (let start = 0; start < normalizedRows.length; start += batchSize) {
+      const batch = normalizedRows.slice(start, start + batchSize);
+      sheet.getRange(start + 1, 1, batch.length, columnCount).setValues(batch);
+    }
+
+    // Basic usability formatting.
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, columnCount)
+      .setFontWeight('bold')
+      .setBackground('#f97316')
+      .setFontColor('#ffffff');
+    sheet.getDataRange().setWrap(false);
+    sheet.autoResizeColumns(1, Math.min(columnCount, 30));
+    if (normalizedRows.length > 1) {
+      sheet.getRange(1, 1, normalizedRows.length, columnCount).createFilter();
+    }
+    SpreadsheetApp.flush();
+
+    // Move the native Google Sheets file into the target folder.
+    const driveFile = DriveApp.getFileById(spreadsheet.getId());
+    driveFile.moveTo(folder);
+
+    return jsonResponse({
+      success: true,
+      fileUrl: spreadsheet.getUrl(),
+      fileId: spreadsheet.getId(),
+      filename: spreadsheetName,
+      folderId: TARGET_FOLDER_ID,
+      totalRows: Math.max(0, normalizedRows.length - 1),
+      format: 'application/vnd.google-apps.spreadsheet',
+      createdAt: new Date().toISOString()
+    });
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({ success: false, error: String(err && err.message ? err.message : err) });
   }
 }
 
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
+function doGet() {
+  return jsonResponse({
     status: 'ACTIVE',
-    service: 'GHN Excel Export to Google Drive Webhook',
+    service: 'GHN Dashboard Native Google Sheets Export',
     targetFolderId: TARGET_FOLDER_ID,
     folderUrl: 'https://drive.google.com/drive/folders/' + TARGET_FOLDER_ID
-  })).setMimeType(ContentService.MimeType.JSON);
+  });
 }

@@ -64,7 +64,9 @@ export function UnifiedDrillDownModal<T extends Record<string, any>>({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
-  if (!isOpen) return null;
+  // Always run hooks in the same order on open and closed renders.
+  // Returning before these useMemo hooks causes React's Rules-of-Hooks error
+  // when the modal changes from closed to open (or vice versa).
 
   // Filter by search term
   const filteredData = useMemo(() => {
@@ -99,6 +101,8 @@ export function UnifiedDrillDownModal<T extends Record<string, any>>({
     const start = (currentPage - 1) * pageSize;
     return sortedData.slice(start, start + pageSize);
   }, [sortedData, currentPage, pageSize]);
+
+  if (!isOpen) return null;
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
