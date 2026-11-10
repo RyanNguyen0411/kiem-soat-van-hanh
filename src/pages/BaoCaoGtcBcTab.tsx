@@ -48,15 +48,24 @@ export const BaoCaoGtcBcTab: React.FC = () => {
   const allUniqueDatesDesc = useMemo(() => {
     const rawDates = [
       ...dataset.gtcNhanVien.map(r => r.ngay),
-      ...dataset.gtcBuuCuc.map(r => r.ngay)
+      ...dataset.gtcBuuCuc.map(r => r.ngay),
+      ...dataset.hoaHongNgay.map(r => r.ngay)
     ].filter(Boolean);
     return sortDatesDesc([...new Set(rawDates)]);
-  }, [dataset.gtcNhanVien, dataset.gtcBuuCuc]);
+  }, [dataset.gtcNhanVien, dataset.gtcBuuCuc, dataset.hoaHongNgay]);
 
-  // Selected date defaults to the latest date (Ngày gần nhất)
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return allUniqueDatesDesc[0] || '04/11/2026';
-  });
+  // Luôn mặc định và tự động chuyển về ngày mới nhất khi hiển thị
+  const latestDate = allUniqueDatesDesc[0] || '04/11/2026';
+  const [selectedDate, setSelectedDate] = useState<string>(() => latestDate);
+  const prevLatestRef = React.useRef<string>(latestDate);
+
+  // Khi hiển thị hoặc khi dataset cập nhật -> luôn nạp data ở ngày mới nhất
+  React.useEffect(() => {
+    if (allUniqueDatesDesc.length > 0 && allUniqueDatesDesc[0] !== prevLatestRef.current) {
+      prevLatestRef.current = allUniqueDatesDesc[0];
+      setSelectedDate(allUniqueDatesDesc[0]);
+    }
+  }, [allUniqueDatesDesc]);
 
   // Filters
   const [selectedBuuCuc, setSelectedBuuCuc] = useState<string>(() => selectedBuuCucGlobal || 'all');
@@ -105,19 +114,22 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     return new Date(y, m - 1, day).getTime();
   };
 
-  // Distinct operating dates in hoaHongNgay during this month up to selectedDate
-  const monthOperatingDatesInHh = useMemo(() => {
+  // Distinct operating dates in this month up to selectedDate
+  const monthOperatingDates = useMemo(() => {
     const targetMs = parseDateMs(selectedDate);
-    const dates = dataset.hoaHongNgay
-      .filter(r => r.ngay.slice(3) === currentMonthKey && parseDateMs(r.ngay) <= targetMs)
-      .map(r => r.ngay);
-    return [...new Set(dates)];
-  }, [dataset.hoaHongNgay, currentMonthKey, selectedDate]);
+    const rawDates = [
+      ...dataset.hoaHongNgay.map(r => r.ngay),
+      ...dataset.gtcNhanVien.map(r => r.ngay),
+      ...dataset.gtcBuuCuc.map(r => r.ngay)
+    ].filter(Boolean);
+    const inMonth = rawDates.filter(d => d.slice(3) === currentMonthKey && parseDateMs(d) <= targetMs);
+    return sortDatesDesc([...new Set(inMonth)]);
+  }, [dataset.hoaHongNgay, dataset.gtcNhanVien, dataset.gtcBuuCuc, currentMonthKey, selectedDate]);
 
   // Total operating days in month up to selectedDate
   const totalMonthDaysSoFar = useMemo(() => {
-    return monthOperatingDatesInHh.length > 0 ? monthOperatingDatesInHh.length : 1;
-  }, [monthOperatingDatesInHh]);
+    return monthOperatingDates.length > 0 ? monthOperatingDates.length : 1;
+  }, [monthOperatingDates]);
 
   // Official list of post offices in the region (aligned with Task "Nhân sự")
   const postOfficesList = useMemo(() => {
@@ -229,53 +241,75 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           };
         });
 
-      // 5. Identify OFF staff (belong to post office in Task "Nhân sự" but had NO delivery and NO pickup on selectedDate)
+      // Hàm kiểm tra một nhân viên có OFF vào ngày cụ thể dateStr theo logic chuẩn của AM Huy:
+      // + Nếu nhân viên không phát sinh đơn giao hoặc đơn lấy thì ghi nhận là off (đối chiếu sheet "Hoa hồng ngày" & "GTC Nhân viên")
+      // + Nếu NV không phát sinh thu nhập thì ghi nhận là OFF (đối chiếu sheet "Hoa hồng ngày")
+      const isStaffOffOnDate = (maNV: string, dateStr: string): boolean => {
+        // Nếu là ngày được chọn và có trong danh sách giao hàng thực tế -> Đang đi làm, KHÔNG OFF
+        if (dateStr === selectedDate && activeMap.has(maNV)) return false;
+
+        const hh = dataset.hoaHongNgay.find(r => r.maNV === maNV && r.ngay === dateStr);
+        const gtc = dataset.gtcNhanVien.find(r => r.maNV === maNV && r.ngay === dateStr);
+
+        const hasDelivery = (gtc?.tongDon || 0) > 0 || 
+                            (hh?.soDonGanGiao || 0) > 0 || 
+                            (hh?.donGiaoTinhLuong || 0) > 0;
+
+        const hasPickup = (hh?.soDonGanLay || 0) > 0 || 
+                          (hh?.donLayTinhLuong || 0) > 0;
+
+        const income = (hh?.luongHHNgay || 0) + (hh?.tongLuong || 0);
+        const workDays = hh?.soNgayDiLam || 0;
+
+        // 1. Nếu không phát sinh đơn giao hoặc đơn lấy -> Ghi nhận là OFF
+        if (!hasDelivery && !hasPickup) return true;
+
+        // 2. Nếu không phát sinh thu nhập (hoặc lương hoa hồng 0đ/không hiển thị và ngày công 0) -> Ghi nhận là OFF
+        if (income <= 0 && workDays <= 0 && (gtc?.tongDon || 0) <= 0) return true;
+
+        return false;
+      };
+
+      // 5. Xác định nhân viên OFF ngày selectedDate và thống kê số ngày OFF trong tháng
       // =========================================================================
-      // CRITICAL USER LOGIC:
-      // 1. Nếu nhân viên không phát sinh đơn giao hoặc đơn lấy thì ghi nhận là off.
-      // 2. Nếu đối chiếu với Task Nhân Sự mà không có tên thì là nhân viên đã nghỉ việc hoàn toàn, không liệt kê vào dữ liệu OFF Ngày.
-      // 3. Nhân viên nhận việc sau ngày đối chiếu -> KHÔNG ĐƯA VÀO OFF!
+      // CHUẨN HÓA LOGIC TÍNH OFF:
+      // + Lấy dữ liệu thống kê trong tháng hiện tại. Thống kê được số ngày NV đã OFF trong tháng thông qua logic tính off
+      // + Nếu nhân viên không phát sinh đơn giao hoặc đơn lấy thì ghi nhận là off (đối chiếu sheet "Hoa hồng ngày")
+      // + Nếu NV không phát sinh thu nhập thì ghi nhận là OFF (đối chiếu sheet "Hoa hồng ngày")
+      // + Nếu đối chiếu với Task Nhân Sự mà không có tên thì là nhân viên đã nghỉ việc hoàn toàn, không liệt kê vào dữ liệu OFF Ngày.
       // =========================================================================
       const offStaff = poRosterInNs
         .filter(m => {
-          // Đối chiếu Task Nhân Sự: Nếu không có tên thì là nhân viên đã nghỉ việc hoàn toàn -> KHÔNG liệt kê vào dữ liệu OFF Ngày
+          // Đối chiếu Task Nhân Sự: Không có tên thì là nhân viên đã nghỉ việc hoàn toàn -> KHÔNG LIỆT KÊ
           if (!nhanSuActiveMap.has(m.maNV)) return false;
 
-          // Kiểm tra ngày vào làm vs selectedDate: Nhận việc sau ngày đối chiếu -> KHÔNG ĐƯA VÀO OFF
+          // Nhân viên nhận việc sau ngày đối chiếu -> Chưa vào làm, KHÔNG đưa vào OFF
           const staffHireMs = parseDateMs(m.ngayVaoLam);
-          if (staffHireMs > targetMs) {
-            return false;
-          }
-
-          // Nhân viên có phát sinh đơn giao trong ngày (gtcNhanVien) -> Đang đi làm, KHÔNG GHI NHẬN OFF
-          if (activeMap.has(m.maNV)) return false;
-
-          // Nhân viên có phát sinh đơn lấy trong ngày (hoaHongNgay) -> Đang đi lấy hàng, KHÔNG GHI NHẬN OFF
-          const hhRecord = dataset.hoaHongNgay.find(
-            r => r.maNV === m.maNV && r.ngay === selectedDate
-          );
-          const hasPickup = Boolean(
-            hhRecord && ((hhRecord.soDonGanLay || 0) > 0 || (hhRecord.donLayTinhLuong || 0) > 0)
-          );
-          if (hasPickup) return false;
+          if (staffHireMs > targetMs) return false;
 
           // Loại trừ nhân viên chuyên lấy đối tác (đã có khối riêng tại Rạch Kiến)
           if (isPickupSpecialist(m.maNV, m.tenNV)) return false;
 
-          return true;
+          // Kiểm tra xem nhân viên có OFF tại selectedDate hay không
+          return isStaffOffOnDate(m.maNV, selectedDate);
         })
         .map(m => {
           const staffHireMs = parseDateMs(m.ngayVaoLam);
 
-          // Operating dates in month from staff's hire date up to selectedDate
-          const possibleOperatingDates = monthOperatingDatesInHh.filter(d => parseDateMs(d) >= staffHireMs);
+          // Các ngày vận hành trong tháng tính từ ngày vào làm của nhân viên đến selectedDate
+          const possibleOperatingDates = monthOperatingDates.filter(d => parseDateMs(d) >= staffHireMs);
           const expectedWorkDays = possibleOperatingDates.length > 0 ? possibleOperatingDates.length : 1;
 
-          // Calculate worked days in current month from hoaHongNgay up to selectedDate
-          const workedDaysInMonth = dataset.hoaHongNgay.filter(
-            r => r.maNV === m.maNV && r.ngay.slice(3) === currentMonthKey && r.soNgayDiLam > 0 && parseDateMs(r.ngay) <= targetMs
-          ).length;
-          const offDaysInMonth = Math.max(0, expectedWorkDays - workedDaysInMonth);
+          // Thống kê số ngày NV đã OFF trong tháng thông qua logic tính off chuẩn
+          let offDaysInMonth = 0;
+          possibleOperatingDates.forEach(d => {
+            if (isStaffOffOnDate(m.maNV, d)) {
+              offDaysInMonth++;
+            }
+          });
+
+          // Số ngày đã đi làm = Tổng ngày vận hành trừ đi số ngày đã OFF
+          const workedDaysInMonth = Math.max(0, possibleOperatingDates.length - offDaysInMonth);
 
           const isNewRecruit = m.nhomThamNien?.includes('G01') || m.nhomThamNien?.includes('Dưới 1 tháng');
 
@@ -323,7 +357,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         alertCount
       };
     });
-  }, [postOfficesList, activeDeliveryStaffInNs, nhanSuActiveMap, dataset.gtcNhanVien, dataset.gtcBuuCuc, dataset.hoaHongNgay, selectedDate, currentMonthKey, totalMonthDaysSoFar, monthOperatingDatesInHh]);
+  }, [postOfficesList, activeDeliveryStaffInNs, nhanSuActiveMap, dataset.gtcNhanVien, dataset.gtcBuuCuc, dataset.hoaHongNgay, selectedDate, currentMonthKey, totalMonthDaysSoFar, monthOperatingDates]);
 
   // Overall regional metrics for selected date
   const regionalSummary = useMemo(() => {
@@ -1418,7 +1452,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               <td className="py-2.5 px-3 text-center">
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
                                   <UserX className="w-3 h-3" />
-                                  <span>OFF (Không có đơn gán)</span>
+                                  <span>OFF (Không đơn giao/lấy)</span>
                                 </span>
                               </td>
 
