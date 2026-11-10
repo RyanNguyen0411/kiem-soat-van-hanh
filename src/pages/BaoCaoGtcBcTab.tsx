@@ -23,6 +23,7 @@ import { useDashboard } from '../context/DashboardContext';
 import { sortDatesDesc } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 import { normalizePostOfficeName, normalizeDate } from '../utils/normalizationEngine';
+import nhanSuFallbackSnapshot from '../data/snapshots/nhan_su.json';
 import { 
   capturePostOfficeCard, 
   sendPhotoToTelegram, 
@@ -128,20 +129,61 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     return id1.trim() === id2.trim();
   };
 
+  // Combine dataset.nhanSu with fallback snapshot if dataset.nhanSu is empty or has fewer staff
+  const effectiveNhanSu = useMemo(() => {
+    const live = dataset.nhanSu || [];
+    if (live.length >= 50) return live;
+    const snapList = (nhanSuFallbackSnapshot as typeof dataset.nhanSu) || [];
+    if (live.length === 0) return snapList;
+    const liveIds = new Set(live.map(s => s.maNV.trim()));
+    const merged = [...live];
+    snapList.forEach(s => {
+      if (!liveIds.has(s.maNV.trim())) {
+        merged.push(s);
+      }
+    });
+    return merged;
+  }, [dataset.nhanSu]);
+
   // Distinct operating dates in this month up to selectedDate
+  // Includes all calendar dates from day 1 to selectedDate, plus any dates present in datasets
   const monthOperatingDates = useMemo(() => {
+    const datesSet = new Set<string>();
+
+    // 1. Generate all calendar days from Day 1 up to target day in current month
+    if (selectedDate && selectedDate.includes('/')) {
+      const parts = selectedDate.split('/');
+      if (parts.length >= 3) {
+        const targetDay = parseInt(parts[0], 10);
+        const targetMonth = parseInt(parts[1], 10);
+        const targetYear = parseInt(parts[2], 10);
+        if (targetDay > 0 && targetMonth > 0 && targetYear > 0) {
+          for (let d = 1; d <= targetDay; d++) {
+            const dd = String(d).padStart(2, '0');
+            const mm = String(targetMonth).padStart(2, '0');
+            datesSet.add(`${dd}/${mm}/${targetYear}`);
+          }
+        }
+      }
+    }
+
+    // 2. Also incorporate any actual operating dates found in datasets
     const targetMs = parseDateMs(selectedDate);
     const rawDates = [
       ...dataset.hoaHongNgay.map(r => r.ngay),
       ...dataset.gtcNhanVien.map(r => r.ngay),
       ...dataset.gtcBuuCuc.map(r => r.ngay)
     ].filter(Boolean);
-    const inMonth = rawDates.filter(d => {
+
+    rawDates.forEach(d => {
       const norm = normalizeDate(d);
       const std = norm.standard || d;
-      return std.slice(3) === currentMonthKey && parseDateMs(d) <= targetMs;
+      if (std.slice(3) === currentMonthKey && parseDateMs(d) <= targetMs) {
+        datesSet.add(std);
+      }
     });
-    return sortDatesDesc([...new Set(inMonth)]);
+
+    return sortDatesDesc([...datesSet]);
   }, [dataset.hoaHongNgay, dataset.gtcNhanVien, dataset.gtcBuuCuc, currentMonthKey, selectedDate]);
 
   // Total operating days in month up to selectedDate
@@ -151,14 +193,14 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
   // Official list of post offices in the region (aligned with Task "Nhân sự")
   const postOfficesList = useMemo(() => {
-    const fromNs = [...new Set(dataset.nhanSu.map(r => normalizePostOfficeName(r.buuCuc)))].filter(Boolean);
+    const fromNs = [...new Set(effectiveNhanSu.map(r => normalizePostOfficeName(r.buuCuc)))].filter(Boolean);
     if (fromNs.length > 0) return fromNs.sort();
     return ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
-  }, [dataset.nhanSu]);
+  }, [effectiveNhanSu]);
 
   // Active delivery workforce (NVPTTT / Bưu tá giao nhận) in Task "Nhân sự" (Real-time roster)
   const activeDeliveryStaffInNs = useMemo(() => {
-    return dataset.nhanSu.filter(s => {
+    return effectiveNhanSu.filter(s => {
       // Exclude Tran Trong Phu (NVXL) and AM Nguyen Hoang Huy from delivery staff
       if (s.maNV === '3175777') return false;
       const cv = (s.chucVu || '').toLowerCase();
@@ -170,12 +212,12 @@ export const BaoCaoGtcBcTab: React.FC = () => {
          !cv.includes('dieu phoi'));
       return isNvpttt;
     });
-  }, [dataset.nhanSu]);
+  }, [effectiveNhanSu]);
 
   // Lookup map of all active staff in Task "Nhân sự" for quick cross-referencing
   const nhanSuActiveMap = useMemo(() => {
-    return new Map(dataset.nhanSu.map(s => [s.maNV.trim(), s]));
-  }, [dataset.nhanSu]);
+    return new Map(effectiveNhanSu.map(s => [s.maNV.trim(), s]));
+  }, [effectiveNhanSu]);
 
   // Build structured data for each post office on selectedDate
   const postOfficeReportData = useMemo(() => {
@@ -183,10 +225,10 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
     return postOfficesList.map(po => {
       // 1. All active NVPTTT belonging to this post office in Task "Nhân sự" (Real-time roster)
-      const poRosterInNs = activeDeliveryStaffInNs.filter(s => normalizePostOfficeName(s.buuCuc) === po);
+      const poStaffFromNs = activeDeliveryStaffInNs.filter(s => normalizePostOfficeName(s.buuCuc) === po);
 
       // Separate staff in roster by hire date vs selectedDate
-      const notYetJoinedStaff = poRosterInNs.filter(m => {
+      const notYetJoinedStaff = poStaffFromNs.filter(m => {
         const staffHireMs = parseDateMs(m.ngayVaoLam);
         return targetMs > 0 && staffHireMs > 0 && staffHireMs > targetMs;
       });
@@ -199,6 +241,21 @@ export const BaoCaoGtcBcTab: React.FC = () => {
              !isMaNvMatch(r.maNV, '3175777')
       );
       const activeMap = new Map(activeRows.map(r => [r.maNV.trim(), r]));
+
+      // Any active delivery staff in activeRows not in poStaffFromNs should be included in roster
+      const extraActiveStaff = activeRows
+        .filter(r => !poStaffFromNs.some(s => isMaNvMatch(s.maNV, r.maNV)))
+        .map(r => ({
+          maNV: r.maNV.trim(),
+          tenNV: r.tenNV,
+          chucVu: 'Business Development Field Executive',
+          buuCuc: po,
+          loaiHD: 'HĐLĐ',
+          nhomThamNien: '',
+          ngayVaoLam: '01/01/2026',
+          trangThai: 'Đang làm việc'
+        }));
+      const poRosterInNs = [...poStaffFromNs, ...extraActiveStaff];
 
       // 3. Process active staff records with highlight flags
       const activeStaff = activeRows.map(r => {
@@ -366,13 +423,14 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       const gtcRate = totalSldGan > 0 ? (totalSldGtc / totalSldGan) * 100 : 0;
 
       const alertCount = activeStaff.filter(r => r.isHighlighted).length;
+      const calculatedTotalMembers = Math.max(poRosterInNs.length, activeStaff.length + offStaff.length + pickupSpecialists.length);
 
       return {
         buuCuc: po,
-        totalMembers: poRosterInNs.length, // Real-time delivery staff count from Task "Nhân sự"
+        totalMembers: calculatedTotalMembers, // Real-time delivery staff count from Task "Nhân sự"
         pickupSpecialists,
-        deliveryStaffCount: poRosterInNs.length - pickupSpecialists.length,
-        activeRosterCount: poRosterInNs.length - notYetJoinedStaff.length - pickupSpecialists.length,
+        deliveryStaffCount: Math.max(0, calculatedTotalMembers - pickupSpecialists.length),
+        activeRosterCount: Math.max(0, calculatedTotalMembers - notYetJoinedStaff.length - pickupSpecialists.length),
         notYetJoinedStaff,
         notYetJoinedCount: notYetJoinedStaff.length,
         activeStaff,

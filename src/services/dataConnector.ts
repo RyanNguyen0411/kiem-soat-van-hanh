@@ -191,7 +191,11 @@ async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} from Google Sheets`);
     }
-    return await res.text();
+    const text = await res.text();
+    if (text.includes('google.visualization.Query.setResponse') && text.includes('"status":"error"')) {
+      throw new Error(`Google Sheets API: Bảng tính không có sheet "${sheetName}"`);
+    }
+    return text;
   } catch (err) {
     clearTimeout(timeoutId);
     throw err;
@@ -625,16 +629,16 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         return true;
       })
       .map(r => {
-        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên']);
-        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv']);
-        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'kho']);
+        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên', 'manv', 'id nv', 'id']);
+        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv', 'nhân viên', 'nhan vien']);
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'kho/ bưu cục', 'kho/buu cuc', 'kho / bưu cục', 'tên bc', 'ten bc', 'tên bưu cục', 'bưu cục làm việc', 'bc', 'kho']);
         const meta = lookupPostOffice(buuCucRaw);
         const stdBuuCucRaw = meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
 
         return {
           maNV,
           tenNV,
-          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu']),
+          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu', 'vị trí', 'vi tri']) || 'Business Development Field Executive',
           ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm']),
           ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc']),
           trangThai: reader.getCol(r, ['trạng thái', 'trang thai']),
@@ -642,13 +646,17 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
           buuCuc: meta.standardName,
           zone: reader.getCol(r, ['zone', 'khu vực']),
           am: reader.getCol(r, ['am', 'quản lý']),
-          loaiHD: reader.getCol(r, ['loại hđ', 'loai hd']),
-          tinh: reader.getCol(r, ['tỉnh', 'tinh']),
-          vung: reader.getCol(r, ['vùng', 'vung']),
+          loaiHD: reader.getCol(r, ['loại hđ', 'loai hd']) || 'HĐLĐ',
+          tinh: reader.getCol(r, ['tỉnh', 'tinh']) || 'Long An',
+          vung: reader.getCol(r, ['vùng', 'vung']) || 'DNB',
           nhomThamNien: reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien']),
           ngayVaoLam: normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam'])).standard || ''
         };
       });
+
+    if (nhanSu.length === 0) {
+      throw new Error('Không tìm thấy bản ghi nhân sự hợp lệ, kích hoạt snapshot dự phòng');
+    }
 
     sheetStatuses[SHEET_NAMES.NHAN_SU] = {
       sheetName: SHEET_NAMES.NHAN_SU,

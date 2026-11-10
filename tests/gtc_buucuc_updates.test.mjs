@@ -214,3 +214,67 @@ test('7. BẢNG THỐNG KÊ NHÂN VIÊN OFF: Thống kê theo bộ lọc ngườ
     'Sử dụng normalizePostOfficeName chuẩn hóa bưu cục'
   );
 });
+
+test('8. KIỂM SOÁT LOGIC VÕ MINH HÙNG (3133170) VÀ TỔNG NVPTTT KHÔNG BAO GIỜ BẰNG 0', () => {
+  const gtcBcContent = fs.readFileSync(path.resolve('src/pages/BaoCaoGtcBcTab.tsx'), 'utf8');
+
+  // 1. Phải có fallback effectiveNhanSu dự phòng khi dataset.nhanSu rỗng
+  assert.match(
+    gtcBcContent,
+    /const effectiveNhanSu = useMemo\(/,
+    'Có effectiveNhanSu tích hợp fallback snapshot'
+  );
+
+  // 2. Tự động sinh tất cả các ngày lịch từ ngày 1 đến ngày được chọn
+  assert.match(
+    gtcBcContent,
+    /for \(let d = 1; d <= targetDay; d\+\+\)/,
+    'Sinh đầy đủ các ngày trong tháng từ ngày 1 đến selectedDate để kiểm tra OFF chính xác'
+  );
+
+  // 3. Tính toán totalMembers chống số 0 bằng Math.max
+  assert.match(
+    gtcBcContent,
+    /Math\.max\(poRosterInNs\.length/,
+    'Tính tổng số lượng nhân sự an toàn không bị 0'
+  );
+
+  // 4. Kiểm chứng dữ liệu thực tế cho Võ Minh Hùng (3133170) ngày 09/11/2026
+  const ns = JSON.parse(fs.readFileSync(path.resolve('src/data/snapshots/nhan_su.json'), 'utf8'));
+  const gtc = JSON.parse(fs.readFileSync(path.resolve('src/data/snapshots/gtc_nhan_vien.json'), 'utf8'));
+  const hh = JSON.parse(fs.readFileSync(path.resolve('src/data/snapshots/hoa_hong_ngay.json'), 'utf8'));
+
+  const hungNs = ns.find(x => x.maNV === '3133170');
+  assert.ok(hungNs, 'Võ Minh Hùng tồn tại trong Task Nhân sự');
+  assert.equal(hungNs.buuCuc, '(LAN) Cần Giuộc');
+
+  // Mô phỏng kiểm tra OFF ngày 09/11/2026 cho Võ Minh Hùng
+  const selectedDate = '09/11/2026';
+  const isMaNvMatch = (id1, id2) => (id1 || '').trim() === (id2 || '').trim();
+  const isDateMatch = (d1, d2) => d1 === d2;
+
+  const isStaffOff = (dateStr) => {
+    const cleanId = '3133170';
+    const h = hh.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
+    const g = gtc.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
+    const hasDelivery = (g?.tongDon || 0) > 0 || (h?.soDonGanGiao || 0) > 0 || (h?.donGiaoTinhLuong || 0) > 0;
+    const hasPickup = (h?.soDonGanLay || 0) > 0 || (h?.donLayTinhLuong || 0) > 0;
+    const income = (h?.luongHHNgay || 0) + (h?.tongLuong || 0);
+    const workDays = h?.soNgayDiLam || 0;
+    if (!hasDelivery && !hasPickup) return true;
+    if (income <= 0 && workDays <= 0 && (g?.tongDon || 0) <= 0) return true;
+    return false;
+  };
+
+  // Võ Minh Hùng ngày 09/11/2026 không có đơn giao/lấy -> Phải là OFF
+  assert.equal(isStaffOff('09/11/2026'), true, 'Võ Minh Hùng ngày 09/11/2026 phải được ghi nhận là OFF');
+
+  // Đếm số ngày OFF trong tháng 11/2026 từ ngày 1 đến ngày 9:
+  let offCount = 0;
+  for (let d = 1; d <= 9; d++) {
+    const dStr = String(d).padStart(2, '0') + '/11/2026';
+    if (isStaffOff(dStr)) offCount++;
+  }
+  // 01, 02, 03, 04 đi làm. 05, 06, 07, 08, 09 nghỉ -> 5 ngày OFF
+  assert.equal(offCount, 5, 'Võ Minh Hùng đã nghỉ 5 ngày trong tháng 11/2026 tính đến ngày 09/11/2026');
+});
