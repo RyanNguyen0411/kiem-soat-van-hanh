@@ -133,3 +133,84 @@ test('5. LOGIC NHÂN VIÊN OFF: Thống kê số ngày OFF trong tháng và đ�
     'Nhân viên không có trong Task Nhân Sự bị loại trừ hoàn toàn'
   );
 });
+
+test('6. HIỂN THỊ TỔNG SỐ LƯỢNG NVPTTT (Đầy đủ trên Header, KPI 4, Bộ lọc & Header từng Bưu cục)', () => {
+  const gtcBcContent = fs.readFileSync(path.resolve('src/pages/BaoCaoGtcBcTab.tsx'), 'utf8');
+
+  // 1. Sticky header có badge hiển thị Tổng NVPTTT
+  assert.match(
+    gtcBcContent,
+    /Tổng NVPTTT: \{regionalSummary\.totalRoster\} NV/,
+    'Sticky Header có badge Tổng NVPTTT'
+  );
+
+  // 2. KPI Card 4 có tiêu đề "Tổng Số Lượng NVPTTT"
+  assert.match(
+    gtcBcContent,
+    /Tổng Số Lượng NVPTTT/,
+    'Thẻ KPI 4 có tiêu đề rõ ràng Tổng Số Lượng NVPTTT'
+  );
+  assert.match(
+    gtcBcContent,
+    /\{regionalSummary\.totalRoster\} NVPTTT/,
+    'Thẻ KPI 4 hiển thị tổng số NVPTTT nổi bật'
+  );
+
+  // 3. Header từng bưu cục có hiển thị Tổng số lượng NVPTTT
+  assert.match(
+    gtcBcContent,
+    /Tổng số lượng: \{po\.totalMembers\} NVPTTT/,
+    'Header từng card bưu cục hiển thị tổng số lượng NVPTTT'
+  );
+
+  // 4. Dropdown bưu cục hiển thị số lượng NVPTTT
+  assert.match(
+    gtcBcContent,
+    /\{regionalSummary\.totalRoster\} NVPTTT\)/,
+    'Bộ lọc bưu cục hiển thị tổng số NVPTTT toàn khu vực'
+  );
+});
+
+test('7. BẢNG THỐNG KÊ NHÂN VIÊN OFF: Thống kê theo bộ lọc người dùng & số ngày đã OFF trong tháng', () => {
+  const gtcBcContent = fs.readFileSync(path.resolve('src/pages/BaoCaoGtcBcTab.tsx'), 'utf8');
+
+  // 1. Có Bảng Thống Kê Nhân Viên OFF theo bộ lọc
+  assert.match(
+    gtcBcContent,
+    /BẢNG THỐNG KÊ NHÂN VIÊN OFF \(NGHỈ GIAO NGÀY \{selectedDate\}\)/,
+    'Có tiêu đề BẢNG THỐNG KÊ NHÂN VIÊN OFF theo ngày'
+  );
+
+  // 2. allFilteredOffStaff bóc tách nhân viên OFF theo đúng bộ lọc người dùng (selectedBuuCuc & searchQuery)
+  assert.match(
+    gtcBcContent,
+    /allFilteredOffStaff/,
+    'Sử dụng danh sách allFilteredOffStaff theo bộ lọc'
+  );
+
+  // 3. Có cột STT ở cột đầu tiên của bảng OFF
+  assert.match(
+    gtcBcContent,
+    /<th[^>]*>STT<\/th>\s*<th[^>]*>Bưu Cục<\/th>\s*<th[^>]*>Mã NV<\/th>/,
+    'Bảng thống kê OFF có STT ở cột đầu tiên trước Bưu Cục và Mã NV'
+  );
+
+  // 4. Có cột Số Ngày Đã Nghỉ Trong Tháng
+  assert.match(
+    gtcBcContent,
+    /Số Ngày Đã Nghỉ Trong Tháng/,
+    'Có cột Số Ngày Đã Nghỉ Trong Tháng'
+  );
+  assert.match(
+    gtcBcContent,
+    /\{off\.offDaysInMonth\} ngày nghỉ/,
+    'Hiển thị chính xác số ngày đã nghỉ trong tháng'
+  );
+
+  // 5. Chuẩn hóa tên bưu cục với normalizePostOfficeName thay vì logic tự tạo thô sơ
+  assert.match(
+    gtcBcContent,
+    /normalizePostOfficeName/,
+    'Sử dụng normalizePostOfficeName chuẩn hóa bưu cục'
+  );
+});

@@ -9,7 +9,6 @@ import {
   Download, 
   Search, 
   UserX, 
-  Clock,
   ChevronUp,
   ChevronDown,
   Send,
@@ -23,6 +22,7 @@ import {
 import { useDashboard } from '../context/DashboardContext';
 import { sortDatesDesc } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
+import { normalizePostOfficeName, normalizeDate } from '../utils/normalizationEngine';
 import { 
   capturePostOfficeCard, 
   sendPhotoToTelegram, 
@@ -35,14 +35,6 @@ import {
 
 export const BaoCaoGtcBcTab: React.FC = () => {
   const { dataset, selectedBuuCucGlobal } = useDashboard();
-
-  // Normalize post office names (e.g. merge '(LAN) Cần Đước' into '(LAN) Cần Đước 1')
-  const normalizeBuuCuc = (bc: string) => {
-    if (!bc) return '';
-    const trimmed = bc.trim();
-    if (trimmed === '(LAN) Cần Đước' || trimmed === 'Cần Đước') return '(LAN) Cần Đước 1';
-    return trimmed;
-  };
 
   // Extract all available operational dates sorted from newest to oldest (Gần nhất -> Xa nhất)
   const allUniqueDatesDesc = useMemo(() => {
@@ -107,11 +99,33 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     return selectedDate.slice(3);
   }, [selectedDate]);
 
-  // Parse DD/MM/YYYY into timestamp
+  // Parse date into timestamp safely using normalizeDate from normalizationEngine
   const parseDateMs = (d: string) => {
-    if (!d || !d.includes('/')) return 0;
-    const [day, m, y] = d.split('/').map(Number);
-    return new Date(y, m - 1, day).getTime();
+    if (!d) return 0;
+    const norm = normalizeDate(d);
+    if (norm.isValid && norm.dateObj) {
+      return norm.dateObj.getTime();
+    }
+    if (d.includes('/')) {
+      const [day, m, y] = d.split('/').map(Number);
+      if (day && m && y) return new Date(y, m - 1, day, 12, 0, 0).getTime();
+    }
+    return 0;
+  };
+
+  // Helper to safely match dates regardless of format variance
+  const isDateMatch = (d1?: string, d2?: string): boolean => {
+    if (!d1 || !d2) return false;
+    if (d1.trim() === d2.trim()) return true;
+    const n1 = normalizeDate(d1).standard;
+    const n2 = normalizeDate(d2).standard;
+    return Boolean(n1 && n2 && n1 === n2);
+  };
+
+  // Helper to safely match staff ID
+  const isMaNvMatch = (id1?: string, id2?: string): boolean => {
+    if (!id1 || !id2) return false;
+    return id1.trim() === id2.trim();
   };
 
   // Distinct operating dates in this month up to selectedDate
@@ -122,7 +136,11 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       ...dataset.gtcNhanVien.map(r => r.ngay),
       ...dataset.gtcBuuCuc.map(r => r.ngay)
     ].filter(Boolean);
-    const inMonth = rawDates.filter(d => d.slice(3) === currentMonthKey && parseDateMs(d) <= targetMs);
+    const inMonth = rawDates.filter(d => {
+      const norm = normalizeDate(d);
+      const std = norm.standard || d;
+      return std.slice(3) === currentMonthKey && parseDateMs(d) <= targetMs;
+    });
     return sortDatesDesc([...new Set(inMonth)]);
   }, [dataset.hoaHongNgay, dataset.gtcNhanVien, dataset.gtcBuuCuc, currentMonthKey, selectedDate]);
 
@@ -133,7 +151,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
   // Official list of post offices in the region (aligned with Task "Nhân sự")
   const postOfficesList = useMemo(() => {
-    const fromNs = [...new Set(dataset.nhanSu.map(r => normalizeBuuCuc(r.buuCuc)))].filter(Boolean);
+    const fromNs = [...new Set(dataset.nhanSu.map(r => normalizePostOfficeName(r.buuCuc)))].filter(Boolean);
     if (fromNs.length > 0) return fromNs.sort();
     return ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
   }, [dataset.nhanSu]);
@@ -143,17 +161,20 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     return dataset.nhanSu.filter(s => {
       // Exclude Tran Trong Phu (NVXL) and AM Nguyen Hoang Huy from delivery staff
       if (s.maNV === '3175777') return false;
+      const cv = (s.chucVu || '').toLowerCase();
       const isNvpttt = s.chucVu === 'Business Development Field Executive' ||
-        (!s.chucVu?.toLowerCase().includes('operations executive') &&
-         !s.chucVu?.toLowerCase().includes('area manager') &&
-         !s.chucVu?.toLowerCase().includes('nvxl'));
+        (!cv.includes('operations executive') &&
+         !cv.includes('area manager') &&
+         !cv.includes('nvxl') &&
+         !cv.includes('điều phối') &&
+         !cv.includes('dieu phoi'));
       return isNvpttt;
     });
   }, [dataset.nhanSu]);
 
   // Lookup map of all active staff in Task "Nhân sự" for quick cross-referencing
   const nhanSuActiveMap = useMemo(() => {
-    return new Map(dataset.nhanSu.map(s => [s.maNV, s]));
+    return new Map(dataset.nhanSu.map(s => [s.maNV.trim(), s]));
   }, [dataset.nhanSu]);
 
   // Build structured data for each post office on selectedDate
@@ -162,19 +183,22 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
     return postOfficesList.map(po => {
       // 1. All active NVPTTT belonging to this post office in Task "Nhân sự" (Real-time roster)
-      const poRosterInNs = activeDeliveryStaffInNs.filter(s => normalizeBuuCuc(s.buuCuc) === po);
+      const poRosterInNs = activeDeliveryStaffInNs.filter(s => normalizePostOfficeName(s.buuCuc) === po);
 
       // Separate staff in roster by hire date vs selectedDate
       const notYetJoinedStaff = poRosterInNs.filter(m => {
         const staffHireMs = parseDateMs(m.ngayVaoLam);
-        return staffHireMs > targetMs;
+        return targetMs > 0 && staffHireMs > 0 && staffHireMs > targetMs;
       });
 
       // 2. Delivery staff who worked on selectedDate (active delivery in gtcNhanVien)
       const activeRows = dataset.gtcNhanVien.filter(
-        r => normalizeBuuCuc(r.buuCuc) === po && r.ngay === selectedDate && r.tongDon > 0 && r.maNV !== '3175777'
+        r => normalizePostOfficeName(r.buuCuc) === po && 
+             isDateMatch(r.ngay, selectedDate) && 
+             (r.tongDon || 0) > 0 && 
+             !isMaNvMatch(r.maNV, '3175777')
       );
-      const activeMap = new Map(activeRows.map(r => [r.maNV, r]));
+      const activeMap = new Map(activeRows.map(r => [r.maNV.trim(), r]));
 
       // 3. Process active staff records with highlight flags
       const activeStaff = activeRows.map(r => {
@@ -184,7 +208,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         const gtcRate = r.tongDon > 0 ? (r.tongDonGTC / r.tongDon) * 100 : 0;
 
         // Cross-reference with Task "Nhân sự"
-        const nsRecord = nhanSuActiveMap.get(r.maNV);
+        const nsRecord = nhanSuActiveMap.get(r.maNV.trim());
 
         return {
           ...r,
@@ -203,8 +227,8 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       const isPickupSpecialist = (maNV: string, tenNV: string) => {
         if (!po.includes('Rạch Kiến')) return false;
         return (
-          maNV === '3178591' || 
-          maNV === '3178527' || 
+          isMaNvMatch(maNV, '3178591') || 
+          isMaNvMatch(maNV, '3178527') || 
           tenNV.includes('Võ Hoàng Phúc') || 
           tenNV.includes('Lương Tuấn Minh')
         );
@@ -215,9 +239,9 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         .map(m => {
           // Check if employee worked on selectedDate from hoaHongNgay
           const hhRecord = dataset.hoaHongNgay.find(
-            r => r.maNV === m.maNV && r.ngay === selectedDate
+            r => isMaNvMatch(r.maNV, m.maNV) && isDateMatch(r.ngay, selectedDate)
           );
-          const isDateTrackedInHh = dataset.hoaHongNgay.some(r => r.ngay === selectedDate);
+          const isDateTrackedInHh = dataset.hoaHongNgay.some(r => isDateMatch(r.ngay, selectedDate));
 
           let isOff = false;
           if (hhRecord) {
@@ -245,11 +269,12 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       // + Nếu nhân viên không phát sinh đơn giao hoặc đơn lấy thì ghi nhận là off (đối chiếu sheet "Hoa hồng ngày" & "GTC Nhân viên")
       // + Nếu NV không phát sinh thu nhập thì ghi nhận là OFF (đối chiếu sheet "Hoa hồng ngày")
       const isStaffOffOnDate = (maNV: string, dateStr: string): boolean => {
+        const cleanId = (maNV || '').trim();
         // Nếu là ngày được chọn và có trong danh sách giao hàng thực tế -> Đang đi làm, KHÔNG OFF
-        if (dateStr === selectedDate && activeMap.has(maNV)) return false;
+        if (isDateMatch(dateStr, selectedDate) && activeMap.has(cleanId)) return false;
 
-        const hh = dataset.hoaHongNgay.find(r => r.maNV === maNV && r.ngay === dateStr);
-        const gtc = dataset.gtcNhanVien.find(r => r.maNV === maNV && r.ngay === dateStr);
+        const hh = dataset.hoaHongNgay.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
+        const gtc = dataset.gtcNhanVien.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
 
         const hasDelivery = (gtc?.tongDon || 0) > 0 || 
                             (hh?.soDonGanGiao || 0) > 0 || 
@@ -285,7 +310,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
           // Nhân viên nhận việc sau ngày đối chiếu -> Chưa vào làm, KHÔNG đưa vào OFF
           const staffHireMs = parseDateMs(m.ngayVaoLam);
-          if (staffHireMs > targetMs) return false;
+          if (targetMs > 0 && staffHireMs > 0 && staffHireMs > targetMs) return false;
 
           // Loại trừ nhân viên chuyên lấy đối tác (đã có khối riêng tại Rạch Kiến)
           if (isPickupSpecialist(m.maNV, m.tenNV)) return false;
@@ -297,7 +322,10 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           const staffHireMs = parseDateMs(m.ngayVaoLam);
 
           // Các ngày vận hành trong tháng tính từ ngày vào làm của nhân viên đến selectedDate
-          const possibleOperatingDates = monthOperatingDates.filter(d => parseDateMs(d) >= staffHireMs);
+          const possibleOperatingDates = monthOperatingDates.filter(d => {
+            if (!staffHireMs || targetMs <= 0) return true;
+            return parseDateMs(d) >= staffHireMs;
+          });
           const expectedWorkDays = possibleOperatingDates.length > 0 ? possibleOperatingDates.length : 1;
 
           // Thống kê số ngày NV đã OFF trong tháng thông qua logic tính off chuẩn
@@ -329,7 +357,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         }).sort((a, b) => b.offDaysInMonth - a.offDaysInMonth);
 
       // 6. Post office summary metrics from gtcBuuCuc or aggregated
-      const bcRecords = dataset.gtcBuuCuc.filter(r => normalizeBuuCuc(r.buuCuc) === po && r.ngay === selectedDate);
+      const bcRecords = dataset.gtcBuuCuc.filter(r => normalizePostOfficeName(r.buuCuc) === po && isDateMatch(r.ngay, selectedDate));
       const totalVolume = bcRecords.reduce((acc, r) => acc + (r.volume || 0), 0) || 
         activeStaff.reduce((acc, r) => acc + (r.tongDon || 0), 0);
       const totalSldGan = activeStaff.reduce((acc, r) => acc + (r.tongDon || 0), 0);
@@ -402,6 +430,36 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       return true;
     });
   }, [postOfficeReportData, selectedBuuCuc, statusFilter]);
+
+  // Total filtered NVPTTT roster under current post office selection
+  const totalFilteredRoster = useMemo(() => {
+    const targetPos = selectedBuuCuc === 'all'
+      ? postOfficeReportData
+      : postOfficeReportData.filter(po => po.buuCuc === selectedBuuCuc);
+    return targetPos.reduce((acc, po) => acc + po.totalMembers, 0);
+  }, [postOfficeReportData, selectedBuuCuc]);
+
+  // All OFF staff under the current user filter (bưu cục & search query)
+  const allFilteredOffStaff = useMemo(() => {
+    const targetPos = selectedBuuCuc === 'all'
+      ? postOfficeReportData
+      : postOfficeReportData.filter(po => po.buuCuc === selectedBuuCuc);
+
+    const list: (typeof postOfficeReportData[0]['offStaff'][0] & { buuCuc: string })[] = [];
+    targetPos.forEach(po => {
+      po.offStaff.forEach(off => {
+        if (!searchQuery.trim()) {
+          list.push({ ...off, buuCuc: po.buuCuc });
+        } else {
+          const q = searchQuery.toLowerCase();
+          if (off.tenNV.toLowerCase().includes(q) || off.maNV.includes(q)) {
+            list.push({ ...off, buuCuc: po.buuCuc });
+          }
+        }
+      });
+    });
+    return list;
+  }, [postOfficeReportData, selectedBuuCuc, searchQuery]);
 
   // Handle Export to CSV/Excel
   const handleExportExcel = () => {
@@ -795,6 +853,9 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 hidden xl:inline">
                 {selectedDate === allUniqueDatesDesc[0] ? 'Ngày Gần Nhất' : 'Lịch Sử'}
               </span>
+              <span className="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hidden md:inline">
+                👥 Tổng NVPTTT: {regionalSummary.totalRoster} NV ({regionalSummary.totalActive} Làm việc • {regionalSummary.totalOff} OFF)
+              </span>
             </div>
 
             {/* BỘ LỌC 1: Chọn Ngày */}
@@ -820,10 +881,10 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               onChange={e => setSelectedBuuCuc(e.target.value)}
               className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer"
             >
-              <option value="all">Tất cả {postOfficesList.length} bưu cục</option>
-              {postOfficesList.map(po => (
-                <option key={po} value={po}>
-                  {po.replace('(LAN) ', '')}
+              <option value="all">Tất cả {postOfficesList.length} bưu cục ({regionalSummary.totalRoster} NVPTTT)</option>
+              {postOfficeReportData.map(po => (
+                <option key={po.buuCuc} value={po.buuCuc}>
+                  {po.buuCuc.replace('(LAN) ', '')} ({po.totalMembers} NVPTTT)
                 </option>
               ))}
             </select>
@@ -988,17 +1049,31 @@ export const BaoCaoGtcBcTab: React.FC = () => {
             </div>
           </div>
 
-          {/* KPI 4: Nhân viên làm việc & OFF */}
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          {/* KPI 4: Tổng Số Lượng NVPTTT */}
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'off_only' ? 'all' : 'off_only')}
+            className={`p-3 rounded-xl border shadow-sm text-center cursor-pointer transition-all ${
+              statusFilter === 'off_only'
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 ring-2 ring-rose-500'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+            }`}
+            title="Nhấp để lọc danh sách nhân viên nghỉ OFF theo bộ lọc"
+          >
             <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
-              <span>Nhân Viên Làm Việc</span>
-              <Clock className="w-4 h-4 text-indigo-500" />
+              <span className="font-bold text-slate-700 dark:text-slate-300 uppercase text-[11px]">Tổng Số Lượng NVPTTT</span>
+              <Users className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 my-0.5 text-center">
-              {regionalSummary.totalActive} nhân viên
+              {regionalSummary.totalRoster} NVPTTT
             </div>
-            <div className="text-[10px] text-slate-500 text-center">
-              Nghỉ OFF: <strong className="text-rose-600">{regionalSummary.totalOff} NV</strong> &bull; Roster: {regionalSummary.totalRoster} NVPTTT
+            <div className="text-[10px] text-slate-500 text-center flex items-center justify-center gap-1.5 flex-wrap">
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                {regionalSummary.totalActive} Làm việc
+              </span>
+              <span>&bull;</span>
+              <span className="text-rose-600 dark:text-rose-400 font-bold">
+                {regionalSummary.totalOff} Nghỉ OFF
+              </span>
             </div>
           </div>
 
@@ -1017,6 +1092,129 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          BẢNG THỐNG KÊ NHÂN VIÊN OFF (NGHỈ LÀM VIỆC NGÀY GẦN NHẤT & THEO BỘ LỌC)
+          ĐỐI CHIẾU CHUẨN TASK NHÂN SỰ & HOA HỒNG NGÀY & GTC NHÂN VIÊN
+          ========================================================================= */}
+      <div className="bg-white dark:bg-slate-850 rounded-xl border border-rose-200/90 dark:border-rose-900/60 shadow-sm overflow-hidden transition-all">
+        <div className="p-3.5 bg-gradient-to-r from-rose-50/70 via-slate-50 to-white dark:from-rose-950/40 dark:to-slate-800 border-b border-rose-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+            <div>
+              <h3 className="text-xs sm:text-sm font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+                <span>BẢNG THỐNG KÊ NHÂN VIÊN OFF (NGHỈ GIAO NGÀY {selectedDate})</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                  {allFilteredOffStaff.length} Bưu tá nghỉ OFF
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục' : selectedBuuCuc} ({totalFilteredRoster} NVPTTT)
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Thống kê nhân viên không làm việc ngày gần nhất ({selectedDate}) theo bộ lọc &bull; Đối chiếu Task Nhân Sự (Loại trừ nhân sự đã nghỉ việc hoàn toàn) &bull; Thống kê số ngày đã OFF trong tháng {currentMonthKey}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {allFilteredOffStaff.length === 0 ? (
+          <div className="py-4 px-3 text-center text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2 bg-emerald-50/40 dark:bg-emerald-950/20">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>
+              Toàn bộ {totalFilteredRoster} NVPTTT theo bộ lọc ({selectedBuuCuc === 'all' ? 'Toàn khu vực Long An' : selectedBuuCuc}) đều đi làm và phát sinh gán/giao đầy đủ ngày {selectedDate}. Không có nhân viên nào nghỉ OFF.
+            </span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-bold border-b border-rose-100 dark:border-slate-700">
+                <tr>
+                  <th className="py-2.5 px-2 text-center w-[4%] min-w-[40px]">STT</th>
+                  <th className="py-2.5 px-3 text-left w-[14%] min-w-[120px]">Bưu Cục</th>
+                  <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
+                  <th className="py-2.5 px-4 text-left w-[20%] min-w-[160px]">Họ & Tên</th>
+                  <th className="py-2.5 px-3 text-left w-[13%] min-w-[110px]">Chức Vụ / HĐ</th>
+                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px]">Trạng Thái Ngày</th>
+                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[125px]">Số Ngày Đã Nghỉ Trong Tháng</th>
+                  <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px]">Số Ngày Đã Đi Làm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                {allFilteredOffStaff.map((off, index) => {
+                  const isFrequentOff = off.offDaysInMonth >= 4;
+                  return (
+                    <tr key={`${off.buuCuc}-${off.maNV}`} className="hover:bg-rose-50/30 dark:hover:bg-slate-750 transition-colors">
+                      {/* 1. STT */}
+                      <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center">
+                        {index + 1}
+                      </td>
+
+                      {/* 2. Bưu Cục */}
+                      <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200 text-left">
+                        {off.buuCuc}
+                      </td>
+
+                      {/* 3. Mã NV */}
+                      <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center">
+                        {off.maNV}
+                      </td>
+
+                      {/* 4. Họ Tên */}
+                      <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white text-sm text-left">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{off.tenNV}</span>
+                          {off.isNewRecruit && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                              Tân Binh
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 5. Chức vụ & HĐ */}
+                      <td className="py-2.5 px-3 text-left">
+                        <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                          {off.chucVu}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {off.loaiHD} {off.nhomThamNien ? `• ${off.nhomThamNien}` : ''}
+                        </div>
+                      </td>
+
+                      {/* 6. Trạng Thái Ngày */}
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                          <UserX className="w-3 h-3" />
+                          <span>Nghỉ OFF ngày {selectedDate}</span>
+                        </span>
+                      </td>
+
+                      {/* 7. Số Ngày Nghỉ Trong Tháng */}
+                      <td className="py-2.5 px-3 text-center font-black">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black ${
+                          isFrequentOff
+                            ? 'bg-rose-600 text-white shadow-2xs'
+                            : off.offDaysInMonth > 0
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {off.offDaysInMonth} ngày nghỉ
+                        </span>
+                      </td>
+
+                      {/* 8. Số Ngày Đã Đi Làm */}
+                      <td className="py-2.5 px-3 text-center font-bold text-xs text-slate-700 dark:text-slate-300">
+                        {off.workedDaysInMonth} / {off.expectedWorkDays || totalMonthDaysSoFar} ngày
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* =========================================================================
           DANH SÁCH BẢNG CHI TIẾT TỪNG BƯU CỤC (MỖI BƯU CỤC LÀ 1 BẢNG RIÊNG)
@@ -1067,7 +1265,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     <h3 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm uppercase tracking-wide flex items-center gap-2 flex-wrap">
                       <span>DANH SÁCH NHÂN VIÊN: {po.buuCuc}</span>
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300">
-                        {po.totalMembers} NVPTTT {po.pickupSpecialists && po.pickupSpecialists.length > 0 ? `(${po.deliveryStaffCount} Giao • ${po.pickupSpecialists.length} Chuyên lấy)` : ''}
+                        Tổng số lượng: {po.totalMembers} NVPTTT ({po.activeStaff.length} Làm việc • {po.offStaff.length} Nghỉ OFF)
                       </span>
                       {po.pickupSpecialists && po.pickupSpecialists.length > 0 && (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300">
@@ -1377,7 +1575,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     <h4 className="text-xs font-black text-rose-700 dark:text-rose-400 uppercase tracking-wide flex items-center gap-2">
                       <span>Nhân Viên OFF (Nghỉ Giao Ngày {selectedDate})</span>
                       <span className="px-2 py-0.2 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                        {po.offStaff.length} Bưu tá
+                        {finalOffStaff.length} Bưu tá
                       </span>
                     </h4>
                   </div>
