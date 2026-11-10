@@ -1,6 +1,5 @@
 import React from 'react';
-import { 
-  FolderTree, 
+import {
   ChevronRight, 
   LayoutDashboard, 
   FileSpreadsheet, 
@@ -12,8 +11,7 @@ import {
   UserCheck, 
   UserMinus, 
   Coins,
-  Send,
-  ShieldCheck 
+  Send
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import type { TabType } from '../../types/dashboard';
@@ -217,10 +215,6 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
   const TabIcon = currentMeta.icon;
   const CatIcon = currentMeta.categoryIcon;
 
-  const handleOpenTree = () => {
-    window.dispatchEvent(new CustomEvent('open-executive-directory'));
-  };
-
   return (
     <div className="sticky top-0 z-30 px-3 pt-3 pb-1 sm:px-4 sm:pt-3 shrink-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md transition-all">
       <div className={`p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-850 border shadow-xs transition-all ${currentMeta.accentGradient}`}>
@@ -264,28 +258,7 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-data-quality-modal'))}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shadow-xs transition-all cursor-pointer border border-slate-700 hover:border-emerald-500/50 group"
-              title="Mở Trung Tâm Kiểm Định & Đối Chiếu Dữ Liệu (DQ Audit Center)"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span>Kiểm Định DQ</span>
-            </button>
 
-            <button
-              type="button"
-              onClick={handleOpenTree}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shadow-xs transition-all cursor-pointer border border-slate-700 hover:border-orange-500/50 group"
-              title="Mở Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M)"
-            >
-              <FolderTree className="w-3.5 h-3.5 text-orange-400 group-hover:scale-110 transition-transform" />
-              <span>Cây Cơ Cấu</span>
-              <kbd className="hidden sm:inline px-1 rounded bg-slate-800 text-[9px] font-mono text-orange-400 border border-slate-700">
-                Ctrl+M
-              </kbd>
-            </button>
           </div>
         </div>
 

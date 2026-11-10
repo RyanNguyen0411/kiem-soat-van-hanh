@@ -1317,15 +1317,29 @@ export const OverviewTab: React.FC = () => {
         { label: 'Bưu cục', value: buuCucName },
         { label: 'Thời gian', value: filterMonth !== 'all' ? `Tháng ${filterMonth}` : 'Toàn bộ thời gian' }
       ],
-      data: poGtcRows,
+      // Chuẩn hóa schema trước khi render: nguồn Sheets lưu tiLeGan/tiLeGTC dạng chuỗi,
+      // trong khi bảng Drill-down cần assignedRate/gtcRate dạng number.
+      data: poGtcRows.map((row) => {
+        const volume = Number(row.volume) || 0;
+        const sldGan = Number(row.sldGan) || 0;
+        const sldGTC = Number(row.sldGTC) || 0;
+        return {
+          ...row,
+          volume,
+          sldGan,
+          sldGTC,
+          assignedRate: volume > 0 ? (sldGan / volume) * 100 : 0,
+          gtcRate: volume > 0 ? (sldGTC / volume) * 100 : 0,
+        };
+      }),
       columns: [
         { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
         { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
-        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
-        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => r.sldGan.toLocaleString('vi-VN') },
-        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${r.assignedRate.toFixed(1)}%` },
-        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
-        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> }
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => (Number(r.volume) || 0).toLocaleString('vi-VN') },
+        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => (Number(r.sldGan) || 0).toLocaleString('vi-VN') },
+        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${(Number(r.assignedRate) || 0).toFixed(1)}%` },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{(Number(r.sldGTC) || 0).toLocaleString('vi-VN')}</span> },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{(Number(r.gtcRate) || 0).toFixed(1)}%</span> }
       ],
       summaryKpis: [
         { label: 'Volume Bưu Cục', value: (poSummary?.volume || 0).toLocaleString('vi-VN') + ' đơn', colorClass: 'text-orange-600' },

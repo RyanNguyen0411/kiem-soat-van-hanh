@@ -19,6 +19,7 @@ import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbB
 import { TelegramReportModal } from './components/common/TelegramReportModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
 import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
+import { GoogleDriveLockModal } from './components/common/GoogleDriveLockModal';
 import { GoogleDriveExportToast } from './components/common/GoogleDriveExportToast';
 import { SettingsModal } from './components/common/SettingsModal';
 
@@ -167,8 +168,9 @@ const DashboardContent: React.FC = () => {
       {/* Trung Tâm Kiểm Định Dữ Liệu & Đối Chiếu Vận Hành (DQ Audit Center) */}
       <DataQualityModal />
 
-      {/* Modal Bảo Vệ Link Nguồn Google Sheets (Yêu cầu mật khẩu dashboard) */}
+      {/* Modal Bảo Vệ Link Nguồn Google Sheets & Thư Mục Drive */}
       <GoogleSheetsLockModal />
+      <GoogleDriveLockModal />
 
       {/* Thông báo & Quản lý Xuất Dữ Liệu Lưu Trữ Google Drive */}
       <GoogleDriveExportToast />

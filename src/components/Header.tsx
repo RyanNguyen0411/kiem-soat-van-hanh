@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
-import { getDriveFolderUrl } from '../services/settingsService';
 
 export const Header: React.FC = () => {
   const { logout } = useAuth();
@@ -146,17 +145,16 @@ export const Header: React.FC = () => {
             <span>Nguồn Sheets</span>
           </button>
 
-          {/* Thư mục lưu trữ Excel trên Google Drive của AM Huy */}
-          <a
-            href={getDriveFolderUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
+          {/* Thư mục Drive: yêu cầu xác nhận và kiểm tra vai trò trước khi mở */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-google-drive-lock'))}
             className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden xl:flex items-center gap-1 text-[11px] cursor-pointer"
-            title="Mở Thư mục lưu trữ file Excel xuất từ dashboard trên Google Drive"
+            title="Mở thư mục lưu trữ GHN (yêu cầu xác nhận quyền truy cập)"
           >
             <FolderOpen className="w-3 h-3 text-emerald-400" />
             <span>Thư mục Drive</span>
-          </a>
+          </button>
 
           {/* Cài đặt kết nối: Link nguồn, Drive, Apps Script, ID & Token */}
           <button
