@@ -1184,18 +1184,18 @@ export const BaoCaoGtcBcTab: React.FC = () => {
             </span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-bold border-b border-rose-100 dark:border-slate-700">
+              <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-2.5 px-2 text-center w-[4%] min-w-[40px]">STT</th>
-                  <th className="py-2.5 px-3 text-left w-[14%] min-w-[120px]">Bưu Cục</th>
-                  <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
-                  <th className="py-2.5 px-4 text-left w-[20%] min-w-[160px]">Họ & Tên</th>
-                  <th className="py-2.5 px-3 text-left w-[13%] min-w-[110px]">Chức Vụ / HĐ</th>
-                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px]">Trạng Thái Ngày</th>
-                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[125px]">Số Ngày Đã Nghỉ Trong Tháng</th>
-                  <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px]">Số Ngày Đã Đi Làm</th>
+                  <th className="py-2.5 px-2 text-center w-[4%] min-w-[40px] whitespace-normal break-words leading-tight align-middle">STT</th>
+                  <th className="py-2.5 px-3 text-left w-[14%] min-w-[120px] whitespace-normal break-words leading-tight align-middle">Bưu Cục</th>
+                  <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                  <th className="py-2.5 px-4 text-left w-[20%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ & Tên</th>
+                  <th className="py-2.5 px-3 text-left w-[13%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Chức Vụ / HĐ</th>
+                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Ngày</th>
+                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[125px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Nghỉ Trong Tháng</th>
+                  <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Đi Làm</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1204,26 +1204,26 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                   return (
                     <tr key={`${off.buuCuc}-${off.maNV}`} className="hover:bg-rose-50/30 dark:hover:bg-slate-750 transition-colors">
                       {/* 1. STT */}
-                      <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center">
+                      <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center whitespace-nowrap align-middle">
                         {index + 1}
                       </td>
 
                       {/* 2. Bưu Cục */}
-                      <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200 text-left">
+                      <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200 text-left whitespace-nowrap align-middle">
                         {off.buuCuc}
                       </td>
 
                       {/* 3. Mã NV */}
-                      <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center">
+                      <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center whitespace-nowrap align-middle">
                         {off.maNV}
                       </td>
 
                       {/* 4. Họ Tên */}
-                      <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white text-sm text-left">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white text-sm text-left whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
                           <span>{off.tenNV}</span>
                           {off.isNewRecruit && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 whitespace-nowrap">
                               Tân Binh
                             </span>
                           )}
@@ -1231,26 +1231,26 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                       </td>
 
                       {/* 5. Chức vụ & HĐ */}
-                      <td className="py-2.5 px-3 text-left">
-                        <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                      <td className="py-2.5 px-3 text-left whitespace-nowrap align-middle">
+                        <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {off.chucVu}
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-slate-400 whitespace-nowrap">
                           {off.loaiHD} {off.nhomThamNien ? `• ${off.nhomThamNien}` : ''}
                         </div>
                       </td>
 
                       {/* 6. Trạng Thái Ngày */}
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 whitespace-nowrap">
                           <UserX className="w-3 h-3" />
                           <span>Nghỉ OFF ngày {selectedDate}</span>
                         </span>
                       </td>
 
                       {/* 7. Số Ngày Nghỉ Trong Tháng */}
-                      <td className="py-2.5 px-3 text-center font-black">
-                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black ${
+                      <td className="py-2.5 px-3 text-center font-black whitespace-nowrap align-middle">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black whitespace-nowrap ${
                           isFrequentOff
                             ? 'bg-rose-600 text-white shadow-2xs'
                             : off.offDaysInMonth > 0
@@ -1262,7 +1262,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                       </td>
 
                       {/* 8. Số Ngày Đã Đi Làm */}
-                      <td className="py-2.5 px-3 text-center font-bold text-xs text-slate-700 dark:text-slate-300">
+                      <td className="py-2.5 px-3 text-center font-bold text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
                         {off.workedDaysInMonth} / {off.expectedWorkDays || totalMonthDaysSoFar} ngày
                       </td>
                     </tr>
@@ -1376,19 +1376,19 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
               {/* BẢNG CHI TIẾT NHÂN VIÊN HOẠT ĐỘNG (ĐI GIAO TRONG NGÀY) */}
               {statusFilter !== 'off_only' && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                   <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-slate-100/95 dark:bg-slate-800 backdrop-blur-xs text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                       <tr>
-                        <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
-                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
-                        <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px]">Họ Tên</th>
-                        <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px]">Tổng Đơn</th>
-                        <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px]">Tổng Đơn GTC</th>
-                        <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px]">% GTC</th>
-                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Leadtime</th>
-                        <th className="py-2.5 px-3 text-center w-[10%] min-w-[100px]">Chuyến Đi</th>
-                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Tồn Đọng</th>
+                        <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
+                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                        <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ Tên</th>
+                        <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">Tổng Đơn</th>
+                        <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px] whitespace-normal break-words leading-tight align-middle">Tổng Đơn GTC</th>
+                        <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">% GTC</th>
+                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Leadtime</th>
+                        <th className="py-2.5 px-3 text-center w-[10%] min-w-[100px] whitespace-normal break-words leading-tight align-middle">Chuyến Đi</th>
+                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Tồn Đọng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1413,26 +1413,26 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               }`}
                             >
                               {/* 0. STT */}
-                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 dark:text-slate-400 text-center">
+                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 dark:text-slate-400 text-center whitespace-nowrap align-middle">
                                 {index + 1}
                               </td>
 
                               {/* 1. Mã NV */}
-                              <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center">
+                              <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center whitespace-nowrap align-middle">
                                 {nv.maNV}
                               </td>
 
                               {/* 2. Họ Tên */}
-                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-slate-100 text-sm text-left">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-slate-100 text-sm text-left whitespace-nowrap align-middle">
+                                <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
                                   <span>{nv.tenNV}</span>
                                   {nv.isLowAssigned && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 shadow-2xs">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 shadow-2xs whitespace-nowrap">
                                       ⚠️ &lt;30 gán ({nv.tongDon})
                                     </span>
                                   )}
                                   {nv.isLowGtc && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 shadow-2xs">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 shadow-2xs whitespace-nowrap">
                                       ⚠️ &lt;20 GTC ({nv.tongDonGTC})
                                     </span>
                                   )}
@@ -1440,22 +1440,22 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 3. Tổng Đơn */}
-                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base">
+                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base whitespace-nowrap align-middle">
                                 <span className={nv.isLowAssigned ? 'text-amber-700 dark:text-amber-400 font-black' : 'text-slate-800 dark:text-slate-100'}>
                                   {nv.tongDon.toLocaleString('vi-VN')}
                                 </span>
                               </td>
 
                               {/* 4. Tổng Đơn GTC */}
-                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base">
+                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base whitespace-nowrap align-middle">
                                 <span className={nv.isLowGtc ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-emerald-600 dark:text-emerald-400'}>
                                   {nv.tongDonGTC.toLocaleString('vi-VN')}
                                 </span>
                               </td>
 
                               {/* 5. % GTC */}
-                              <td className="py-2.5 px-3 text-center">
-                                <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black ${
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                                <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black whitespace-nowrap ${
                                   nv.gtcRate < 65 
                                     ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' 
                                     : nv.gtcRate < 75 
@@ -1467,25 +1467,25 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 6. Leadtime */}
-                              <td className="py-2.5 px-3 text-center font-bold text-sm text-slate-700 dark:text-slate-300">
+                              <td className="py-2.5 px-3 text-center font-bold text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
                                 {nv.leadtime?.toFixed(1) || '0.0'}
                               </td>
 
                               {/* 7. Chuyến Đi (Có giao ca 2 vs Chỉ giao 1 ca) */}
-                              <td className="py-2.5 px-3 text-center">
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
                                 {isShift2 ? (
-                                  <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs">
+                                  <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs whitespace-nowrap">
                                     có giao ca 2 {nv.chuyenDi && nv.chuyenDi > 2 ? `(${nv.chuyenDi}C)` : ''}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-750 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-750 dark:text-slate-400 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                                     Chỉ giao 1 ca
                                   </span>
                                 )}
                               </td>
 
                               {/* 8. Tồn Đọng */}
-                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base text-rose-600 dark:text-rose-400">
+                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base text-rose-600 dark:text-rose-400 whitespace-nowrap align-middle">
                                 {nv.tonDong || 0}
                               </td>
                             </tr>
@@ -1496,19 +1496,19 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
                     {/* Hàng Tổng Cộng Bưu Cục */}
                     {finalActiveStaff.length > 0 && (
-                      <tfoot className="bg-slate-50 dark:bg-slate-750/90 font-bold border-t border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                      <tfoot className="bg-slate-50/95 dark:bg-slate-750/95 backdrop-blur-xs font-bold border-t border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white sticky bottom-0 z-10 shadow-2xs">
                         <tr>
-                          <td colSpan={3} className="py-3 px-4 text-left font-black uppercase text-xs text-orange-600">
+                          <td colSpan={3} className="py-3 px-4 text-left font-black uppercase text-xs text-orange-600 whitespace-nowrap align-middle">
                             Tổng {finalActiveStaff.length} Nhân Viên Làm Việc:
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-sm md:text-base">
+                          <td className="py-3 px-3 text-center font-black text-sm md:text-base whitespace-nowrap align-middle">
                             {finalActiveStaff.reduce((a, b) => a + b.tongDon, 0).toLocaleString('vi-VN')}
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-sm md:text-base text-emerald-600">
+                          <td className="py-3 px-3 text-center font-black text-sm md:text-base text-emerald-600 whitespace-nowrap align-middle">
                             {finalActiveStaff.reduce((a, b) => a + b.tongDonGTC, 0).toLocaleString('vi-VN')}
                           </td>
-                          <td className="py-3 px-3 text-center font-black">
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-650 text-xs font-black">
+                          <td className="py-3 px-3 text-center font-black whitespace-nowrap align-middle">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-650 text-xs font-black whitespace-nowrap">
                               {finalActiveStaff.reduce((a, b) => a + b.tongDon, 0) > 0
                                 ? (
                                     (finalActiveStaff.reduce((a, b) => a + b.tongDonGTC, 0) /
@@ -1518,15 +1518,15 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                                 : '0%'}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-center font-bold text-xs text-slate-400">
+                          <td className="py-3 px-3 text-center font-bold text-xs text-slate-400 whitespace-nowrap align-middle">
                             -
                           </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                          <td className="py-3 px-3 text-center whitespace-nowrap align-middle">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 whitespace-nowrap">
                               {finalActiveStaff.filter(r => (r.chuyenDi || 1) >= 2).length} NV ca 2
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-sm md:text-base text-rose-600">
+                          <td className="py-3 px-3 text-center font-black text-sm md:text-base text-rose-600 whitespace-nowrap align-middle">
                             {finalActiveStaff.reduce((a, b) => a + b.tonDong, 0).toLocaleString('vi-VN')}
                           </td>
                         </tr>
@@ -1558,59 +1558,59 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 shadow-2xs">
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 shadow-2xs">
                     <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 font-bold border-b border-blue-100 dark:border-blue-800">
+                      <thead className="bg-blue-50/95 dark:bg-blue-950/80 backdrop-blur-xs text-blue-900 dark:text-blue-200 font-bold border-b border-blue-100 dark:border-blue-800 sticky top-0 z-10 shadow-2xs">
                         <tr>
-                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
-                          <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px]">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[22%] min-w-[160px]">Họ &amp; Tên</th>
-                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[90px]">Loại Hợp Đồng</th>
-                          <th className="py-2.5 px-3 text-center w-[15%] min-w-[110px]">Trạng Thái Làm Việc</th>
-                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px]">Chức Năng Vận Hành</th>
-                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px]">Nhiệm Vụ Thực Tế</th>
+                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
+                          <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                          <th className="py-2.5 px-4 text-left w-[22%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">Loại Hợp Đồng</th>
+                          <th className="py-2.5 px-3 text-center w-[15%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Làm Việc</th>
+                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px] whitespace-normal break-words leading-tight align-middle">Chức Năng Vận Hành</th>
+                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px] whitespace-normal break-words leading-tight align-middle">Nhiệm Vụ Thực Tế</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-blue-50 dark:divide-blue-900/30">
                         {po.pickupSpecialists.map((sp, index) => (
                           <tr key={sp.maNV} className="hover:bg-blue-50/40 transition-colors">
                             {/* 0. STT */}
-                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-500 dark:text-slate-400">
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap align-middle">
                               {index + 1}
                             </td>
                             {/* 1. Mã NV */}
-                            <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-600 dark:text-slate-400">
+                            <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                               {sp.maNV}
                             </td>
-                            <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
-                              <span>{sp.tenNV}</span>
+                            <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap align-middle">
+                              <span className="whitespace-nowrap">{sp.tenNV}</span>
                               {sp.nhomThamNien && (
-                                <span className="ml-1.5 px-1.5 py-0.2 text-[9px] rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-semibold">
+                                <span className="ml-1.5 px-1.5 py-0.2 text-[9px] rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-semibold whitespace-nowrap">
                                   {sp.nhomThamNien}
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-semibold text-slate-700 dark:text-slate-300">
+                            <td className="py-2.5 px-3 text-center font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
                               {sp.loaiHD}
                             </td>
-                            <td className="py-2.5 px-3 text-center">
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
                               {sp.isOff ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 whitespace-nowrap">
                                   OFF ngày
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 whitespace-nowrap">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                   Bình thường
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 whitespace-nowrap">
                                 📦 Chuyên Lấy Hàng
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-400 font-medium">
+                            <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap align-middle">
                               Chỉ phụ trách lấy hàng, không phát sinh đơn giao
                             </td>
                           </tr>
@@ -1651,18 +1651,18 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     </span>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+                  <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
                     <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-rose-50/60 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 font-bold border-b border-rose-100 dark:border-slate-700">
+                      <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                         <tr>
-                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
-                          <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px]">Họ & Tên</th>
-                          <th className="py-2.5 px-3 text-center w-[11%] min-w-[85px]">Hợp Đồng</th>
-                          <th className="py-2.5 px-3 text-center w-[14%] min-w-[110px]">Trạng Thái Ngày</th>
-                          <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px]">Số Ngày Đã Nghỉ Trong Tháng</th>
-                          <th className="py-2.5 px-3 text-center w-[11%] min-w-[95px]">Số Ngày Đã Đi Làm</th>
-                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[105px]">Đánh Giá Chuyên Cần</th>
+                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
+                          <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                          <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                          <th className="py-2.5 px-3 text-center w-[11%] min-w-[85px] whitespace-normal break-words leading-tight align-middle">Hợp Đồng</th>
+                          <th className="py-2.5 px-3 text-center w-[14%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Ngày</th>
+                          <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Nghỉ Trong Tháng</th>
+                          <th className="py-2.5 px-3 text-center w-[11%] min-w-[95px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Đi Làm</th>
+                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[105px] whitespace-normal break-words leading-tight align-middle">Đánh Giá Chuyên Cần</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1672,21 +1672,21 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                           return (
                             <tr key={off.maNV} className="hover:bg-rose-50/30 dark:hover:bg-slate-750 transition-colors">
                               {/* 0. STT */}
-                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center">
+                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center whitespace-nowrap align-middle">
                                 {index + 1}
                               </td>
 
                               {/* 1. Mã NV */}
-                              <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-500 text-center">
+                              <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-500 text-center whitespace-nowrap align-middle">
                                 {off.maNV}
                               </td>
 
                               {/* 2. Họ Tên */}
-                              <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100 text-sm text-left">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                              <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100 text-sm text-left whitespace-nowrap align-middle">
+                                <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
                                   <span>{off.tenNV}</span>
                                   {off.nhomThamNien && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-750 dark:text-slate-300">
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-750 dark:text-slate-300 whitespace-nowrap">
                                       {off.nhomThamNien.split(':')[0]}
                                     </span>
                                   )}
@@ -1694,7 +1694,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 3. Hợp Đồng */}
-                              <td className="py-2.5 px-3 text-center">
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   off.loaiHD === 'HĐLĐ'
                                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
@@ -1705,16 +1705,16 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 4. Trạng Thái Ngày */}
-                              <td className="py-2.5 px-3 text-center">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 whitespace-nowrap">
                                   <UserX className="w-3 h-3" />
                                   <span>OFF (Không đơn giao/lấy)</span>
                                 </span>
                               </td>
 
                               {/* 5. Số Ngày Nghỉ Trong Tháng */}
-                              <td className="py-2.5 px-3 text-center font-black">
-                                <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black ${
+                              <td className="py-2.5 px-3 text-center font-black whitespace-nowrap align-middle">
+                                <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black whitespace-nowrap ${
                                   isFrequentOff
                                     ? 'bg-rose-600 text-white shadow-2xs'
                                     : off.offDaysInMonth > 0
@@ -1726,13 +1726,13 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 6. Số Ngày Đã Đi Làm */}
-                              <td className="py-2.5 px-3 text-center font-bold text-sm text-slate-700 dark:text-slate-300">
+                              <td className="py-2.5 px-3 text-center font-bold text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
                                 {off.workedDaysInMonth} / {off.expectedWorkDays || totalMonthDaysSoFar} ngày
                               </td>
 
                               {/* 7. Đánh Giá Chuyên Cần */}
-                              <td className="py-2.5 px-3 text-center">
-                                <span className={`text-[11px] font-bold ${
+                              <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
+                                <span className={`text-[11px] font-bold whitespace-nowrap ${
                                   isFrequentOff 
                                     ? 'text-rose-600 dark:text-rose-400' 
                                     : off.offDaysInMonth > 0

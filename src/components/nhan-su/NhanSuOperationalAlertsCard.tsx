@@ -364,7 +364,8 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
   // =========================================================================
   // BẢNG 2: THEO DÕI CẢNH BÁO OFF CỦA NHÂN VIÊN TRONG THÁNG
-  // CẢNH BÁO ĐẶC BIỆT: 1 TUẦN OFF > 2 NGÀY (LOẠI NHÂN VIÊN ĐÃ NGHỈ VIỆC)
+  // QUY CHUẨN CHUYÊN CẦN AM HUY: OFF ≥ 2 NGÀY/TUẦN HOẶC OFF > 4 NGÀY/THÁNG
+  // (LOẠI BỎ HOÀN TOÀN NHÂN VIÊN ĐÃ NGHỈ VIỆC KHỎI BẢNG CẢNH BÁO OFF)
   // =========================================================================
   const offTrackingAlertData = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -472,12 +473,28 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         }
       });
 
-      // CẢNH BÁO ĐẶC BIỆT: Nhân viên có ít nhất 1 tuần OFF > 2 ngày
+      // =======================================================================
+      // LOGIC CẢNH BÁO CHUYÊN CẦN CHUẨN HÓA THEO QUY CHẾ AM HUY:
+      // Nếu OFF 2 ngày trong cùng 1 tuần (count >= 2)
+      // HOẶC OFF hơn 4 ngày trong cùng 1 tháng (totalOffDays > 4)
+      // ĐỀU BỊ ĐÁNH GIÁ LÀ KHÔNG ĐẠT CHUYÊN CẦN
+      // =======================================================================
       const warningWeeks = Object.entries(weekOffCounter)
-        .filter(([, count]) => count > 2)
+        .filter(([, count]) => count >= 2)
         .map(([w, count]) => `${w} (${count} ngày OFF)`);
 
       const hasWeeklyOffWarning = warningWeeks.length > 0;
+      const hasMonthlyOffWarning = offDates.length > 4;
+      const hasChuyenCanWarning = hasWeeklyOffWarning || hasMonthlyOffWarning;
+
+      let chuyenCanBadgeText = 'Đạt chuẩn';
+      if (hasWeeklyOffWarning && hasMonthlyOffWarning) {
+        chuyenCanBadgeText = `⚠️ ${warningWeeks[0]} & Tháng ${offDates.length}N (>4N)`;
+      } else if (hasWeeklyOffWarning) {
+        chuyenCanBadgeText = `⚠️ ${warningWeeks.join(', ')}`;
+      } else if (hasMonthlyOffWarning) {
+        chuyenCanBadgeText = `⚠️ Tháng ${offDates.length} ngày OFF (>4N)`;
+      }
 
       // Tổng hợp chỉ số vận hành trên các ngày đi làm thực tế
       let sumGan = 0;
@@ -548,6 +565,9 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         totalWorkedDays: workedDates.length,
         offDates,
         hasWeeklyOffWarning,
+        hasMonthlyOffWarning,
+        hasChuyenCanWarning,
+        chuyenCanBadgeText,
         warningWeeks,
         sumGan,
         sumGtc,
@@ -561,9 +581,9 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         dailyDetails
       };
     }).sort((a, b) => {
-      // Ưu tiên nhân viên có cảnh báo tuần, sau đó theo số ngày OFF giảm dần
-      if (a.hasWeeklyOffWarning && !b.hasWeeklyOffWarning) return -1;
-      if (!a.hasWeeklyOffWarning && b.hasWeeklyOffWarning) return 1;
+      // Ưu tiên nhân viên không đạt chuyên cần lên đầu, sau đó theo số ngày OFF giảm dần
+      if (a.hasChuyenCanWarning && !b.hasChuyenCanWarning) return -1;
+      if (!a.hasChuyenCanWarning && b.hasChuyenCanWarning) return 1;
       return b.totalOffDays - a.totalOffDays;
     });
 
@@ -581,7 +601,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
           ? (totalWorkedDaysInPo / totalPossibleDays) * 100 
           : 100;
 
-        const warnedStaffList = staffInPo.filter(s => s.hasWeeklyOffWarning);
+        const warnedStaffList = staffInPo.filter(s => s.hasChuyenCanWarning);
 
         return {
           buuCuc: po,
@@ -595,7 +615,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
       });
 
     const totalStaffTracked = staffSummaries.length;
-    const totalWarnedStaff = staffSummaries.filter(s => s.hasWeeklyOffWarning).length;
+    const totalWarnedStaff = staffSummaries.filter(s => s.hasChuyenCanWarning).length;
     const totalOffDaysAll = staffSummaries.reduce((s, x) => s + x.totalOffDays, 0);
 
     return {
@@ -680,7 +700,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         'Chức Vụ',
         'Loại HĐ',
         'Tổng Ngày OFF',
-        'Cảnh Báo Tuần (OFF > 2 Ngày)',
+        'Cảnh Báo Chuyên Cần (≥2N/tuần hoặc >4N/tháng)',
         'Tổng SLĐ Gán',
         'Tổng SLĐ GTC',
         '% GTC',
@@ -698,7 +718,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         s.chucVu,
         s.loaiHD,
         s.totalOffDays,
-        s.hasWeeklyOffWarning ? s.warningWeeks.join('; ') : 'Bình thường',
+        s.hasChuyenCanWarning ? s.chuyenCanBadgeText.replace('⚠️ ', '') : 'Đạt chuẩn',
         s.sumGan,
         s.sumGtc,
         `${s.avgGtcRate.toFixed(1)}%`,
@@ -708,46 +728,46 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         Math.round(s.avgSalaryPerDay),
         Math.round(s.avgUnitPrice)
       ]);
-      exportToCSV(`Canh_Bao_Nhan_Vien_OFF_${selectedMonth}_${selectedWeek}`, headers, rows);
+      exportToCSV(`Canh_Bao_Chuyen_Can_Nhan_Vien_OFF_${selectedMonth}_${selectedWeek}`, headers, rows);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-900/60 rounded-2xl shadow-md overflow-hidden transition-all">
+    <div className="bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900/60 rounded-xl shadow-xs overflow-hidden transition-all">
       
-      {/* 1. HEADER CARD: TIÊU ĐỀ & 2 SUB-TAB CHUYỂN ĐỔI */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-50/80 via-white to-orange-50/60 dark:from-slate-800 dark:via-slate-800 dark:to-slate-750 border-b border-indigo-100 dark:border-slate-700">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+      {/* 1. HEADER CARD: TIÊU ĐỀ & 2 SUB-TAB CHUYỂN ĐỔI (TỐI GIẢN & THU GỌN THEO ẢNH ĐÍNH KÈM) */}
+      <div className="p-2.5 sm:p-3 bg-gradient-to-r from-indigo-50/70 via-white to-orange-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-750 border-b border-indigo-100 dark:border-slate-700">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
           
-          {/* Tiêu đề chính */}
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-xl shadow-sm shrink-0 mt-0.5 sm:mt-0">
-              <ShieldAlert className="w-5 h-5" />
+          {/* Tiêu đề chính tinh gọn */}
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-lg shadow-2xs shrink-0">
+              <ShieldAlert className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-wide">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
                   Trung Tâm Giám Sát &amp; Cảnh Báo Vận Hành Nhân Sự
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                   AM Huy (ĐNB)
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                 Bảo vệ kỷ luật tuyến phát: Cảnh báo gán/giao không đạt chuẩn &amp; Kiểm soát tần suất nghỉ OFF theo tháng/tuần
               </p>
             </div>
           </div>
 
-          {/* 2 Sub-Tabs Chuyển Đổi với Badge Bộ Đếm */}
-          <div className="flex items-center gap-2 self-start lg:self-auto bg-slate-100 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          {/* 2 Sub-Tabs Chuyển Đổi với Badge Bộ Đếm - Layout Tinh Gọn */}
+          <div className="flex items-center gap-1.5 self-start lg:self-auto bg-slate-100 dark:bg-slate-900/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
             {/* Tab 1 */}
             <button
               type="button"
               onClick={() => setActiveSubTab('low_assign')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeSubTab === 'low_assign'
-                  ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-xs border border-amber-200 dark:border-amber-900/60'
+                  ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-2xs border border-amber-200 dark:border-amber-900/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -766,14 +786,14 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
             <button
               type="button"
               onClick={() => setActiveSubTab('off_alert')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeSubTab === 'off_alert'
-                  ? 'bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 shadow-xs border border-rose-200 dark:border-rose-900/60'
+                  ? 'bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 shadow-2xs border border-rose-200 dark:border-rose-900/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-              <span>Cảnh Báo Nhân Viên OFF (&gt;2 ngày/tuần)</span>
+              <span>Cảnh Báo Chuyên Cần &amp; OFF</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                 activeSubTab === 'off_alert'
                   ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
@@ -786,13 +806,13 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
         </div>
 
-        {/* 2. BỘ LỌC ĐA NĂNG: BƯU CỤC (TICK CHỌN), THÁNG (TICK CHỌN), TUẦN (TICK CHỌN), TÌM KIẾM & XUẤT EXCEL */}
-        <div className="mt-4 pt-3.5 border-t border-slate-200/80 dark:border-slate-700 space-y-3">
+        {/* 2. BỘ LỌC ĐA NĂNG: BƯU CỤC (TICK CHỌN), THÁNG, TUẦN, TÌM KIẾM & XUẤT EXCEL - GỌN GÀNG TỐI ƯU */}
+        <div className="mt-2.5 pt-2 border-t border-slate-200/80 dark:border-slate-700 space-y-2">
           
           {/* Hàng 1: Tick chọn bưu cục */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
-              <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-indigo-500" />
               Bưu Cục:
             </span>
 
@@ -800,16 +820,16 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
             <button
               type="button"
               onClick={() => handleTogglePo('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 selectedPos.includes('all')
                   ? 'bg-indigo-600 text-white shadow-2xs'
                   : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {selectedPos.includes('all') ? (
-                <CheckSquare className="w-3.5 h-3.5" />
+                <CheckSquare className="w-3 h-3" />
               ) : (
-                <Square className="w-3.5 h-3.5" />
+                <Square className="w-3 h-3" />
               )}
               <span>Tất cả 5 bưu cục</span>
             </button>
@@ -822,7 +842,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                   key={po}
                   type="button"
                   onClick={() => handleTogglePo(po)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                     isChecked && !selectedPos.includes('all')
                       ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-400'
                       : isChecked
@@ -831,9 +851,9 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                   }`}
                 >
                   {isChecked ? (
-                    <CheckSquare className="w-3.5 h-3.5" />
+                    <CheckSquare className="w-3 h-3" />
                   ) : (
-                    <Square className="w-3.5 h-3.5" />
+                    <Square className="w-3 h-3" />
                   )}
                   <span>{po.replace('(LAN) ', '')}</span>
                 </button>
@@ -842,17 +862,17 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
           </div>
 
           {/* Hàng 2: Tick chọn Tháng, Tick chọn Tuần, Tìm Kiếm & Nút Xuất Excel */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {/* Tick chọn Tháng */}
-              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 ml-1.5" />
-                <span className="text-[11px] font-bold text-slate-500 mr-1">Tháng:</span>
+              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 h-7">
+                <Calendar className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-[10px] font-bold text-slate-500">Tháng:</span>
                 <select
                   value={selectedMonth}
                   onChange={e => setSelectedMonth(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none pr-2 cursor-pointer"
+                  className="bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
                   <option value="all">Tất cả các tháng</option>
                   {availableMonths.map(m => (
@@ -862,13 +882,13 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               </div>
 
               {/* Tick chọn Tuần */}
-              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 ml-1.5" />
-                <span className="text-[11px] font-bold text-slate-500 mr-1">Tuần:</span>
+              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 h-7">
+                <Clock className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+                <span className="text-[10px] font-bold text-slate-500">Tuần:</span>
                 <select
                   value={selectedWeek}
                   onChange={e => setSelectedWeek(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none pr-2 cursor-pointer"
+                  className="bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
                   <option value="all">Tất cả tuần</option>
                   {availableWeeks.map(w => (
@@ -878,62 +898,67 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               </div>
 
               {/* Thông tin số ngày áp dụng */}
-              <span className="text-[11px] text-slate-500 hidden sm:inline">
+              <span className="text-[10px] text-slate-500 hidden sm:inline">
                 ({filteredActiveDates.length} ngày vận hành)
               </span>
             </div>
 
             {/* Tìm kiếm & Xuất Excel */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-48">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-44">
+                <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Tìm mã NV, tên..."
-                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                  className="w-full pl-7 pr-2 text-[11px] h-7 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
                 />
               </div>
 
               <button
                 type="button"
                 onClick={handleExportData}
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-2xs transition-all whitespace-nowrap cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 h-7 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-2xs transition-all whitespace-nowrap cursor-pointer"
                 title="Xuất Excel toàn bộ dữ liệu bảng cảnh báo theo bộ lọc"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3 h-3" />
                 <span>Xuất Excel</span>
               </button>
             </div>
 
           </div>
 
+          {/* Hộp ghi chú quy chế vận hành - RÚT GỌN 1 DÒNG DUY NHẤT (THEO ẢNH ĐÍNH KÈM) */}
+          {activeSubTab === 'low_assign' ? (
+            <div className="p-1 px-2.5 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-md flex items-center gap-1.5 text-[10.5px] text-amber-900 dark:text-amber-200">
+              <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate">
+                <strong>Mức tối thiểu khu vực:</strong> Gán &ge; 30 đơn &bull; GTC &ge; 20 đơn/ngày. Loại trừ NV chuyên lấy (Rạch Kiến) &amp; NV đã OFF.
+              </span>
+            </div>
+          ) : (
+            <div className="p-1 px-2.5 bg-rose-50/80 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-md flex items-center gap-1.5 text-[10.5px] text-rose-900 dark:text-rose-200">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span className="truncate">
+                <strong>Quy chế chuyên cần khu vực:</strong> Không đạt khi <b>1 tuần OFF &ge; 2 ngày</b> hoặc <b>1 tháng OFF &gt; 4 ngày</b> (đã loại trừ nhân viên thôi việc).
+              </span>
+            </div>
+          )}
+
         </div>
 
       </div>
 
-      {/* 3. NỘI DUNG BẢNG 1 HOẶC BẢNG 2 THEO SUB-TAB */}
-      <div className="p-4 sm:p-5">
+      {/* 3. NỘI DUNG BẢNG 1 HOẶC BẢNG 2 THEO SUB-TAB (STICKY HEADER + DỮ LIỆU CÙNG 1 HÀNG) */}
+      <div className="p-2.5 sm:p-3">
         
         {/* =========================================================================
             SUB-TAB 1: BẢNG THEO DÕI CẢNH BÁO GÁN/GIAO KHÔNG ĐẠT MỐC TỐI THIỂU
             ========================================================================= */}
         {activeSubTab === 'low_assign' && (
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             
-            {/* Thanh thông tin hướng dẫn nghiệp vụ */}
-            <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
-              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <strong>Quy chuẩn cảnh báo vận hành khu vực Long An: </strong>
-                Mức gán tối thiểu: <b>&ge; 30 đơn/ngày</b> &bull; Mức giao thành công (GTC) tối thiểu: <b>&ge; 20 đơn/ngày</b>.
-                <span className="block mt-0.5 text-amber-800 dark:text-amber-300">
-                  &bull; <i>Đã loại trừ nhân viên chuyên lấy hàng tại Rạch Kiến (Võ Hoàng Phúc, Lương Tuấn Minh) và nhân viên đã OFF trong ngày. Bấm vào từng bưu cục để xem chi tiết từng lượt vi phạm.</i>
-                </span>
-              </div>
-            </div>
-
             {/* Danh sách thẻ từng Bưu Cục có thể mở rộng */}
             {lowAssignAlertData.groupedByPo.map(poGroup => {
               const isExpanded = Boolean(expandedPoLowAssign[poGroup.buuCuc]);
@@ -942,106 +967,107 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               return (
                 <div 
                   key={poGroup.buuCuc}
-                  className={`rounded-xl border transition-all overflow-hidden ${
+                  className={`rounded-lg border transition-all overflow-hidden ${
                     hasViolations
-                      ? 'border-amber-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs'
+                      ? 'border-amber-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs'
                       : 'border-slate-200 dark:border-slate-750 bg-slate-50/60 dark:bg-slate-800/60 opacity-90'
                   }`}
                 >
-                  {/* Header bưu cục */}
+                  {/* Header bưu cục gọn gàng */}
                   <div 
                     onClick={() => togglePoLowAssign(poGroup.buuCuc)}
-                    className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-amber-50/40 dark:hover:bg-slate-750 transition-colors"
+                    className="p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2 cursor-pointer hover:bg-amber-50/40 dark:hover:bg-slate-750 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-3 h-3 rounded-full ${hasViolations ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${hasViolations ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                          <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">
                             {poGroup.buuCuc}
                           </h3>
-                          <span className={`px-2 py-0.2 rounded-full text-[10px] font-black ${
+                          <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                             hasViolations
                               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                               : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           }`}>
-                            {poGroup.violationCount} lượt vi phạm ({poGroup.uniqueStaffCount} nhân viên)
+                            {poGroup.violationCount} lượt vi phạm ({poGroup.uniqueStaffCount} NV)
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Tổng đơn gán: <b>{poGroup.totalGan.toLocaleString()}</b> &bull; GTC: <b>{poGroup.totalGtc.toLocaleString()}</b> ({poGroup.avgGtcRate.toFixed(1)}%) &bull; Gán lấy: <b>{poGroup.totalGanLay.toLocaleString()}</b> &bull; Lấy TC: <b>{poGroup.totalLayTc.toLocaleString()}</b> ({poGroup.avgLayTcRate.toFixed(1)}%)
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Gán: <b>{poGroup.totalGan.toLocaleString()}</b> &bull; GTC: <b>{poGroup.totalGtc.toLocaleString()}</b> ({poGroup.avgGtcRate.toFixed(1)}%) &bull; Gán lấy: <b>{poGroup.totalGanLay.toLocaleString()}</b> &bull; Lấy TC: <b>{poGroup.totalLayTc.toLocaleString()}</b> ({poGroup.avgLayTcRate.toFixed(1)}%)
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 self-end md:self-auto">
-                      <div className="text-right text-[11px] text-slate-600 dark:text-slate-300 hidden sm:block">
-                        <div>Tồn đọng: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalTonDong}</b> đơn</div>
-                        <div>Leadtime TB: <b>{poGroup.avgLeadtime.toFixed(1)}h</b></div>
+                    <div className="flex items-center gap-2 self-end md:self-auto">
+                      <div className="text-right text-[10px] text-slate-600 dark:text-slate-300 hidden sm:block">
+                        <div>Tồn đọng: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalTonDong}</b> đơn &bull; Leadtime: <b>{poGroup.avgLeadtime.toFixed(1)}h</b></div>
                       </div>
 
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all ${
                           isExpanded
                             ? 'bg-amber-600 text-white'
                             : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <span>{isExpanded ? 'Thu gọn' : `Chi tiết (${poGroup.violationCount})`}</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Bảng chi tiết từng lượt nhân viên vi phạm khi mở rộng */}
+                  {/* Bảng chi tiết từng lượt nhân viên vi phạm khi mở rộng (STICKY HEADER + DỮ LIỆU CÙNG 1 HÀNG) */}
                   {isExpanded && (
-                    <div className="p-3.5 border-t border-amber-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60">
+                    <div className="p-2.5 border-t border-amber-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60">
                       {poGroup.items.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <div className="py-3 text-center text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                           <span>Bưu cục {poGroup.buuCuc} không có nhân viên nào bị cảnh báo gán/giao thấp trong giai đoạn này.</span>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
-                          <table className="w-full text-xs text-left">
-                            <thead className="bg-amber-50/60 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-100 dark:border-slate-700">
+                        <div className="overflow-x-auto max-h-[460px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+                          <table className="w-full text-xs text-left border-collapse">
+                            {/* CỐ ĐỊNH TIÊU ĐỀ: STICKY THEAD - CHỈ TIÊU ĐỀ MỚI ĐƯỢC NGẮT DÒNG */}
+                            <thead className="bg-amber-50/95 dark:bg-slate-850 backdrop-blur-xs text-amber-900 dark:text-amber-200 font-bold border-b border-amber-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                               <tr>
-                                <th className="py-2.5 px-2 text-center w-10">STT</th>
-                                <th className="py-2.5 px-3 text-center">Ngày</th>
-                                <th className="py-2.5 px-3 text-center">Mã NV</th>
-                                <th className="py-2.5 px-4">Họ &amp; Tên</th>
-                                <th className="py-2.5 px-3 text-center bg-amber-100/50 dark:bg-amber-900/30">SLĐ Gán (&lt;30)</th>
-                                <th className="py-2.5 px-3 text-center bg-rose-100/50 dark:bg-rose-900/30">SLĐ GTC (&lt;20)</th>
-                                <th className="py-2.5 px-3 text-center">% GTC</th>
-                                <th className="py-2.5 px-3 text-center">SLĐ Lấy</th>
-                                <th className="py-2.5 px-3 text-center">Lấy TC</th>
-                                <th className="py-2.5 px-3 text-center">% Lấy TC</th>
-                                <th className="py-2.5 px-3 text-center">Leadtime</th>
-                                <th className="py-2.5 px-3 text-center">Chuyến Đi</th>
-                                <th className="py-2.5 px-3 text-center">Tồn Đọng</th>
-                                <th className="py-2.5 px-3 text-center">Loại Cảnh Báo</th>
+                                <th className="py-2 px-2 text-center w-10 whitespace-normal break-words leading-tight align-middle">STT</th>
+                                <th className="py-2 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Ngày</th>
+                                <th className="py-2 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                                <th className="py-2 px-3 whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                                <th className="py-2 px-2 text-center bg-amber-100/60 dark:bg-amber-900/40 whitespace-normal break-words leading-tight align-middle">SLĐ Gán (&lt;30)</th>
+                                <th className="py-2 px-2 text-center bg-rose-100/60 dark:bg-rose-900/40 whitespace-normal break-words leading-tight align-middle">SLĐ GTC (&lt;20)</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">% GTC</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Lấy</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Lấy TC</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">% Lấy TC</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Leadtime</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Chuyến Đi</th>
+                                <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Tồn Đọng</th>
+                                <th className="py-2 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Loại Cảnh Báo</th>
                               </tr>
                             </thead>
+                            {/* DỮ LIỆU CHI TIẾT: BẮT BUỘC CÙNG 1 HÀNG (WHITESPACE-NOWRAP) */}
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-750 text-slate-700 dark:text-slate-200">
                               {poGroup.items.map((v, idx) => (
                                 <tr key={`${v.maNV}_${v.stdDate}_${idx}`} className="hover:bg-amber-50/30 dark:hover:bg-slate-750 transition-colors">
-                                  <td className="py-2 px-2 text-center text-slate-400 font-medium">
+                                  <td className="py-1.5 px-2 text-center text-slate-400 font-medium whitespace-nowrap align-middle">
                                     {idx + 1}
                                   </td>
-                                  <td className="py-2 px-3 text-center font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                  <td className="py-1.5 px-2.5 text-center font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
                                     {v.stdDate}
                                   </td>
-                                  <td className="py-2 px-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                                  <td className="py-1.5 px-2.5 text-center font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
                                     {v.maNV}
                                   </td>
-                                  <td className="py-2 px-4 font-bold text-slate-900 dark:text-white">
+                                  <td className="py-1.5 px-3 font-bold text-slate-900 dark:text-white whitespace-nowrap align-middle">
                                     {v.tenNV}
                                   </td>
                                   
                                   {/* SLĐ Gán */}
-                                  <td className="py-2 px-3 text-center font-bold">
-                                    <span className={`px-2 py-0.5 rounded text-xs font-black ${
+                                  <td className="py-1.5 px-2 text-center font-bold whitespace-nowrap align-middle">
+                                    <span className={`px-1.5 py-0.2 rounded text-[11px] font-black ${
                                       v.isLowAssigned
                                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                                         : 'text-slate-800 dark:text-slate-200'
@@ -1051,8 +1077,8 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                   </td>
 
                                   {/* SLĐ GTC */}
-                                  <td className="py-2 px-3 text-center font-bold">
-                                    <span className={`px-2 py-0.5 rounded text-xs font-black ${
+                                  <td className="py-1.5 px-2 text-center font-bold whitespace-nowrap align-middle">
+                                    <span className={`px-1.5 py-0.2 rounded text-[11px] font-black ${
                                       v.isLowGtc
                                         ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                                         : 'text-slate-800 dark:text-slate-200'
@@ -1062,35 +1088,35 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                   </td>
 
                                   {/* % GTC */}
-                                  <td className="py-2 px-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                                  <td className="py-1.5 px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
                                     {v.gtcRate.toFixed(1)}%
                                   </td>
 
                                   {/* Lấy Hàng */}
-                                  <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                  <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                     {v.soDonGanLay}
                                   </td>
-                                  <td className="py-2 px-3 text-center font-bold text-purple-600 dark:text-purple-400">
+                                  <td className="py-1.5 px-2 text-center font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap align-middle">
                                     {v.donLayTinhLuong}
                                   </td>
-                                  <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                  <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                     {v.soDonGanLay > 0 ? `${v.tyLeLayTC.toFixed(1)}%` : '-'}
                                   </td>
 
                                   {/* Chỉ số vận hành */}
-                                  <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                  <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                     {v.leadtime ? `${v.leadtime.toFixed(1)}h` : '-'}
                                   </td>
-                                  <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                  <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                     {v.chuyenDi || 1}
                                   </td>
-                                  <td className="py-2 px-3 text-center font-bold text-rose-600 dark:text-rose-400">
+                                  <td className="py-1.5 px-2 text-center font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap align-middle">
                                     {v.tonDong || 0}
                                   </td>
 
                                   {/* Badge Loại cảnh báo */}
-                                  <td className="py-2 px-3 text-center whitespace-nowrap">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                  <td className="py-1.5 px-2.5 text-center whitespace-nowrap align-middle">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black inline-block whitespace-nowrap ${
                                       v.isLowAssigned && v.isLowGtc
                                         ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300'
                                         : v.isLowAssigned
@@ -1116,23 +1142,12 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         )}
 
         {/* =========================================================================
-            SUB-TAB 2: BẢNG THEO DÕI CẢNH BÁO OFF CỦA NHÂN VIÊN TRONG THÁNG
+            SUB-TAB 2: BẢNG THEO DÕI CẢNH BÁO OFF & CHUYÊN CẦN CỦA NHÂN VIÊN
+            (QUY CHUẨN: OFF ≥ 2 NGÀY/TUẦN HOẶC OFF > 4 NGÀY/THÁNG)
             ========================================================================= */}
         {activeSubTab === 'off_alert' && (
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             
-            {/* Thanh thông tin hướng dẫn chuyên cần */}
-            <div className="p-3 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-xl flex items-start gap-2.5 text-xs text-rose-900 dark:text-rose-200">
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <strong>Quy chế kiểm soát chuyên cần &amp; Cảnh báo OFF khu vực: </strong>
-                Cảnh báo nguy cơ thiếu hụt nhân lực khi <b>1 tuần OFF &gt; 2 ngày</b>.
-                <span className="block mt-0.5 text-rose-800 dark:text-rose-300">
-                  &bull; <i>Đã đối chiếu Task Nhân Sự và loại trừ nhân viên đã thôi việc. Hiển thị tổng số ngày OFF trong tháng/tuần, trung bình lương ngày làm và đơn giá trung bình mỗi đơn hoàn tất.</i>
-                </span>
-              </div>
-            </div>
-
             {/* Danh sách thẻ từng Bưu Cục */}
             {offTrackingAlertData.groupedByPo.map(poGroup => {
               const isExpanded = Boolean(expandedPoOff[poGroup.buuCuc]);
@@ -1141,78 +1156,80 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               return (
                 <div 
                   key={poGroup.buuCuc}
-                  className={`rounded-xl border transition-all overflow-hidden ${
+                  className={`rounded-lg border transition-all overflow-hidden ${
                     hasWarnedStaff
-                      ? 'border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs'
+                      ? 'border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs'
                       : 'border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800'
                   }`}
                 >
-                  {/* Header bưu cục */}
+                  {/* Header bưu cục gọn gàng */}
                   <div 
                     onClick={() => togglePoOff(poGroup.buuCuc)}
-                    className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-rose-50/40 dark:hover:bg-slate-750 transition-colors"
+                    className="p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2 cursor-pointer hover:bg-rose-50/40 dark:hover:bg-slate-750 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-3 h-3 rounded-full ${hasWarnedStaff ? 'bg-rose-500 animate-pulse' : 'bg-indigo-500'}`}></span>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${hasWarnedStaff ? 'bg-rose-500 animate-pulse' : 'bg-indigo-500'}`}></span>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                          <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">
                             {poGroup.buuCuc}
                           </h3>
-                          <span className="px-2 py-0.2 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                          <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                             {poGroup.totalRoster} NVPTTT
                           </span>
                           {hasWarnedStaff && (
-                            <span className="px-2 py-0.2 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
-                              ⚠️ {poGroup.warnedStaffCount} NV OFF &gt; 2 ngày/tuần
+                            <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                              ⚠️ {poGroup.warnedStaffCount} NV không đạt chuyên cần
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Có <b>{poGroup.staffWithOffCount} NV</b> phát sinh ngày OFF &bull; Tổng ngày OFF lũy kế: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalOffDaysInPo} ngày</b> &bull; Tỷ lệ chuyên cần bưu cục: <b className="text-emerald-600 dark:text-emerald-400">{poGroup.attendanceRate.toFixed(1)}%</b>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Có <b>{poGroup.staffWithOffCount} NV</b> phát sinh ngày OFF &bull; Tổng ngày OFF: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalOffDaysInPo} ngày</b> &bull; Chuyên cần bưu cục: <b className="text-emerald-600 dark:text-emerald-400">{poGroup.attendanceRate.toFixed(1)}%</b>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 self-end md:self-auto">
+                    <div className="flex items-center gap-2 self-end md:self-auto">
                       <button
                         type="button"
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all ${
                           isExpanded
                             ? 'bg-rose-600 text-white'
                             : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <span>{isExpanded ? 'Thu gọn' : `Xem ${poGroup.totalRoster} nhân sự`}</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Bảng chi tiết nhân viên trong bưu cục khi mở rộng */}
+                  {/* Bảng chi tiết nhân viên trong bưu cục khi mở rộng (STICKY HEADER + DỮ LIỆU CÙNG 1 HÀNG) */}
                   {isExpanded && (
-                    <div className="p-3.5 border-t border-rose-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 space-y-3">
-                      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
-                        <table className="w-full text-xs text-left">
-                          <thead className="bg-rose-50/60 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 font-bold border-b border-rose-100 dark:border-slate-700">
+                    <div className="p-2.5 border-t border-rose-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 space-y-2">
+                      <div className="overflow-x-auto max-h-[480px] overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+                        <table className="w-full text-xs text-left border-collapse">
+                          {/* CỐ ĐỊNH TIÊU ĐỀ: STICKY THEAD - CHỈ TIÊU ĐỀ MỚI ĐƯỢC NGẮT DÒNG */}
+                          <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                             <tr>
-                              <th className="py-2.5 px-2 text-center w-10">STT</th>
-                              <th className="py-2.5 px-3 text-center">Mã NV</th>
-                              <th className="py-2.5 px-4">Họ &amp; Tên</th>
-                              <th className="py-2.5 px-3 text-center">Hợp Đồng</th>
-                              <th className="py-2.5 px-3 text-center bg-rose-100/50 dark:bg-rose-900/30">Tổng Ngày OFF</th>
-                              <th className="py-2.5 px-3 text-center">Cảnh Báo Chuyên Cần</th>
-                              <th className="py-2.5 px-3 text-center">SLĐ Gán</th>
-                              <th className="py-2.5 px-3 text-center">SLĐ GTC</th>
-                              <th className="py-2.5 px-3 text-center">% GTC</th>
-                              <th className="py-2.5 px-3 text-center">SLĐ Lấy</th>
-                              <th className="py-2.5 px-3 text-center">Lấy TC</th>
-                              <th className="py-2.5 px-3 text-center">% Lấy TC</th>
-                              <th className="py-2.5 px-3 text-center bg-emerald-50/60 dark:bg-emerald-950/30">Lương TB/Ngày</th>
-                              <th className="py-2.5 px-3 text-center bg-purple-50/60 dark:bg-purple-950/30">Đơn Giá TB</th>
-                              <th className="py-2.5 px-3 text-center">Chi Tiết Ngày</th>
+                              <th className="py-2 px-2 text-center w-10 whitespace-normal break-words leading-tight align-middle">STT</th>
+                              <th className="py-2 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Mã NV</th>
+                              <th className="py-2 px-3 whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Hợp Đồng</th>
+                              <th className="py-2 px-2.5 text-center bg-rose-100/60 dark:bg-rose-900/40 whitespace-normal break-words leading-tight align-middle">Tổng Ngày OFF</th>
+                              <th className="py-2 px-3 text-center whitespace-normal break-words leading-tight align-middle">Cảnh Báo Chuyên Cần</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Gán</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ GTC</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">% GTC</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Lấy</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Lấy TC</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">% Lấy TC</th>
+                              <th className="py-2 px-2.5 text-center bg-emerald-50/70 dark:bg-emerald-950/40 whitespace-normal break-words leading-tight align-middle">Lương TB/Ngày</th>
+                              <th className="py-2 px-2.5 text-center bg-purple-50/70 dark:bg-purple-950/40 whitespace-normal break-words leading-tight align-middle">Đơn Giá TB</th>
+                              <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Chi Tiết Ngày</th>
                             </tr>
                           </thead>
+                          {/* DỮ LIỆU CHI TIẾT: BẮT BUỘC CÙNG 1 HÀNG (WHITESPACE-NOWRAP) */}
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-750 text-slate-700 dark:text-slate-200">
                             {poGroup.staffList.map((staff, idx) => {
                               const isStaffExpanded = Boolean(expandedStaffDates[staff.maNV]);
@@ -1220,26 +1237,26 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                               return (
                                 <React.Fragment key={staff.maNV}>
                                   <tr className={`hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors ${
-                                    staff.hasWeeklyOffWarning ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
+                                    staff.hasChuyenCanWarning ? 'bg-rose-50/25 dark:bg-rose-950/15' : ''
                                   }`}>
-                                    <td className="py-2 px-2 text-center text-slate-400 font-medium">
+                                    <td className="py-1.5 px-2 text-center text-slate-400 font-medium whitespace-nowrap align-middle">
                                       {idx + 1}
                                     </td>
-                                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                                    <td className="py-1.5 px-2.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
                                       {staff.maNV}
                                     </td>
-                                    <td className="py-2 px-4 font-bold text-slate-900 dark:text-white">
+                                    <td className="py-1.5 px-3 font-bold text-slate-900 dark:text-white whitespace-nowrap align-middle">
                                       {staff.tenNV}
                                     </td>
-                                    <td className="py-2 px-3 text-center">
-                                      <span className="px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                    <td className="py-1.5 px-2 text-center whitespace-nowrap align-middle">
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                                         {staff.loaiHD}
                                       </span>
                                     </td>
 
                                     {/* Tổng ngày OFF */}
-                                    <td className="py-2 px-3 text-center font-bold">
-                                      <span className={`px-2 py-0.5 rounded text-xs font-black ${
+                                    <td className="py-1.5 px-2.5 text-center font-bold whitespace-nowrap align-middle">
+                                      <span className={`px-1.5 py-0.2 rounded text-[11px] font-black ${
                                         staff.totalOffDays > 0
                                           ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                                           : 'text-slate-500'
@@ -1248,14 +1265,14 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                       </span>
                                     </td>
 
-                                    {/* Cảnh báo tuần (> 2 ngày OFF) */}
-                                    <td className="py-2 px-3 text-center">
-                                      {staff.hasWeeklyOffWarning ? (
-                                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
-                                          ⚠️ {staff.warningWeeks[0]}
+                                    {/* Cảnh báo chuyên cần (≥2N/tuần HOẶC >4N/tháng) */}
+                                    <td className="py-1.5 px-3 text-center whitespace-nowrap align-middle">
+                                      {staff.hasChuyenCanWarning ? (
+                                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
+                                          {staff.chuyenCanBadgeText}
                                         </span>
                                       ) : (
-                                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1">
+                                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
                                           <CheckCircle2 className="w-3.5 h-3.5" />
                                           Đạt chuẩn
                                         </span>
@@ -1263,63 +1280,63 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                     </td>
 
                                     {/* Chỉ số giao */}
-                                    <td className="py-2 px-3 text-center font-semibold text-slate-800 dark:text-slate-200">
+                                    <td className="py-1.5 px-2 text-center font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
                                       {staff.sumGan.toLocaleString()}
                                     </td>
-                                    <td className="py-2 px-3 text-center font-bold text-slate-900 dark:text-white">
+                                    <td className="py-1.5 px-2 text-center font-bold text-slate-900 dark:text-white whitespace-nowrap align-middle">
                                       {staff.sumGtc.toLocaleString()}
                                     </td>
-                                    <td className="py-2 px-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                                    <td className="py-1.5 px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
                                       {staff.sumGan > 0 ? `${staff.avgGtcRate.toFixed(1)}%` : '-'}
                                     </td>
 
                                     {/* Chỉ số lấy */}
-                                    <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                    <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                       {staff.sumGanLay.toLocaleString()}
                                     </td>
-                                    <td className="py-2 px-3 text-center font-bold text-purple-600 dark:text-purple-400">
+                                    <td className="py-1.5 px-2 text-center font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap align-middle">
                                       {staff.sumLayTc.toLocaleString()}
                                     </td>
-                                    <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400">
+                                    <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                       {staff.sumGanLay > 0 ? `${staff.avgLayTcRate.toFixed(1)}%` : '-'}
                                     </td>
 
                                     {/* Lương TB / Ngày */}
-                                    <td className="py-2 px-3 text-center font-bold text-emerald-700 dark:text-emerald-300">
+                                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap align-middle">
                                       {staff.avgSalaryPerDay > 0 ? `${Math.round(staff.avgSalaryPerDay).toLocaleString()} đ` : '-'}
                                     </td>
 
                                     {/* Đơn giá TB */}
-                                    <td className="py-2 px-3 text-center font-bold text-purple-700 dark:text-purple-300">
+                                    <td className="py-1.5 px-2.5 text-center font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap align-middle">
                                       {staff.avgUnitPrice > 0 ? `${Math.round(staff.avgUnitPrice).toLocaleString()} đ/đơn` : '-'}
                                     </td>
 
                                     {/* Nút xem chi tiết từng ngày */}
-                                    <td className="py-2 px-3 text-center">
+                                    <td className="py-1.5 px-2 text-center whitespace-nowrap align-middle">
                                       <button
                                         type="button"
                                         onClick={() => toggleStaffDates(staff.maNV)}
-                                        className={`px-2 py-0.5 rounded text-[10.5px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer ${
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer whitespace-nowrap ${
                                           isStaffExpanded
                                             ? 'bg-rose-600 text-white'
                                             : 'bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:bg-slate-700 dark:text-slate-300'
                                         }`}
                                       >
                                         <span>{isStaffExpanded ? 'Đóng' : 'Xem ngày'}</span>
-                                        {isStaffExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                        {isStaffExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
                                       </button>
                                     </td>
                                   </tr>
 
-                                  {/* Hàng mở rộng bảng chi tiết từng ngày của nhân viên */}
+                                  {/* Hàng mở rộng bảng chi tiết từng ngày của nhân viên (STICKY HEADER + DỮ LIỆU CÙNG 1 HÀNG) */}
                                   {isStaffExpanded && (
                                     <tr className="bg-slate-100/90 dark:bg-slate-900/80">
-                                      <td colSpan={15} className="p-3">
-                                        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 p-3 shadow-inner space-y-2">
-                                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700">
+                                      <td colSpan={15} className="p-2.5">
+                                        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 shadow-inner space-y-2">
+                                          <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
                                             <span className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
                                               <span>Chi Tiết Lịch Sử Vận Hành: {staff.tenNV} ({staff.maNV})</span>
-                                              <span className="text-[10.5px] text-slate-500 font-normal">
+                                              <span className="text-[10px] text-slate-500 font-normal">
                                                 Tổng {staff.totalApplicableDays} ngày đối soát &bull; {staff.totalWorkedDays} ngày làm &bull; {staff.totalOffDays} ngày OFF
                                               </span>
                                             </span>
@@ -1327,7 +1344,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                               <button
                                                 type="button"
                                                 onClick={() => onNavigateToEmployeeGtc(staff.maNV, staff.buuCuc)}
-                                                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                                                className="text-[10.5px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
                                               >
                                                 <span>Xem Tab GTC Nhân Viên</span>
                                                 <ExternalLink className="w-3 h-3" />
@@ -1335,30 +1352,30 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                             )}
                                           </div>
 
-                                          <div className="max-h-60 overflow-y-auto">
-                                            <table className="w-full text-[11px] text-left">
-                                              <thead className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                                          <div className="max-h-56 overflow-y-auto rounded border border-slate-200 dark:border-slate-700">
+                                            <table className="w-full text-[11px] text-left border-collapse">
+                                              <thead className="bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                                                 <tr>
-                                                  <th className="py-1 px-2 text-center w-8">STT</th>
-                                                  <th className="py-1 px-3 text-center">Ngày</th>
-                                                  <th className="py-1 px-3 text-center">Trạng Thái</th>
-                                                  <th className="py-1 px-3 text-center">SLĐ Gán</th>
-                                                  <th className="py-1 px-3 text-center">SLĐ GTC</th>
-                                                  <th className="py-1 px-3 text-center">% GTC</th>
-                                                  <th className="py-1 px-3 text-center">SLĐ Lấy</th>
-                                                  <th className="py-1 px-3 text-center">Lấy TC</th>
-                                                  <th className="py-1 px-3 text-center">% Lấy TC</th>
-                                                  <th className="py-1 px-3 text-center">Lương Ngày</th>
-                                                  <th className="py-1 px-3 text-center">Đơn Giá</th>
+                                                  <th className="py-1 px-2 text-center w-8 whitespace-normal break-words leading-tight align-middle">STT</th>
+                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Ngày</th>
+                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Trạng Thái</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Gán</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ GTC</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">% GTC</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Lấy</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">Lấy TC</th>
+                                                  <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">% Lấy TC</th>
+                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Lương Ngày</th>
+                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Đơn Giá</th>
                                                 </tr>
                                               </thead>
                                               <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
                                                 {staff.dailyDetails.map(day => (
                                                   <tr key={day.ngay} className={day.isOff ? 'bg-rose-50/40 dark:bg-rose-950/20' : ''}>
-                                                    <td className="py-1 px-2 text-center text-slate-400">{day.stt}</td>
-                                                    <td className="py-1 px-3 text-center font-mono font-medium">{day.ngay}</td>
-                                                    <td className="py-1 px-3 text-center">
-                                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                                    <td className="py-1 px-2 text-center text-slate-400 whitespace-nowrap align-middle">{day.stt}</td>
+                                                    <td className="py-1 px-2.5 text-center font-mono font-medium whitespace-nowrap align-middle">{day.ngay}</td>
+                                                    <td className="py-1 px-2.5 text-center whitespace-nowrap align-middle">
+                                                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-bold inline-block whitespace-nowrap ${
                                                         day.isOff 
                                                           ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' 
                                                           : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
@@ -1366,16 +1383,16 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                                         {day.statusText}
                                                       </span>
                                                     </td>
-                                                    <td className="py-1 px-3 text-center">{day.gan}</td>
-                                                    <td className="py-1 px-3 text-center font-bold">{day.gtc}</td>
-                                                    <td className="py-1 px-3 text-center">{day.gan > 0 ? `${day.gtcPct.toFixed(1)}%` : '-'}</td>
-                                                    <td className="py-1 px-3 text-center">{day.ganLay}</td>
-                                                    <td className="py-1 px-3 text-center font-bold text-purple-600">{day.layTc}</td>
-                                                    <td className="py-1 px-3 text-center">{day.ganLay > 0 ? `${day.layTcPct.toFixed(1)}%` : '-'}</td>
-                                                    <td className="py-1 px-3 text-center font-bold text-emerald-600">
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.gan}</td>
+                                                    <td className="py-1 px-2 text-center font-bold whitespace-nowrap align-middle">{day.gtc}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.gan > 0 ? `${day.gtcPct.toFixed(1)}%` : '-'}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay}</td>
+                                                    <td className="py-1 px-2 text-center font-bold text-purple-600 whitespace-nowrap align-middle">{day.layTc}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay > 0 ? `${day.layTcPct.toFixed(1)}%` : '-'}</td>
+                                                    <td className="py-1 px-2.5 text-center font-bold text-emerald-600 whitespace-nowrap align-middle">
                                                       {day.luong > 0 ? `${Math.round(day.luong).toLocaleString()} đ` : '0 đ'}
                                                     </td>
-                                                    <td className="py-1 px-3 text-center font-bold text-purple-600">
+                                                    <td className="py-1 px-2.5 text-center font-bold text-purple-600 whitespace-nowrap align-middle">
                                                       {day.donGiaTb > 0 ? `${Math.round(day.donGiaTb).toLocaleString()} đ` : '-'}
                                                     </td>
                                                   </tr>

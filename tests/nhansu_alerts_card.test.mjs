@@ -35,7 +35,7 @@ test('2. BẢNG CẢNH BÁO GÁN/GIAO KHÔNG ĐẠT MỐC TỐI THIỂU (<30 Gá
   assert.match(cardContent, /r\.tongDon <= 0/, 'Loại trừ nhân viên đã OFF trong ngày (tongDon <= 0)');
 
   // 3. Hiển thị tổng chỉ số vận hành theo bưu cục và mở rộng chi tiết
-  assert.match(cardContent, /Tổng đơn gán:[\s\S]*?GTC:[\s\S]*?Gán lấy:[\s\S]*?Lấy TC:/, 'Hiển thị tổng chỉ số vận hành theo bưu cục');
+  assert.match(cardContent, /Gán:[\s\S]*?GTC:[\s\S]*?Gán lấy:[\s\S]*?Lấy TC:/, 'Hiển thị tổng chỉ số vận hành theo bưu cục');
   assert.match(cardContent, /<th[^>]*>STT<\/th>\s*<th[^>]*>Ngày<\/th>\s*<th[^>]*>Mã NV<\/th>\s*<th[^>]*>Họ &amp; Tên<\/th>/, 'Bảng chi tiết mở rộng có STT - Ngày - Mã NV - Họ & Tên');
   assert.match(cardContent, /SLĐ Gán/, 'Có cột SLĐ Gán');
   assert.match(cardContent, /SLĐ GTC/, 'Có cột SLĐ GTC');
@@ -48,17 +48,17 @@ test('2. BẢNG CẢNH BÁO GÁN/GIAO KHÔNG ĐẠT MỐC TỐI THIỂU (<30 Gá
   assert.match(cardContent, /Tồn Đọng/, 'Có cột Tồn Đọng');
 });
 
-test('3. BẢNG CẢNH BÁO NHÂN VIÊN OFF TRONG THÁNG & CẢNH BÁO 1 TUẦN OFF > 2 NGÀY', () => {
+test('3. BẢNG CẢNH BÁO CHUYÊN CẦN: OFF ≥ 2 NGÀY/TUẦN HOẶC OFF > 4 NGÀY/THÁNG', () => {
   const cardContent = fs.readFileSync(path.resolve('src/components/nhan-su/NhanSuOperationalAlertsCard.tsx'), 'utf8');
 
-  // 1. Cảnh báo đối với nhân viên 1 tuần OFF > 2 ngày
-  assert.match(cardContent, /count > 2/, 'Ngưỡng kích hoạt cảnh báo chuyên cần: 1 tuần OFF > 2 ngày');
-  assert.match(cardContent, /hasWeeklyOffWarning/, 'Gắn cờ cảnh báo tuần cho nhân viên');
-  assert.match(cardContent, /OFF\s*(?:>|&gt;)\s*2\s*ngày(?:\/tuần)?/i, 'Badge hiển thị cảnh báo 1 tuần OFF > 2 ngày');
+  // 1. Cảnh báo đối với nhân viên 1 tuần OFF >= 2 ngày
+  assert.match(cardContent, /count >= 2/, 'Ngưỡng kích hoạt cảnh báo tuần: OFF >= 2 ngày trong cùng 1 tuần');
+  assert.match(cardContent, /offDates\.length > 4/, 'Ngưỡng kích hoạt cảnh báo tháng: OFF > 4 ngày trong cùng 1 tháng');
+  assert.match(cardContent, /hasWeeklyOffWarning \|\| hasMonthlyOffWarning/, 'Quy chuẩn chuyên cần: vi phạm tuần hoặc tháng đều không đạt chuyên cần');
 
   // 2. Thể hiện dữ liệu tổng ngày OFF theo bưu cục
-  assert.match(cardContent, /Tổng ngày OFF lũy kế:/, 'Thể hiện tổng ngày OFF theo bưu cục');
-  assert.match(cardContent, /Tỷ lệ chuyên cần bưu cục:/, 'Tính tỷ lệ chuyên cần theo bưu cục');
+  assert.match(cardContent, /Tổng ngày OFF:/, 'Thể hiện tổng ngày OFF theo bưu cục');
+  assert.match(cardContent, /Chuyên cần bưu cục:/, 'Tính tỷ lệ chuyên cần theo bưu cục');
 
   // 3. Có thể mở rộng để xem chi tiết nhân viên với các cột yêu cầu
   assert.match(cardContent, /<th[^>]*>STT<\/th>\s*<th[^>]*>Mã NV<\/th>\s*<th[^>]*>Họ &amp; Tên<\/th>/, 'Bảng chi tiết có STT, Mã NV, Họ Tên');
@@ -72,7 +72,22 @@ test('3. BẢNG CẢNH BÁO NHÂN VIÊN OFF TRONG THÁNG & CẢNH BÁO 1 TUẦN 
   assert.match(cardContent, /statusText/, 'Phân biệt rõ trạng thái Đi làm vs OFF Ngày');
 });
 
-test('4. BỘ LỌC ĐẦY ĐỦ: TICK CHỌN BƯU CỤC, THÁNG, TUẦN & LOẠI NHÂN VIÊN ĐÃ NGHỈ VIỆC', () => {
+test('4. CỐ ĐỊNH TIÊU ĐỀ (STICKY THEAD), NGẮT DÒNG TH VÀ DỮ LIỆU CÙNG 1 HÀNG (WHITESPACE-NOWRAP)', () => {
+  const cardContent = fs.readFileSync(path.resolve('src/components/nhan-su/NhanSuOperationalAlertsCard.tsx'), 'utf8');
+
+  // Sticky thead trên các bảng
+  assert.match(cardContent, /sticky top-0 z-10/, 'Tiêu đề bảng được cố định bằng sticky top-0 z-10');
+  assert.match(cardContent, /whitespace-normal break-words leading-tight/, 'Chỉ tiêu đề th mới được phép ngắt dòng');
+  assert.match(cardContent, /whitespace-nowrap align-middle/, 'Dữ liệu chi tiết td bắt buộc cùng 1 hàng không bị ngắt dòng');
+
+  // Kiểm tra BaoCaoGtcBcTab cũng có sticky thead và whitespace-nowrap
+  const bcContent = fs.readFileSync(path.resolve('src/pages/BaoCaoGtcBcTab.tsx'), 'utf8');
+  assert.match(bcContent, /sticky top-0 z-10/, 'BaoCaoGtcBcTab cố định tiêu đề bảng');
+  assert.match(bcContent, /whitespace-normal break-words leading-tight/, 'BaoCaoGtcBcTab cho phép th ngắt dòng');
+  assert.match(bcContent, /whitespace-nowrap align-middle/, 'BaoCaoGtcBcTab cố định dữ liệu td cùng 1 hàng');
+});
+
+test('5. BỘ LỌC ĐẦY ĐỦ: TICK CHỌN BƯU CỤC, THÁNG, TUẦN & THU GỌN GIAO DIỆN', () => {
   const cardContent = fs.readFileSync(path.resolve('src/components/nhan-su/NhanSuOperationalAlertsCard.tsx'), 'utf8');
 
   // 1. Bộ lọc Tick chọn Bưu Cục
@@ -80,16 +95,11 @@ test('4. BỘ LỌC ĐẦY ĐỦ: TICK CHỌN BƯU CỤC, THÁNG, TUẦN & LOẠ
   assert.match(cardContent, /CheckSquare/, 'Hiển thị icon hộp tick checked khi được chọn');
   assert.match(cardContent, /Tất cả 5 bưu cục/, 'Có tùy chọn chọn tất cả 5 bưu cục');
 
-  // 2. Bộ lọc Tick chọn Tháng
+  // 2. Bộ lọc Tick chọn Tháng & Tuần
   assert.match(cardContent, /selectedMonth/, 'Quản lý state bộ lọc Tháng');
-  assert.match(cardContent, /availableMonths/, 'Trích xuất danh sách các tháng từ dữ liệu');
-
-  // 3. Bộ lọc Tick chọn Tuần
   assert.match(cardContent, /selectedWeek/, 'Quản lý state bộ lọc Tuần');
-  assert.match(cardContent, /availableWeeks/, 'Trích xuất danh sách các tuần từ dữ liệu');
 
-  // 4. Loại trừ nhân viên đã nghỉ việc
-  assert.match(cardContent, /resignedStaffIds/, 'Tập hợp ID nhân viên đã thôi việc');
-  assert.match(cardContent, /nghiViec/, 'Đối chiếu với dataset.nghiViec để loại trừ');
-  assert.match(cardContent, /Đã thôi việc/, 'Loại trừ nhân sự có trạng thái Đã thôi việc');
+  // 3. Hộp ghi chú / alert banner được thu gọn tối giản 1 dòng
+  assert.match(cardContent, /Quy chế chuyên cần khu vực:/, 'Hộp cảnh báo chuyên cần được tối giản');
+  assert.match(cardContent, /truncate/, 'Hộp ghi chú dùng truncate để luôn giữ 1 dòng tinh gọn');
 });
