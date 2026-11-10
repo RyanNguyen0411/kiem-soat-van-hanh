@@ -20,7 +20,7 @@ import {
   normalizeStaffIdentity,
   cleanVietnameseText,
   stripVietnameseDiacritics
-} from '../utils/normalizationEngine';
+} from '../utils/normalizationEngine.ts';
 
 // Import audited local snapshots as safe fallback
 import gtcBuuCucSnapshot from '../data/snapshots/gtc_buu_cuc.json';
@@ -138,14 +138,22 @@ const benchmarkSalaryMap: Record<string, number> = {
 };
 
 export function parseCSV(text: string): string[][] {
+  if (!text) return [];
+
+  // Strip UTF-8 Byte Order Mark (BOM) if present
+  let cleanText = text;
+  if (cleanText.charCodeAt(0) === 0xFEFF) {
+    cleanText = cleanText.slice(1);
+  }
+
   const lines: string[][] = [];
   let row: string[] = [];
   let inQuotes = false;
   let curVal = '';
   
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const nextChar = text[i + 1];
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    const nextChar = cleanText[i + 1];
     
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
@@ -180,24 +188,47 @@ export function parseCSV(text: string): string[][] {
   return lines;
 }
 
-async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise<string> {
+export interface FetchCsvResult {
+  text: string;
+  httpStatus: number;
+  durationMs: number;
+}
+
+async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise<FetchCsvResult> {
   const url = `https://docs.google.com/spreadsheets/d/${getSpreadsheetId()}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const startTime = Date.now();
 
   try {
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
+    const durationMs = Date.now() - startTime;
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status} from Google Sheets`);
+      const err: any = new Error(`HTTP ${res.status} from Google Sheets`);
+      err.httpStatus = res.status;
+      err.durationMs = durationMs;
+      throw err;
     }
     const text = await res.text();
     if (text.includes('google.visualization.Query.setResponse') && text.includes('"status":"error"')) {
-      throw new Error(`Google Sheets API: Bảng tính không có sheet "${sheetName}"`);
+      const err: any = new Error(`Google Sheets API: Bảng tính không có sheet "${sheetName}"`);
+      err.httpStatus = 200;
+      err.durationMs = durationMs;
+      throw err;
     }
-    return text;
-  } catch (err) {
+    if (text.trim().startsWith('<!DOCTYPE html') || text.includes('<html')) {
+      const err: any = new Error(`Google Sheets API: Phản hồi trả về HTML thay vì CSV cho sheet "${sheetName}"`);
+      err.httpStatus = 200;
+      err.durationMs = durationMs;
+      throw err;
+    }
+    return { text, httpStatus: res.status, durationMs };
+  } catch (err: any) {
     clearTimeout(timeoutId);
+    if (!err.durationMs) {
+      err.durationMs = Date.now() - startTime;
+    }
     throw err;
   }
 }
@@ -218,7 +249,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let gtcBuuCuc: GtcPostOfficeRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu GTC Bưu cục trống');
     
@@ -257,6 +288,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: gtcBuuCuc.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -270,6 +303,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: gtcBuuCuc.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }
@@ -279,7 +315,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let gtcNhanVien: GtcEmployeeRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu GTC Nhân viên trống');
 
@@ -346,6 +382,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: gtcNhanVien.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -361,6 +399,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: gtcNhanVien.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }
@@ -370,7 +411,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let hoaHongNgay: DailySalaryRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Hoa hồng ngày trống');
 
@@ -429,6 +470,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: hoaHongNgay.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -450,6 +493,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: hoaHongNgay.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }
@@ -459,7 +505,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tonDongGlt: BacklogGltRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng GLT trống');
 
@@ -492,6 +538,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: tonDongGlt.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -509,6 +557,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: tonDongGlt.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }
@@ -518,7 +569,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tonDongLc: BacklogLcRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng LC trống');
 
@@ -550,6 +601,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: tonDongLc.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -567,6 +620,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: tonDongLc.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }
@@ -576,7 +632,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tyLeTraHang: any[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.TY_LE_TRA_HANG);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TY_LE_TRA_HANG);
     const rows = parseCSV(text);
     if (rows.length <= 1) {
       sheetStatuses[SHEET_NAMES.TY_LE_TRA_HANG] = {
@@ -585,6 +641,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         source: 'CACHED_SNAPSHOT',
         lastUpdated: nowStr,
         rowCount: 0,
+        httpStatus,
+        durationMs,
+        fallbackReason: 'Nguồn Google Sheets chỉ có dòng header, 0 bản ghi số liệu.',
         error: 'Nguồn Google Sheets chỉ có dòng header, 0 bản ghi số liệu.'
       };
     } else {
@@ -595,6 +654,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         source: 'LIVE_SHEETS',
         lastUpdated: nowStr,
         rowCount: tyLeTraHang.length,
+        httpStatus,
+        durationMs,
         error: null
       };
     }
@@ -606,6 +667,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: 0,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: 'Google Sheets chưa có dữ liệu; hệ thống sử dụng trường % Chuyển trả từ GTC Bưu cục.',
       error: 'Google Sheets chưa có dữ liệu; hệ thống sử dụng trường % Chuyển trả từ GTC Bưu cục.'
     };
   }
@@ -615,47 +679,136 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let nhanSu: NhanSuRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU);
     const rows = parseCSV(text);
-    if (rows.length < 2) throw new Error('Sheet Nhân sự trống');
+    if (rows.length < 2) throw new Error('Sheet Nhân sự trống hoặc chỉ có dòng tiêu đề');
 
     const reader = createHeaderReader(rows[0]);
+
+    // Kiểm tra cấu trúc tiêu đề bắt buộc
+    const hasIdCol = reader.hasCol([
+      'id',
+      'employee id',
+      'employee_id',
+      'mã nv',
+      'ma nv',
+      'mã nhân viên',
+      'ma nhan vien',
+      'manv',
+      'id nv'
+    ]);
+    const hasNameCol = reader.hasCol([
+      'tên nhân viên',
+      'ten nhan vien',
+      'họ và tên',
+      'ho va ten',
+      'họ tên',
+      'ho ten',
+      'nhân viên',
+      'nhan vien',
+      'full name'
+    ]);
+
+    if (!hasIdCol || !hasNameCol) {
+      const missing: string[] = [];
+      if (!hasIdCol) missing.push('ID / Mã NV');
+      if (!hasNameCol) missing.push('Tên nhân viên');
+      const err: any = new Error(`Cấu trúc sheet Nhân sự không hợp lệ. Thiếu cột bắt buộc: ${missing.join(', ')}`);
+      err.httpStatus = httpStatus;
+      err.durationMs = durationMs;
+      err.missingHeaders = missing;
+      throw err;
+    }
+
     nhanSu = rows.slice(1)
       .filter(r => {
-        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên']);
-        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv']);
-        if (!maNV) return false;
+        const maNV = reader.getCol(r, [
+          'id',
+          'employee id',
+          'employee_id',
+          'mã nv',
+          'ma nv',
+          'mã nhân viên',
+          'ma nhan vien',
+          'manv',
+          'id nv'
+        ]);
+        const tenNV = reader.getCol(r, [
+          'tên nhân viên',
+          'ten nhan vien',
+          'họ và tên',
+          'ho va ten',
+          'họ tên',
+          'ho ten',
+          'nhân viên',
+          'nhan vien',
+          'full name'
+        ]);
+        if (!maNV || maNV.toLowerCase() === 'id' || maNV.toLowerCase() === 'mã nv') return false;
         if (isExcludedStaff(tenNV, maNV)) return false;
         return true;
       })
       .map(r => {
-        const maNV = reader.getCol(r, ['mã nv', 'ma nv', 'mã nhân viên', 'manv', 'id nv', 'id']);
-        const tenNV = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên nhân viên', 'ten nv', 'nhân viên', 'nhan vien']);
-        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'kho/ bưu cục', 'kho/buu cuc', 'kho / bưu cục', 'tên bc', 'ten bc', 'tên bưu cục', 'bưu cục làm việc', 'bc', 'kho']);
+        const maNV = reader.getCol(r, [
+          'id',
+          'employee id',
+          'employee_id',
+          'mã nv',
+          'ma nv',
+          'mã nhân viên',
+          'ma nhan vien',
+          'manv',
+          'id nv'
+        ]);
+        const tenNV = reader.getCol(r, [
+          'tên nhân viên',
+          'ten nhan vien',
+          'họ và tên',
+          'ho va ten',
+          'họ tên',
+          'ho ten',
+          'nhân viên',
+          'nhan vien',
+          'full name'
+        ]);
+        const buuCucRaw = reader.getCol(r, [
+          'bưu cục',
+          'buu cuc',
+          'kho/ bưu cục',
+          'kho/buu cuc',
+          'kho / bưu cục',
+          'tên bc',
+          'ten bc',
+          'tên bưu cục',
+          'bưu cục làm việc',
+          'bc',
+          'kho',
+          'post office'
+        ]);
         const meta = lookupPostOffice(buuCucRaw);
         const stdBuuCucRaw = meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
 
         return {
           maNV,
           tenNV,
-          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu', 'vị trí', 'vi tri']) || 'Business Development Field Executive',
-          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm']),
-          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc']),
-          trangThai: reader.getCol(r, ['trạng thái', 'trang thai']),
+          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu', 'vị trí', 'vi tri', 'position', 'role']) || 'Business Development Field Executive',
+          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm', 'ngay vao lam']),
+          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc', 'ngay nghi viec']),
+          trangThai: reader.getCol(r, ['trạng thái', 'trang thai', 'status']) || 'Đang làm việc',
           buuCucRaw: stdBuuCucRaw,
           buuCuc: meta.standardName,
-          zone: reader.getCol(r, ['zone', 'khu vực']),
-          am: reader.getCol(r, ['am', 'quản lý']),
-          loaiHD: reader.getCol(r, ['loại hđ', 'loai hd']) || 'HĐLĐ',
-          tinh: reader.getCol(r, ['tỉnh', 'tinh']) || 'Long An',
-          vung: reader.getCol(r, ['vùng', 'vung']) || 'DNB',
-          nhomThamNien: reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien']),
-          ngayVaoLam: normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam'])).standard || ''
+          zone: reader.getCol(r, ['zone', 'khu vực', 'khu vuc']),
+          am: reader.getCol(r, ['am', 'quản lý', 'quan ly', 'area manager']),
+          loaiHD: reader.getCol(r, ['loại hđ', 'loai hd', 'loại hợp đồng', 'loai hop dong', 'contract type']) || 'HĐLĐ',
+          tinh: reader.getCol(r, ['tỉnh', 'tinh', 'province']) || 'Long An',
+          vung: reader.getCol(r, ['vùng', 'vung', 'region']) || 'DNB',
+          nhomThamNien: reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien', 'thâm niên', 'tham nien', 'seniority']),
+          ngayVaoLam: normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam', 'start date'])).standard || ''
         };
       });
 
     if (nhanSu.length === 0) {
-      throw new Error('Không tìm thấy bản ghi nhân sự hợp lệ, kích hoạt snapshot dự phòng');
+      throw new Error('Dữ liệu sheet Nhân sự không có bản ghi hợp lệ sau khi parse');
     }
 
     sheetStatuses[SHEET_NAMES.NHAN_SU] = {
@@ -664,9 +817,14 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: nhanSu.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
+    const fallbackReason = err.message || 'Lỗi không xác định khi tải dữ liệu live';
+    console.warn(`[DataConnector] Fallback snapshot cho sheet ${SHEET_NAMES.NHAN_SU}: ${fallbackReason} (Duration: ${err.durationMs ?? 0}ms, HTTP: ${err.httpStatus ?? 'N/A'})`);
+
     nhanSu = (nhanSuSnapshot as NhanSuRecord[])
       .filter(r => !isExcludedStaff(r.tenNV, r.maNV))
       .map(r => {
@@ -683,7 +841,10 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: nhanSu.length,
-      error: err.message
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason,
+      error: fallbackReason
     };
   }
 
@@ -709,7 +870,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let nghiViec: NghiViecRecord[] = [];
   try {
-    const text = await fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC);
+    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Sheet Nghỉ việc trống');
 
@@ -791,6 +952,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'LIVE_SHEETS',
       lastUpdated: nowStr,
       rowCount: nghiViec.length,
+      httpStatus,
+      durationMs,
       error: null
     };
   } catch (err: any) {
@@ -811,6 +974,9 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       source: 'CACHED_SNAPSHOT',
       lastUpdated: 'Snapshot kiểm toán',
       rowCount: nghiViec.length,
+      httpStatus: err.httpStatus,
+      durationMs: err.durationMs,
+      fallbackReason: err.message,
       error: err.message
     };
   }

@@ -158,6 +158,9 @@ export interface SheetSyncDetail {
   lastUpdated: string;
   rowCount: number;
   error?: string | null;
+  httpStatus?: number;
+  durationMs?: number;
+  fallbackReason?: string;
 }
 
 export interface SyncStatus {

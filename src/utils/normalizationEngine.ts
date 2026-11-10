@@ -17,6 +17,7 @@
 export function cleanVietnameseText(val?: string): string {
   if (!val) return '';
   return String(val)
+    .replace(/^\uFEFF/, '')
     .trim()
     .replace(/\s+/g, ' ');
 }
@@ -476,20 +477,30 @@ export interface HeaderReader {
  */
 export function createHeaderReader(rawHeaders: string[]): HeaderReader {
   const cleanHeaders = rawHeaders.map(h => cleanVietnameseText(h));
-  const normalizedHeaders = rawHeaders.map(h => stripVietnameseDiacritics(h));
+  const normalizedHeaders = cleanHeaders.map(h => stripVietnameseDiacritics(h));
 
   function findIndex(aliases: string[]): number {
     for (const alias of aliases) {
       const target = stripVietnameseDiacritics(alias);
+      if (!target) continue;
       // Exact match first
       const exactIdx = normalizedHeaders.findIndex(h => h === target);
       if (exactIdx !== -1) return exactIdx;
     }
-    // Prefix or boundary match
+    // Prefix or boundary match (with word boundary protection for short identifiers like 'id')
     for (const alias of aliases) {
       const target = stripVietnameseDiacritics(alias);
-      const prefixIdx = normalizedHeaders.findIndex(h => h.startsWith(target) || h.endsWith(target));
-      if (prefixIdx !== -1) return prefixIdx;
+      if (!target) continue;
+      const isShort = target.length <= 2;
+      const boundaryIdx = normalizedHeaders.findIndex(h => {
+        if (h === target) return true;
+        if (isShort) {
+          const words = h.split(' ');
+          return words.includes(target);
+        }
+        return h.startsWith(target) || h.endsWith(target);
+      });
+      if (boundaryIdx !== -1) return boundaryIdx;
     }
     return -1;
   }
@@ -498,8 +509,11 @@ export function createHeaderReader(rawHeaders: string[]): HeaderReader {
     const indices: number[] = [];
     for (const alias of aliases) {
       const target = stripVietnameseDiacritics(alias);
+      if (!target) continue;
+      const isShort = target.length <= 2;
       normalizedHeaders.forEach((h, i) => {
-        if ((h === target || h.startsWith(target) || h.endsWith(target)) && !indices.includes(i)) {
+        const matches = h === target || (isShort ? h.split(' ').includes(target) : (h.startsWith(target) || h.endsWith(target)));
+        if (matches && !indices.includes(i)) {
           indices.push(i);
         }
       });
