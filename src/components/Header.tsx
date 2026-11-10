@@ -9,10 +9,12 @@ import {
   Sparkles,
   FolderTree,
   FolderOpen,
-  LogOut 
+  LogOut,
+  Settings
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
+import { getDriveFolderUrl } from '../services/settingsService';
 
 export const Header: React.FC = () => {
   const { logout } = useAuth();
@@ -146,7 +148,7 @@ export const Header: React.FC = () => {
 
           {/* Thư mục lưu trữ Excel trên Google Drive của AM Huy */}
           <a
-            href="https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing"
+            href={getDriveFolderUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden xl:flex items-center gap-1 text-[11px] cursor-pointer"
@@ -155,6 +157,17 @@ export const Header: React.FC = () => {
             <FolderOpen className="w-3 h-3 text-emerald-400" />
             <span>Thư mục Drive</span>
           </a>
+
+          {/* Cài đặt kết nối: Link nguồn, Drive, Apps Script, ID & Token */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-settings-modal'))}
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+            title="Cài đặt kết nối (Link nguồn, Drive, Apps Script, ID & Token)"
+            aria-label="Mở cài đặt kết nối"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
 
           {/* Dark Mode Toggle */}
           <button

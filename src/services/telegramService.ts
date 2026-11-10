@@ -1,6 +1,7 @@
 import { toCanvas } from 'html-to-image';
 import type { BacklogGltRecord, BacklogLcRecord } from '../types/dashboard';
 import { normalizePostOfficeName } from './dataConnector';
+import { getAppsScriptUrlOverride } from './settingsService';
 
 export interface TelegramConfig {
   relayEndpoint?: string;
@@ -27,6 +28,9 @@ export const DEFAULT_TELEGRAM_CONFIG: TelegramConfig = {
 };
 
 export function getTelegramRelayEndpoint(): string {
+  // Ưu tiên URL Apps Script người dùng đặt trong Cài đặt
+  const override = getAppsScriptUrlOverride();
+  if (override) return override;
   try {
     const custom = import.meta.env.VITE_TELEGRAM_BACKEND_URL as string | undefined;
     if (custom && custom.trim()) return custom.trim();

@@ -4,7 +4,8 @@ import type {
   DatasetState, 
   SyncStatus
 } from '../types/dashboard';
-import { loadDataset, SPREADSHEET_ID } from '../services/dataConnector';
+import { loadDataset } from '../services/dataConnector';
+import { getSpreadsheetId } from '../services/settingsService';
 
 interface DashboardContextType {
   activeTab: TabType;
@@ -129,7 +130,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsSidebarOpen,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: getSpreadsheetId(),
         selectedBuuCucGlobal,
         setSelectedBuuCucGlobal,
         selectedDateGlobal,

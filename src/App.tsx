@@ -20,6 +20,7 @@ import { TelegramReportModal } from './components/common/TelegramReportModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
 import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
 import { GoogleDriveExportToast } from './components/common/GoogleDriveExportToast';
+import { SettingsModal } from './components/common/SettingsModal';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -171,6 +172,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Thông báo & Quản lý Xuất Dữ Liệu Lưu Trữ Google Drive */}
       <GoogleDriveExportToast />
+
+      {/* Cài đặt kết nối: cập nhật link nguồn, Drive, Apps Script, ID & Token */}
+      <SettingsModal />
     </div>
   );
 };

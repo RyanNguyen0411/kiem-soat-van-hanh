@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { dashboardConfig } from '../config/dashboard';
+import { getSpreadsheetId } from './settingsService';
 import { normalizeHeader, normalizeNumber, normalizeString } from '../utils/normalization';
 
 // Re-export helpers if needed elsewhere
@@ -12,7 +12,7 @@ export interface SheetFetchResult {
 
 export const fetchSheetData = async (sheetName: string): Promise<SheetFetchResult> => {
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${dashboardConfig.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+    const url = `https://docs.google.com/spreadsheets/d/${getSpreadsheetId()}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout

@@ -32,6 +32,7 @@ import tonDongLcSnapshot from '../data/snapshots/ton_dong_lc.json';
 import nhanSuSnapshot from '../data/snapshots/nhan_su.json';
 import nghiViecSnapshot from '../data/snapshots/nghi_viec.json';
 import { SPREADSHEET_ID } from '../config/dashboard.config';
+import { getSpreadsheetId } from './settingsService';
 
 // Re-exports
 export { SPREADSHEET_ID, normalizePostOfficeName, normalizePostOfficeCode, lookupPostOffice };
@@ -180,7 +181,7 @@ export function parseCSV(text: string): string[][] {
 }
 
 async function fetchCsvWithTimeout(sheetName: string, timeoutMs = 8000): Promise<string> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  const url = `https://docs.google.com/spreadsheets/d/${getSpreadsheetId()}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

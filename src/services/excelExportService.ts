@@ -10,15 +10,27 @@
  * 4. Data không lưu chồng lên dữ liệu: Mỗi file xuất là 1 tên độc nhất với timestamp yyyyMMdd_HHmmss và mã salt ngẫu nhiên.
  */
 
-export const GOOGLE_DRIVE_EXPORT_FOLDER_URL = 'https://drive.google.com/drive/folders/1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw?usp=sharing';
-export const GOOGLE_DRIVE_EXPORT_FOLDER_ID = '1HSEsr67ttGuI0r2Wo-ZxS4H7ZywnFKbw';
+import {
+  DEFAULT_DRIVE_FOLDER_ID,
+  DEFAULT_DRIVE_FOLDER_URL,
+  DEFAULT_APPS_SCRIPT_URL,
+  getAppsScriptUrlOverride,
+  getDriveFolderUrl
+} from './settingsService';
+
+// Giá trị MẶC ĐỊNH. Có thể được ghi đè trong Cài đặt (biểu tượng bánh răng trên thanh tiêu đề).
+export const GOOGLE_DRIVE_EXPORT_FOLDER_URL = DEFAULT_DRIVE_FOLDER_URL;
+export const GOOGLE_DRIVE_EXPORT_FOLDER_ID = DEFAULT_DRIVE_FOLDER_ID;
 
 // Link triển khai Google Apps Script Web App của AM Huy (ĐNB)
-export const DEFAULT_DRIVE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxn90MNH1IukX8UMqsZDUqLhlpnsnme_MCzHdKbfkNgZ08w0O_Kpe-PHUsEobA72BUduA/exec';
+export const DEFAULT_DRIVE_WEBHOOK_URL = DEFAULT_APPS_SCRIPT_URL;
 
 export const STORAGE_KEY_DRIVE_WEBHOOK = 'ghn_drive_export_webhook_url';
 
 export function getDriveWebhookUrl(): string {
+  // Ưu tiên cấu hình người dùng đặt trong Cài đặt (đã xác thực host script.google.com)
+  const override = getAppsScriptUrlOverride();
+  if (override) return override;
   try {
     const stored = localStorage.getItem(STORAGE_KEY_DRIVE_WEBHOOK);
     if (stored && stored.trim()) return stored.trim();
@@ -38,6 +50,10 @@ export function setDriveWebhookUrl(url: string) {
   } catch {
     // ignore
   }
+}
+
+function isTrustedGoogleUrl(url: unknown): url is string {
+  return typeof url === 'string' && /^https:\/\/(docs|drive)\.google\.com\//.test(url);
 }
 
 /**
@@ -141,7 +157,7 @@ export async function exportToCSV(
               <div class="file-badge">${uniqueFilename}</div>
               <div class="blocked-note">✓ Đã chặn tải về máy tính cá nhân</div>
               <p>Dữ liệu đang được gửi trực tiếp vào thư mục Google Drive của AM Huy.<br>Trang sẽ tự động chuyển hướng trong giây lát...</p>
-              <a href="${GOOGLE_DRIVE_EXPORT_FOLDER_URL}">Mở Thư Mục Trực Tiếp ↗</a>
+              <a href="${getDriveFolderUrl()}">Mở Thư Mục Trực Tiếp ↗</a>
             </div>
           </body>
         </html>
@@ -154,7 +170,7 @@ export async function exportToCSV(
   // ĐÃ CHẶN HOÀN TOÀN TẢI FILE VỀ MÁY TÍNH CÁ NHÂN THEO YÊU CẦU CỦA AM HUY
   // Toàn bộ dữ liệu được chuyển trực tiếp vào Folder Drive qua Apps Script Web App
 
-  let finalDriveUrl = GOOGLE_DRIVE_EXPORT_FOLDER_URL;
+  let finalDriveUrl = getDriveFolderUrl();
   let isUploaded = false;
   const webhookUrl = getDriveWebhookUrl();
 
@@ -177,6 +193,10 @@ export async function exportToCSV(
       const result = await response.json();
       if (!result || result.success !== true || !result.fileUrl) {
         throw new Error(result?.error || 'Google Apps Script không xác nhận đã tạo Google Sheets');
+      }
+      // Apps Script có thể do người dùng tự chỉ định: chỉ mở liên kết thuộc Google Docs/Drive
+      if (!isTrustedGoogleUrl(result.fileUrl)) {
+        throw new Error('Apps Script trả về liên kết không thuộc Google Docs/Drive');
       }
       finalDriveUrl = result.fileUrl;
       isUploaded = true;
