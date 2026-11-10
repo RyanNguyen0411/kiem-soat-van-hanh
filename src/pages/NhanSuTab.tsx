@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
 import { exportToCSV } from '../services/excelExportService';
+import { NhanSuOperationalAlertsCard } from '../components/nhan-su/NhanSuOperationalAlertsCard';
 
 // Helper to calculate seniority days: Current/Ref Date - NgayVaoLam
 function calcSeniorityDays(ngayVaoLamStr: string, refDateStr: string = '07/11/2026'): number {
@@ -737,6 +738,15 @@ export const NhanSuTab: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* 3.1. THẺ CẢNH BÁO VẬN HÀNH NHÂN SỰ (2 BẢNG: CẢNH BÁO GÁN/GIAO THẤP & CẢNH BÁO NHÂN VIÊN OFF) */}
+      <NhanSuOperationalAlertsCard 
+        dataset={dataset}
+        defaultBuuCuc={selectedBuuCuc}
+        onNavigateToEmployeeGtc={(_maNV, buuCuc) => {
+          navigateToTab('gtc_nhan_vien', { buuCuc });
+        }}
+      />
 
       {/* 4. MA TRẬN BIỂU ĐỒ NHÂN SỰ (3 CHARTS) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
