@@ -166,14 +166,13 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
       // 3. Process active staff records with highlight flags
       const activeStaff = activeRows.map(r => {
-        const isLowAssigned = (r.tongDon || 0) < 30; // SLĐ Gán < 30 đơn
-        const isLowGtc = (r.tongDonGTC || 0) < 20;     // SLĐ GTC < 20 đơn
+        const isLowAssigned = (r.tongDon || 0) < 30; // SLĐ Gán < 30 đơn (mức tối thiểu 30)
+        const isLowGtc = (r.tongDonGTC || 0) < 20;     // SLĐ GTC < 20 đơn (mức tối thiểu 20)
         const isHighlighted = isLowAssigned || isLowGtc;
         const gtcRate = r.tongDon > 0 ? (r.tongDonGTC / r.tongDon) * 100 : 0;
 
         // Cross-reference with Task "Nhân sự"
         const nsRecord = nhanSuActiveMap.get(r.maNV);
-        const isResigned = !nsRecord; // Not in Task "Nhân sự" -> has resigned after this date
 
         return {
           ...r,
@@ -181,7 +180,6 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           isLowAssigned,
           isLowGtc,
           isHighlighted,
-          isResigned,
           loaiHD: nsRecord?.loaiHD || 'HĐLĐ',
           nhomThamNien: nsRecord?.nhomThamNien || ''
         };
@@ -231,27 +229,39 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           };
         });
 
-      // 5. Identify OFF staff (belong to post office in Task "Nhân sự" but had NO delivery on selectedDate)
+      // 5. Identify OFF staff (belong to post office in Task "Nhân sự" but had NO delivery and NO pickup on selectedDate)
       // =========================================================================
       // CRITICAL USER LOGIC:
-      // 1. Loại trừ 2 nhân viên chuyên lấy (Võ Hoàng Phúc & Lương Tuấn Minh) ra khỏi nhóm OFF!
-      // 2. Kiểm tra ngày vào làm của nhân viên so với thời gian đối chiếu (selectedDate).
-      //    Nhân viên nhận việc sau ngày đối chiếu -> KHÔNG ĐƯA VÀO OFF!
+      // 1. Nếu nhân viên không phát sinh đơn giao hoặc đơn lấy thì ghi nhận là off.
+      // 2. Nếu đối chiếu với Task Nhân Sự mà không có tên thì là nhân viên đã nghỉ việc hoàn toàn, không liệt kê vào dữ liệu OFF Ngày.
+      // 3. Nhân viên nhận việc sau ngày đối chiếu -> KHÔNG ĐƯA VÀO OFF!
       // =========================================================================
       const offStaff = poRosterInNs
         .filter(m => {
-          // Did not work on selectedDate
-          if (activeMap.has(m.maNV)) return false;
+          // Đối chiếu Task Nhân Sự: Nếu không có tên thì là nhân viên đã nghỉ việc hoàn toàn -> KHÔNG liệt kê vào dữ liệu OFF Ngày
+          if (!nhanSuActiveMap.has(m.maNV)) return false;
 
-          // LOẠI BỎ NHÂN VIÊN CHUYÊN LẤY RA KHỎI DANH SÁCH OFF
-          if (isPickupSpecialist(m.maNV, m.tenNV)) return false;
-
-          // Check hire date vs selectedDate
+          // Kiểm tra ngày vào làm vs selectedDate: Nhận việc sau ngày đối chiếu -> KHÔNG ĐƯA VÀO OFF
           const staffHireMs = parseDateMs(m.ngayVaoLam);
           if (staffHireMs > targetMs) {
-            // Joined AFTER selectedDate -> Not yet employed on this date -> Do NOT count as OFF
             return false;
           }
+
+          // Nhân viên có phát sinh đơn giao trong ngày (gtcNhanVien) -> Đang đi làm, KHÔNG GHI NHẬN OFF
+          if (activeMap.has(m.maNV)) return false;
+
+          // Nhân viên có phát sinh đơn lấy trong ngày (hoaHongNgay) -> Đang đi lấy hàng, KHÔNG GHI NHẬN OFF
+          const hhRecord = dataset.hoaHongNgay.find(
+            r => r.maNV === m.maNV && r.ngay === selectedDate
+          );
+          const hasPickup = Boolean(
+            hhRecord && ((hhRecord.soDonGanLay || 0) > 0 || (hhRecord.donLayTinhLuong || 0) > 0)
+          );
+          if (hasPickup) return false;
+
+          // Loại trừ nhân viên chuyên lấy đối tác (đã có khối riêng tại Rạch Kiến)
+          if (isPickupSpecialist(m.maNV, m.tenNV)) return false;
+
           return true;
         })
         .map(m => {
@@ -410,7 +420,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           warningText,
           '-',
           '-',
-          nv.isResigned ? 'Đã thôi việc sau ngày này' : 'Đang làm việc (Realtime)'
+          'Đang làm việc (Realtime)'
         ]);
       });
 
@@ -1080,35 +1090,43 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                       <tr>
-                        <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px]">Mã NV</th>
-                        <th className="py-2.5 px-4 text-left w-[25%] min-w-[170px]">Họ Tên</th>
+                        <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
+                        <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
+                        <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px]">Họ Tên</th>
                         <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px]">Tổng Đơn</th>
                         <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px]">Tổng Đơn GTC</th>
                         <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px]">% GTC</th>
                         <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Leadtime</th>
-                        <th className="py-2.5 px-3 text-center w-[13%] min-w-[120px]">Chuyến Đi</th>
+                        <th className="py-2.5 px-3 text-center w-[10%] min-w-[100px]">Chuyến Đi</th>
                         <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Tồn Đọng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
                       {finalActiveStaff.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic text-sm">
+                          <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic text-sm">
                             Không có nhân viên phát sinh đơn giao theo điều kiện lọc này trong ngày {selectedDate}.
                           </td>
                         </tr>
                       ) : (
-                        finalActiveStaff.map(nv => {
+                        finalActiveStaff.map((nv, index) => {
                           const isShift2 = (nv.chuyenDi || 1) >= 2;
                           return (
                             <tr 
                               key={nv.maNV}
                               className={`transition-colors select-none ${
                                 nv.isHighlighted
-                                  ? 'bg-amber-50/70 hover:bg-amber-100/60 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 border-l-4 border-amber-500'
+                                  ? (nv.isLowAssigned && nv.isLowGtc
+                                      ? 'bg-rose-50/80 hover:bg-rose-100/70 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 border-l-4 border-rose-500'
+                                      : 'bg-amber-50/80 hover:bg-amber-100/70 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-l-4 border-amber-500')
                                   : 'hover:bg-orange-50/30 dark:hover:bg-slate-750'
                               }`}
                             >
+                              {/* 0. STT */}
+                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 dark:text-slate-400 text-center">
+                                {index + 1}
+                              </td>
+
                               {/* 1. Mã NV */}
                               <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-600 dark:text-slate-400 text-center">
                                 {nv.maNV}
@@ -1118,18 +1136,13 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-slate-100 text-sm text-left">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span>{nv.tenNV}</span>
-                                  {nv.isResigned && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-750 dark:text-slate-300 border border-slate-300">
-                                      Đã thôi việc sau ngày này
-                                    </span>
-                                  )}
                                   {nv.isLowAssigned && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 shadow-2xs">
                                       ⚠️ &lt;30 gán ({nv.tongDon})
                                     </span>
                                   )}
                                   {nv.isLowGtc && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 border border-red-300">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 shadow-2xs">
                                       ⚠️ &lt;20 GTC ({nv.tongDonGTC})
                                     </span>
                                   )}
@@ -1137,15 +1150,15 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                               </td>
 
                               {/* 3. Tổng Đơn */}
-                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base text-slate-800 dark:text-slate-100">
-                                <span className={nv.isLowAssigned ? 'text-amber-600' : ''}>
+                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base">
+                                <span className={nv.isLowAssigned ? 'text-amber-700 dark:text-amber-400 font-black' : 'text-slate-800 dark:text-slate-100'}>
                                   {nv.tongDon.toLocaleString('vi-VN')}
                                 </span>
                               </td>
 
                               {/* 4. Tổng Đơn GTC */}
-                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base text-emerald-600 dark:text-emerald-400">
-                                <span className={nv.isLowGtc ? 'text-red-600' : ''}>
+                              <td className="py-2.5 px-3 text-center font-black text-sm md:text-base">
+                                <span className={nv.isLowGtc ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-emerald-600 dark:text-emerald-400'}>
                                   {nv.tongDonGTC.toLocaleString('vi-VN')}
                                 </span>
                               </td>
@@ -1195,7 +1208,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     {finalActiveStaff.length > 0 && (
                       <tfoot className="bg-slate-50 dark:bg-slate-750/90 font-bold border-t border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                         <tr>
-                          <td colSpan={2} className="py-3 px-4 text-left font-black uppercase text-xs text-orange-600">
+                          <td colSpan={3} className="py-3 px-4 text-left font-black uppercase text-xs text-orange-600">
                             Tổng {finalActiveStaff.length} Nhân Viên Làm Việc:
                           </td>
                           <td className="py-3 px-3 text-center font-black text-sm md:text-base">
@@ -1259,17 +1272,23 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 font-bold border-b border-blue-100 dark:border-blue-800">
                         <tr>
-                          <th className="py-2.5 px-3 text-center w-[10%]">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[24%]">Họ &amp; Tên</th>
-                          <th className="py-2.5 px-3 text-center w-[12%]">Loại Hợp Đồng</th>
-                          <th className="py-2.5 px-3 text-center w-[16%]">Trạng Thái Làm Việc</th>
-                          <th className="py-2.5 px-3 text-center w-[18%]">Chức Năng Vận Hành</th>
-                          <th className="py-2.5 px-3 text-center w-[20%]">Nhiệm Vụ Thực Tế</th>
+                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
+                          <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px]">Mã NV</th>
+                          <th className="py-2.5 px-4 text-left w-[22%] min-w-[160px]">Họ &amp; Tên</th>
+                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[90px]">Loại Hợp Đồng</th>
+                          <th className="py-2.5 px-3 text-center w-[15%] min-w-[110px]">Trạng Thái Làm Việc</th>
+                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px]">Chức Năng Vận Hành</th>
+                          <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px]">Nhiệm Vụ Thực Tế</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-blue-50 dark:divide-blue-900/30">
-                        {po.pickupSpecialists.map(sp => (
+                        {po.pickupSpecialists.map((sp, index) => (
                           <tr key={sp.maNV} className="hover:bg-blue-50/40 transition-colors">
+                            {/* 0. STT */}
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-500 dark:text-slate-400">
+                              {index + 1}
+                            </td>
+                            {/* 1. Mã NV */}
                             <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-600 dark:text-slate-400">
                               {sp.maNV}
                             </td>
@@ -1329,7 +1348,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     </h4>
                   </div>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Đã đối chiếu <strong>Task Nhân Sự (Realtime)</strong> &bull; Loại trừ nhân sự chưa đến ngày nhận việc &bull; Tháng <strong>{currentMonthKey}</strong>
+                    Đã đối chiếu <strong>Task Nhân Sự (Realtime)</strong> &bull; Không phát sinh đơn giao hoặc đơn lấy &bull; Loại trừ nhân sự đã nghỉ việc hoàn toàn &bull; Tháng <strong>{currentMonthKey}</strong>
                   </span>
                 </div>
 
@@ -1346,21 +1365,27 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-rose-50/60 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 font-bold border-b border-rose-100 dark:border-slate-700">
                         <tr>
-                          <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px]">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[25%] min-w-[170px]">Họ & Tên</th>
+                          <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px]">STT</th>
+                          <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px]">Mã NV</th>
+                          <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px]">Họ & Tên</th>
                           <th className="py-2.5 px-3 text-center w-[11%] min-w-[85px]">Hợp Đồng</th>
                           <th className="py-2.5 px-3 text-center w-[14%] min-w-[110px]">Trạng Thái Ngày</th>
-                          <th className="py-2.5 px-3 text-center w-[15%] min-w-[120px]">Số Ngày Đã Nghỉ Trong Tháng</th>
-                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[95px]">Số Ngày Đã Đi Làm</th>
-                          <th className="py-2.5 px-3 text-center w-[13%] min-w-[110px]">Đánh Giá Chuyên Cần</th>
+                          <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px]">Số Ngày Đã Nghỉ Trong Tháng</th>
+                          <th className="py-2.5 px-3 text-center w-[11%] min-w-[95px]">Số Ngày Đã Đi Làm</th>
+                          <th className="py-2.5 px-3 text-center w-[12%] min-w-[105px]">Đánh Giá Chuyên Cần</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
-                        {finalOffStaff.map(off => {
+                        {finalOffStaff.map((off, index) => {
                           const isFrequentOff = off.offDaysInMonth >= 4;
 
                           return (
                             <tr key={off.maNV} className="hover:bg-rose-50/30 dark:hover:bg-slate-750 transition-colors">
+                              {/* 0. STT */}
+                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-slate-500 text-center">
+                                {index + 1}
+                              </td>
+
                               {/* 1. Mã NV */}
                               <td className="py-2.5 px-3 font-mono text-xs font-bold text-slate-500 text-center">
                                 {off.maNV}

@@ -1558,6 +1558,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                               <table className="w-full text-xs text-left">
                                 <thead className="sticky top-0 bg-slate-100 dark:bg-slate-750">
                                   <tr className="font-bold border-b border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                                    <th className="px-2 py-2 text-center w-12">STT</th>
                                     <th className="px-3 py-2 text-center">Mã NV</th>
                                     <th className="px-3 py-2 text-left">Họ Tên</th>
                                     <th className="px-3 py-2 text-center">Tổng Đơn</th>
@@ -1569,8 +1570,9 @@ export const GtcPostOfficeTab: React.FC = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
-                                  {poStaff.map(nv => (
+                                  {poStaff.map((nv, idx) => (
                                     <tr key={nv.maNV} className="hover:bg-orange-50/30">
+                                      <td className="px-2 py-1.5 font-mono text-[11px] font-bold text-slate-400 text-center">{idx + 1}</td>
                                       <td className="px-3 py-1.5 font-mono text-[11px] font-bold text-slate-500 text-center">{nv.maNV}</td>
                                       <td className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200 text-left">{nv.tenNV}</td>
                                       <td className="px-3 py-1.5 text-center font-medium">{nv.tongDon.toLocaleString('vi-VN')}</td>
@@ -2011,6 +2013,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                               <table className="w-full text-xs text-left">
                                 <thead className="sticky top-0 bg-slate-100 dark:bg-slate-750">
                                   <tr className="font-bold border-b border-slate-200 text-slate-700 dark:text-slate-300">
+                                    <th className="px-2 py-1.5 text-center w-12">STT</th>
                                     <th className="px-3 py-1.5 text-center">Mã NV</th>
                                     <th className="px-3 py-1.5 text-left">Họ Tên</th>
                                     <th className="px-3 py-1.5 text-center">Tổng Đơn</th>
@@ -2022,8 +2025,9 @@ export const GtcPostOfficeTab: React.FC = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {rowStaff.map(nv => (
+                                  {rowStaff.map((nv, idx) => (
                                     <tr key={nv.maNV} className="hover:bg-orange-50/20">
+                                      <td className="px-2 py-1 font-mono text-[11px] font-bold text-slate-400 text-center">{idx + 1}</td>
                                       <td className="px-3 py-1 font-mono text-[11px] font-bold text-slate-500 text-center">{nv.maNV}</td>
                                       <td className="px-3 py-1 font-bold text-slate-800 dark:text-slate-200 text-left">{nv.tenNV}</td>
                                       <td className="px-3 py-1 text-center font-medium">{nv.tongDon.toLocaleString('vi-VN')}</td>
