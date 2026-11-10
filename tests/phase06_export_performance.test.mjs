@@ -7,32 +7,17 @@ import path from 'node:path';
 // TEST SUITE: PHASE 06 — EXPORT, PERFORMANCE & INTERACTION OPTIMIZATION
 // ---------------------------------------------------------------------------
 
-test('1. EXCEL EXPORT ENGINE: Xuất toàn bộ dữ liệu đã lọc, không bị cắt xén phân trang', async (t) => {
+test('1. EXCEL EXPORT ENGINE: Gửi dữ liệu có kiểu trực tiếp, không cắt xén dữ liệu đã lọc', async (t) => {
   const exportServiceContent = fs.readFileSync(path.resolve('src/services/excelExportService.ts'), 'utf8');
 
-  // Verify UTF-8 BOM
-  assert.ok(
-    exportServiceContent.includes('\\uFEFF'),
-    'Export engine PHẢI chứa UTF-8 BOM (\\uFEFF) để Excel hiển thị đúng tiếng Việt có dấu'
-  );
-
-  // Verify Numeric Unquoting for Excel formulas
-  assert.ok(
-    exportServiceContent.includes('Number.isFinite(cell)') || exportServiceContent.includes('typeof cell === "number"'),
-    'Export engine PHẢI giữ số nguyên / số thực ở dạng unquoted để Excel tự động nhận diện và tính toán SUM/AVERAGE'
-  );
-
-  // Verify batch processing chunk size
-  assert.ok(
-    exportServiceContent.includes('BATCH_SIZE') || exportServiceContent.includes('2500'),
-    'Export engine PHẢI hỗ trợ chia lô (batching) khi tập dữ liệu lớn (>2,500 dòng)'
-  );
-
-  // Verify filename format with timestamp
-  assert.ok(
-    exportServiceContent.includes('pad') || exportServiceContent.includes('toISOString') || exportServiceContent.includes('filename'),
-    'Tên file xuất PHẢI chứa tên phân hệ và timestamp thời gian'
-  );
+  assert.ok(exportServiceContent.includes('headers,') && exportServiceContent.includes('rows,'),
+    'Export engine phải gửi headers và toàn bộ rows bằng JSON');
+  assert.ok(exportServiceContent.includes('JSON.stringify({'),
+    'Export engine phải tạo payload JSON');
+  assert.ok(exportServiceContent.includes('generateUniqueExportFilename'),
+    'Tên file xuất phải có timestamp và mã duy nhất');
+  assert.ok(exportServiceContent.includes('result.success !== true'),
+    'Chỉ xác nhận thành công khi Apps Script trả success');
 });
 
 test('2. DRILL-DOWN EXPORT: UnifiedDrillDownModal xuất 100% dữ liệu đã lọc, hỗ trợ exportValue', async (t) => {

@@ -18,7 +18,8 @@ test('REGRESSION: Drive export creates a native Google Sheets file, not a CSV bl
   const gas = read('google-apps-script/Code.gs');
   const frontend = read('src/services/excelExportService.ts');
   assert.match(gas, /SpreadsheetApp\.create\(/, 'Apps Script must create a native Google spreadsheet');
-  assert.match(gas, /Utilities\.parseCsv\(/, 'Apps Script must parse the dashboard CSV payload');
+  assert.match(gas, /Array\.isArray\(payload\.headers\) && Array\.isArray\(payload\.rows\)/, 'Apps Script must support the fast typed-JSON payload');
+  assert.match(gas, /Utilities\.parseCsv\(/, 'Apps Script must retain backward compatibility with legacy CSV payloads');
   assert.match(gas, /moveTo\(folder\)/, 'Native spreadsheet must be moved to the target Drive folder');
   assert.match(gas, /application\/vnd\.google-apps\.spreadsheet/, 'Response must identify native Google Sheets format');
   assert.doesNotMatch(gas, /folder\.createFile\(blob\)/, 'Do not save export as a plain CSV blob');

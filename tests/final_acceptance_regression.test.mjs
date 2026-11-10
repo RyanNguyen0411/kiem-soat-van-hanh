@@ -30,10 +30,10 @@ test('A. FUNCTIONAL TESTING: Kiểm tra luồng chức năng, bộ lọc, điề
   assert.ok(authFile.includes('isSessionValid'), 'AuthContext phải kiểm tra tính hợp lệ của phiên qua isSessionValid');
   assert.ok(authServiceFile.includes('expiresAt') && authServiceFile.includes('isSessionValid'), 'authService phải có cơ chế kiểm tra expiresAt');
 
-  // 3. Export Service: UTF-8 BOM, Unquoted Numbers, Batching
+  // 3. Export Service: typed JSON preserves numeric/string values without CSV/BOM conversion.
   const exportFile = fs.readFileSync(path.resolve('src/services/excelExportService.ts'), 'utf8');
-  assert.ok(exportFile.includes('\\uFEFF'), 'Export engine phải có UTF-8 BOM');
-  assert.ok(exportFile.includes('Number.isFinite') || exportFile.includes('typeof cell === "number"'), 'Export engine phải giữ nguyên số thực');
+  assert.ok(exportFile.includes('headers,') && exportFile.includes('rows,'), 'Export engine phải gửi header và rows dưới dạng JSON');
+  assert.ok(exportFile.includes('JSON.stringify({'), 'Export engine phải serialize payload JSON');
 
   // 4. Modal Drill-down
   const modalFile = fs.readFileSync(path.resolve('src/components/common/UnifiedDrillDownModal.tsx'), 'utf8');
