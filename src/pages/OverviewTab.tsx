@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { UnifiedDrillDownModal } from '../components/common/UnifiedDrillDownModal';
 import type { DrillDownColumn, DrillDownSummaryKpi } from '../components/common/UnifiedDrillDownModal';
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -2284,6 +2285,13 @@ export const OverviewTab: React.FC = () => {
             </span>
           </div>
           <div className="h-72 w-full">
+            {ca2OperationalData.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu Ca 2" 
+                subtitle="Không tìm thấy dữ liệu vận hành Ca 2 phù hợp với bộ lọc hiện tại" 
+                heightClass="h-72" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={ca2OperationalData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2359,6 +2367,7 @@ export const OverviewTab: React.FC = () => {
                 <Line yAxisId="right" type="monotone" dataKey="rateGtc" name="% GTC (% Đơn gán)" stroke="#059669" strokeWidth={2.5} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -2378,6 +2387,13 @@ export const OverviewTab: React.FC = () => {
             <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300">Đơn</span>
           </div>
           <div className="h-56">
+            {dailyTrends.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu Volume" 
+                subtitle="Chưa có dữ liệu sản lượng trong khoảng thời gian đã lọc" 
+                heightClass="h-56" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyTrends}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2390,6 +2406,7 @@ export const OverviewTab: React.FC = () => {
                 <Bar dataKey="volume" fill="#F26522" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2405,6 +2422,13 @@ export const OverviewTab: React.FC = () => {
             <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300">Đơn GTC</span>
           </div>
           <div className="h-56">
+            {dailyTrends.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu SLĐ GTC" 
+                subtitle="Chưa có dữ liệu đơn giao thành công trong khoảng thời gian đã lọc" 
+                heightClass="h-56" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyTrends}>
                 <defs>
@@ -2423,6 +2447,7 @@ export const OverviewTab: React.FC = () => {
                 <Area type="monotone" dataKey="sldGTC" stroke="#10B981" strokeWidth={2} fill="url(#gtcGrad)" />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2438,6 +2463,13 @@ export const OverviewTab: React.FC = () => {
             <span className="text-[10px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded font-bold">%GTC</span>
           </div>
           <div className="h-56">
+            {dailyTrends.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu %GTC" 
+                subtitle="Chưa có dữ liệu tỷ lệ giao thành công trong khoảng thời gian đã lọc" 
+                heightClass="h-56" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyTrends}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2450,6 +2482,7 @@ export const OverviewTab: React.FC = () => {
                 <Line type="monotone" dataKey="gtcRate" stroke="#002D72" strokeWidth={2.5} dot={{ r: 2 }} />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -2467,6 +2500,13 @@ export const OverviewTab: React.FC = () => {
             </div>
           </div>
           <div className="h-60">
+            {poSummaries.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu %GTC bưu cục" 
+                subtitle="Không tìm thấy bưu cục nào phù hợp với bộ lọc hiện tại" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={poSummaries} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.15} />
@@ -2490,6 +2530,7 @@ export const OverviewTab: React.FC = () => {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2507,6 +2548,13 @@ export const OverviewTab: React.FC = () => {
             </span>
           </div>
           <div className="h-60">
+            {poSummaries.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu tồn đọng" 
+                subtitle="Không tìm thấy số liệu tồn GLT hoặc LC cho bộ lọc hiện tại" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={poSummaries}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2518,6 +2566,7 @@ export const OverviewTab: React.FC = () => {
                 <Bar dataKey="lcBacklog" name="Tồn LC" stackId="a" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2532,6 +2581,13 @@ export const OverviewTab: React.FC = () => {
             </div>
           </div>
           <div className="h-60">
+            {agingData.length === 0 || agingData.every(d => d.value === 0) ? (
+              <ChartEmptyState 
+                title="Không có đơn tồn GLT" 
+                subtitle="Toàn bộ đơn hàng đã hoàn tất xử lý hoặc không có dữ liệu cho bộ lọc này" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -2551,6 +2607,7 @@ export const OverviewTab: React.FC = () => {
                 <Legend wrapperStyle={{ fontSize: 9, paddingTop: 2 }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -2568,6 +2625,13 @@ export const OverviewTab: React.FC = () => {
             </div>
           </div>
           <div className="h-60">
+            {poSummaries.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu sản lượng bưu cục" 
+                subtitle="Không tìm thấy sản lượng bưu cục theo bộ lọc hiện tại" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={poSummaries}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2577,6 +2641,7 @@ export const OverviewTab: React.FC = () => {
                 <Bar dataKey="volume" fill="#F26522" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2591,6 +2656,13 @@ export const OverviewTab: React.FC = () => {
             </div>
           </div>
           <div className="h-60">
+            {poSummaries.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu hoa hồng bưu cục" 
+                subtitle="Không tìm thấy chi phí hoa hồng theo bộ lọc hiện tại" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={poSummaries}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2600,6 +2672,7 @@ export const OverviewTab: React.FC = () => {
                 <Bar dataKey="totalSalary" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -2614,6 +2687,13 @@ export const OverviewTab: React.FC = () => {
             </div>
           </div>
           <div className="h-60">
+            {poSummaries.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu hiệu suất & chi phí" 
+                subtitle="Không tìm thấy dữ liệu để so sánh hiệu suất và lương" 
+                heightClass="h-60" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={poSummaries}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -2626,6 +2706,7 @@ export const OverviewTab: React.FC = () => {
                 <Line yAxisId="right" type="monotone" dataKey="gtcRate" name="%GTC" stroke="#F26522" strokeWidth={3} dot={{ r: 4 }} />
               </ComposedChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>

@@ -39,6 +39,7 @@ import { RegionalInfluenceWidget } from '../components/gtc-employee/RegionalInfl
 import { Ca2OperationsWidget } from '../components/gtc-employee/Ca2OperationsWidget';
 import type { GtcEmployeeRecord, DailySalaryRecord } from '../types/dashboard';
 import { DataTable } from '../components/common/DataTable';
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import { IndividualFilterDropdown } from '../components/common/IndividualFilterDropdown';
 import type { Column } from '../components/common/DataTable';
 import { IndependentFilter } from '../components/common/IndependentFilter';
@@ -1781,6 +1782,13 @@ export const GtcEmployeeTab: React.FC = () => {
 
             {/* Combined Composed Chart (Bars + Lines) */}
             <div className="h-[360px] w-full pt-1">
+              {poImpactData.items.length === 0 ? (
+                <ChartEmptyState 
+                  title="Không có dữ liệu tác động bưu cục" 
+                  subtitle="Không tìm thấy dữ liệu vận hành bưu cục cho bộ lọc hiện tại" 
+                  heightClass="h-[360px]" 
+                />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart 
                   data={poImpactData.items} 
@@ -1900,6 +1908,7 @@ export const GtcEmployeeTab: React.FC = () => {
                   />
                 </ComposedChart>
               </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>
@@ -1918,6 +1927,13 @@ export const GtcEmployeeTab: React.FC = () => {
           </div>
         </div>
         <div className="h-80 w-full">
+          {employeeRankings.length === 0 ? (
+            <ChartEmptyState 
+              title="Không có dữ liệu bưu tá" 
+              subtitle="Không tìm thấy nhân viên nào phù hợp với bộ lọc bưu cục hoặc sản lượng" 
+              heightClass="h-80" 
+            />
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
               data={employeeRankings.slice(0, 10)}
@@ -2017,6 +2033,7 @@ export const GtcEmployeeTab: React.FC = () => {
               />
             </BarChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 

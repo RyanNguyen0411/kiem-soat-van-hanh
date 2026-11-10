@@ -18,6 +18,7 @@ export interface DrillDownColumn<T> {
   key: string;
   header: string;
   render?: (row: T) => React.ReactNode;
+  exportValue?: (row: T) => string | number;
   align?: 'left' | 'center' | 'right';
   sortable?: boolean;
 }
@@ -113,8 +114,9 @@ export function UnifiedDrillDownModal<T extends Record<string, any>>({
     const headers = columns.map(c => c.header);
     const rows = sortedData.map(row => 
       columns.map(col => {
+        if (col.exportValue) return col.exportValue(row);
         const val = row[col.key];
-        return val !== undefined && val !== null ? String(val) : '';
+        return val !== undefined && val !== null ? val : '';
       })
     );
     exportToCSV(exportFileName, headers, rows);

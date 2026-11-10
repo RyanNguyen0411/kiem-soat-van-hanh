@@ -16,6 +16,7 @@ import {
 import { useDashboard } from '../context/DashboardContext';
 import type { BacklogLcRecord } from '../types/dashboard';
 import { DataTable } from '../components/common/DataTable';
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import type { Column } from '../components/common/DataTable';
 import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
@@ -269,6 +270,13 @@ export const BacklogLcTab: React.FC = () => {
             </div>
           </div>
           <div className="h-64">
+            {poLcData.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có đơn tồn LC" 
+                subtitle="Không tìm thấy số lượng đơn tồn LC theo bưu cục cho bộ lọc hiện tại" 
+                heightClass="h-64" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={poLcData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -278,6 +286,7 @@ export const BacklogLcTab: React.FC = () => {
                 <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -291,6 +300,13 @@ export const BacklogLcTab: React.FC = () => {
             </div>
           </div>
           <div className="h-64">
+            {statusData.length === 0 || statusData.every(d => d.value === 0) ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu trạng thái kiện" 
+                subtitle="Chưa có dữ liệu phân loại kiện đóng/chưa đóng" 
+                heightClass="h-64" 
+              />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -310,6 +326,7 @@ export const BacklogLcTab: React.FC = () => {
                 <Legend wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>

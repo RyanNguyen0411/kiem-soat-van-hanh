@@ -77,17 +77,33 @@ export async function exportToCSV(
   rows: (string | number)[][]
 ): Promise<ExportResult> {
   const processCell = (cell: string | number | null | undefined): string => {
-    if (cell === null || cell === undefined) return '""';
+    if (cell === null || cell === undefined || cell === '') return '""';
+    
+    // Nếu là số thực hợp lệ, xuất trực tiếp dạng số để Excel tính toán được
+    if (typeof cell === 'number' && Number.isFinite(cell)) {
+      return String(cell);
+    }
+
     const str = String(cell);
+    // Nếu chuỗi chứa dấu phẩy, dấu nháy kép hoặc xuống dòng -> bọc nháy kép và escape nháy
     if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
       return `"${str.replace(/"/g, '""')}"`;
     }
     return `"${str}"`;
   };
 
-  const csvContent = [
+  // Thêm UTF-8 BOM (\uFEFF) để Excel hiển thị tiếng Việt hoàn hảo không bị lỗi font
+  const BATCH_SIZE = 2500;
+  const processedRows: string[] = [];
+
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const chunk = rows.slice(i, i + BATCH_SIZE);
+    processedRows.push(...chunk.map(row => row.map(processCell).join(',')));
+  }
+
+  const csvContent = '\uFEFF' + [
     headers.map(processCell).join(','),
-    ...rows.map(row => row.map(processCell).join(','))
+    ...processedRows
   ].join('\r\n');
 
   // Tạo tên file độc nhất vô nhị

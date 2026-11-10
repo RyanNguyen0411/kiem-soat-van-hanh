@@ -1,3 +1,4 @@
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import React, { useState, useMemo, useRef } from 'react';
 import { 
   PackageX, 
@@ -883,6 +884,13 @@ export const BacklogGltTab: React.FC = () => {
               </div>
             </div>
             <div className="h-64">
+              {poBacklogData.length === 0 ? (
+                <ChartEmptyState 
+                  title="Không có đơn tồn theo bưu cục" 
+                  subtitle="Không tìm thấy số lượng đơn tồn GLT cho bưu cục theo bộ lọc hiện tại" 
+                  heightClass="h-64" 
+                />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={poBacklogData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -892,6 +900,7 @@ export const BacklogGltTab: React.FC = () => {
                   <Bar dataKey="count" fill="#EF4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -905,6 +914,13 @@ export const BacklogGltTab: React.FC = () => {
               </div>
             </div>
             <div className="h-64">
+              {typeBacklogData.length === 0 || typeBacklogData.every(d => d.value === 0) ? (
+                <ChartEmptyState 
+                  title="Không có dữ liệu cơ cấu loại đơn" 
+                  subtitle="Không tìm thấy đơn tồn để phân loại theo bộ lọc hiện tại" 
+                  heightClass="h-64" 
+                />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -924,6 +940,7 @@ export const BacklogGltTab: React.FC = () => {
                   <Legend wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
                 </PieChart>
               </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>
@@ -1079,6 +1096,13 @@ export const BacklogGltTab: React.FC = () => {
                 <span className="text-[10px] text-slate-400">Cột xếp chồng theo Bưu cục</span>
               </div>
               <div className="h-60">
+                {alertMatrixData.rows.length === 0 ? (
+                  <ChartEmptyState 
+                    title="Không có dữ liệu mức cảnh báo" 
+                    subtitle="Không tìm thấy dữ liệu cảnh báo tồn cho bộ lọc hiện tại" 
+                    heightClass="h-60" 
+                  />
+                ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={alertMatrixData.rows} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -1106,6 +1130,7 @@ export const BacklogGltTab: React.FC = () => {
                     <Bar dataKey="khanCap" stackId="a" fill="#EF4444" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                )}
               </div>
             </div>
           </div>
@@ -1526,6 +1551,13 @@ export const BacklogGltTab: React.FC = () => {
                 <span className="text-[10px] text-slate-400">Số lượng đơn theo kênh</span>
               </div>
               <div className="h-60">
+                {customerMatrixData.rows.length === 0 ? (
+                  <ChartEmptyState 
+                    title="Không có dữ liệu đối tác / TMĐT" 
+                    subtitle="Không tìm thấy dữ liệu phân kênh sàn cho bộ lọc hiện tại" 
+                    heightClass="h-60" 
+                  />
+                ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={customerMatrixData.rows} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -1550,6 +1582,7 @@ export const BacklogGltTab: React.FC = () => {
                     <Bar dataKey="other" stackId="b" fill="#64748B" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                )}
               </div>
             </div>
           </div>

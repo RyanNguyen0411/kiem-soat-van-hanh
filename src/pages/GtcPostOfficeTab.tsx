@@ -37,6 +37,7 @@ import { useDashboard } from '../context/DashboardContext';
 import type { GtcPostOfficeRecord } from '../types/dashboard';
 import { GtcDeliveryMatrixWidget } from '../components/gtc-post-office/GtcDeliveryMatrixWidget';
 import { DataTable } from '../components/common/DataTable';
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import type { Column } from '../components/common/DataTable';
 import { IndividualFilterDropdown } from '../components/common/IndividualFilterDropdown';
 import { 
@@ -1229,6 +1230,13 @@ export const GtcPostOfficeTab: React.FC = () => {
         </div>
 
         <div className="h-72">
+          {poSummaries.length === 0 ? (
+            <ChartEmptyState 
+              title="Không có dữ liệu bưu cục" 
+              subtitle="Không tìm thấy số liệu vận hành bưu cục phù hợp với bộ lọc hiện tại" 
+              heightClass="h-72" 
+            />
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={poSummaries}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
@@ -1254,6 +1262,7 @@ export const GtcPostOfficeTab: React.FC = () => {
               <Line yAxisId="right" type="monotone" dataKey="returnRate" name="% Chuyển Trả" stroke="#F59E0B" strokeWidth={2.5} strokeDasharray="3 3" dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 
