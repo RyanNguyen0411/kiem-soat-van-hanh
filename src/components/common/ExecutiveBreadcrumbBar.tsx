@@ -216,33 +216,33 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
   const CatIcon = currentMeta.categoryIcon;
 
   return (
-    <div className="sticky top-0 z-30 px-3 pt-3 pb-1 sm:px-4 sm:pt-3 shrink-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md transition-all">
-      <div className={`p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-850 border shadow-xs transition-all ${currentMeta.accentGradient}`}>
+    <div className="sticky top-0 z-30 px-3 sm:px-4 pt-2 pb-1.5 shrink-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md transition-all">
+      <div className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-800 shadow-xs transition-all ${currentMeta.accentGradient}`}>
         
         {/* HÀNG 1: BREADCRUMB & NÚT MỞ SƠ ĐỒ CÂY CƠ CẤU */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
           
           {/* Breadcrumb Path */}
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>
+            <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block"></span>
               GHN Khu Vực Long An
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronRight className="w-3 h-3 text-slate-400" />
             
-            <span className="flex items-center gap-1 text-slate-800 dark:text-slate-200">
-              <CatIcon className="w-3.5 h-3.5 text-orange-500" />
+            <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+              <CatIcon className="w-3 h-3 text-orange-500" />
               {currentMeta.categoryName}
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronRight className="w-3 h-3 text-slate-400" />
 
-            <span className="text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md border border-orange-200 dark:border-orange-800/60">
+            <span className="text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.2 rounded border border-orange-200 dark:border-orange-800/60">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-600 animate-ping"></span>
               {currentMeta.title.split('(')[0].trim()}
             </span>
           </nav>
 
-          {/* Quick Actions: Telegram Báo Cáo & Mở Cây Cơ Cấu [Ctrl+M] */}
+          {/* Quick Actions: Telegram Báo Cáo */}
           <div className="flex items-center gap-1.5">
             {(activeTab === 'ton_dong_glt' || activeTab === 'ton_dong_lc') && (
               <button
@@ -250,54 +250,52 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
                 onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { 
                   detail: { reportType: activeTab === 'ton_dong_glt' ? 'glt' : 'lc' } 
                 }))}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#229ED9] hover:bg-[#1e8ec3] text-white text-[11px] font-black shadow-sm transition-all cursor-pointer border border-[#229ED9]/50"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#229ED9] hover:bg-[#1e8ec3] text-white text-[11px] font-bold shadow-2xs transition-all cursor-pointer border border-[#229ED9]/50"
                 title="Bắn báo cáo Telegram 5 bưu cục"
               >
                 <Send className="w-3.5 h-3.5 text-white" />
                 <span>{activeTab === 'ton_dong_glt' ? 'Báo Cáo Telegram' : 'Báo Cáo Telegram LC'}</span>
               </button>
             )}
-
-
           </div>
         </div>
 
         {/* HÀNG 2: HIGHLIGHT TIÊU ĐỀ NỔI BẬT & BỘ NÚT CHUYỂN TAB CÙNG CỤM */}
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="pt-1.5 flex flex-wrap items-center justify-between gap-2.5">
           
           {/* Tiêu Đề Nổi Bật Được Highlight */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-md shrink-0">
-              <TabIcon className="w-5 h-5 stroke-[2.3]" />
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-2xs shrink-0">
+              <TabIcon className="w-4 h-4 stroke-[2.3]" />
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xs sm:text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h1 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">
                   {currentMeta.title}
                 </h1>
                 
                 {/* Status Badge: Đang View */}
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow-2xs flex items-center gap-1 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                  ĐANG VIEW
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-600 text-white shadow-2xs flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  LIVE
                 </span>
 
                 {/* Realtime Metric Badge */}
-                <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-black ${currentMeta.badgeColor}`}>
+                <span className={`px-1.5 py-0.2 rounded-md text-[9px] font-black ${currentMeta.badgeColor}`}>
                   {currentMeta.badge}
                 </span>
               </div>
 
-              <p className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug truncate">
+              <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight line-clamp-1">
                 {currentMeta.subTitle}
               </p>
             </div>
           </div>
 
           {/* Sibling Tabs Switcher (Chuyển nhanh các phân hệ trong cùng Cụm nghiệp vụ) */}
-          <div className="flex items-center gap-1 overflow-x-auto max-w-full text-xs font-bold pt-1 sm:pt-0">
-            <span className="text-[10px] text-slate-400 mr-1 hidden md:inline">Cùng nhóm:</span>
+          <div className="flex items-center gap-1 overflow-x-auto max-w-full text-xs font-bold shrink-0">
+            <span className="text-[10px] text-slate-400 mr-1 hidden xl:inline">Cùng nhóm:</span>
             {currentMeta.siblings.map(sib => {
               const isCurrent = sib.id === activeTab;
               return (
@@ -307,7 +305,7 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
                   onClick={() => setActiveTab(sib.id)}
                   className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                     isCurrent
-                      ? 'bg-orange-600 text-white shadow-xs'
+                      ? 'bg-orange-600 text-white shadow-2xs'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >

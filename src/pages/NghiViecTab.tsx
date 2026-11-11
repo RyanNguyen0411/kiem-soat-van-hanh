@@ -180,7 +180,11 @@ export default function NghiViecTab() {
       if (selectedPostOffice !== 'all' && r.buuCuc !== selectedPostOffice) return false;
       if (timeFilterMode === 'month' && selectedMonth !== 'all' && r.thangNghiViec !== selectedMonth) return false;
       if (timeFilterMode === 'week' && selectedWeek !== 'all' && r.tuanNghiViec !== selectedWeek) return false;
-      if (selectedTenure !== 'all' && r.nhomThamNien !== selectedTenure) return false;
+      if (selectedTenure !== 'all') {
+        const code = selectedTenure.split(':')[0].trim();
+        const match = r.nhomThamNien === selectedTenure || (r.nhomThamNien && r.nhomThamNien.startsWith(code));
+        if (!match) return false;
+      }
       if (selectedReasonGroup !== 'all' && r.nhomLyDo !== selectedReasonGroup) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -477,19 +481,20 @@ export default function NghiViecTab() {
   // =========================================================================
   const tenureSummary = useMemo(() => {
     return TENURE_LABELS.map(tenure => {
-      const items = filteredList.filter(r => r.nhomThamNien === tenure);
+      const code = tenure.split(':')[0].trim();
+      const items = filteredList.filter(r => r.nhomThamNien === tenure || (r.nhomThamNien && r.nhomThamNien.startsWith(code)));
       const count = items.length;
       const share = filteredList.length > 0 ? ((count / filteredList.length) * 100).toFixed(1) : '0';
       
-      const totalDays = items.reduce((s, r) => s + r.soNgayLam, 0);
+      const totalDays = items.reduce((s, r) => s + (r.soNgayLam || 0), 0);
       const avgDays = count > 0 ? Math.round(totalDays / count) : 0;
-      const minDays = count > 0 ? Math.min(...items.map(r => r.soNgayLam)) : 0;
-      const maxDays = count > 0 ? Math.max(...items.map(r => r.soNgayLam)) : 0;
+      const minDays = count > 0 ? Math.min(...items.map(r => r.soNgayLam || 0)) : 0;
+      const maxDays = count > 0 ? Math.max(...items.map(r => r.soNgayLam || 0)) : 0;
 
-      const totalVol = items.reduce((s, r) => s + r.sanLuongTb, 0);
+      const totalVol = items.reduce((s, r) => s + (r.sanLuongTb || 0), 0);
       const avgVol = count > 0 ? Math.round(totalVol / count) : 0;
 
-      const totalSal = items.reduce((s, r) => s + r.mucLuongTb, 0);
+      const totalSal = items.reduce((s, r) => s + (r.mucLuongTb || 0), 0);
       const avgSalary = count > 0 ? Math.round(totalSal / count) : 0;
 
       return {

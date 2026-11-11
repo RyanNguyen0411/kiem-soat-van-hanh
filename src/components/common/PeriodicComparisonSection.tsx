@@ -28,6 +28,7 @@ import {
 import type { GtcPostOfficeRecord, GtcEmployeeRecord, DailySalaryRecord } from '../../types/dashboard';
 import { sortDatesDesc, type WeekFilterOption, type MonthFilterOption } from '../../utils/dateEngine';
 import { exportToCSV } from '../../services/excelExportService';
+import { safeToFixed, safeFormatPercent, safeFormatNumber } from '../../utils';
 
 interface PeriodicComparisonProps {
   gtcBcList: GtcPostOfficeRecord[];
@@ -427,16 +428,16 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
     const rows = displayedMetrics.map(m => [
       m.label,
       m.dateRange,
-      m.volume,
-      m.sldGan,
-      `${m.assignedRate.toFixed(2)}%`,
-      m.sldGTC,
-      `${m.gtcRate.toFixed(2)}%`,
-      `${m.returnRate.toFixed(2)}%`,
-      m.leadtime.toFixed(2),
-      m.tonDong,
-      m.totalSalary,
-      m.activeStaff
+      safeFormatNumber(m.volume),
+      safeFormatNumber(m.sldGan),
+      safeFormatPercent(m.assignedRate, 2),
+      safeFormatNumber(m.sldGTC),
+      safeFormatPercent(m.gtcRate, 2),
+      safeFormatPercent(m.returnRate, 2),
+      safeToFixed(m.leadtime, 2),
+      safeFormatNumber(m.tonDong),
+      safeFormatNumber(m.totalSalary),
+      safeFormatNumber(m.activeStaff)
     ]);
 
     exportToCSV(`so_sanh_${viewMode === 'week' ? 'theo_tuan' : 'theo_thang'}_ghn`, headers, rows);
@@ -911,7 +912,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                   <TrendingDown className="w-4 h-4 text-red-600" />
                 )}
                 <span className={`font-bold ${variance.diffVol >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {variance.diffVol >= 0 ? '+' : ''}{variance.diffVol.toLocaleString('vi-VN')} đơn ({variance.pctVol >= 0 ? '+' : ''}{variance.pctVol.toFixed(1)}%)
+                  {variance.diffVol >= 0 ? '+' : ''}{safeFormatNumber(variance.diffVol)} đơn ({variance.pctVol >= 0 ? '+' : ''}{safeToFixed(variance.pctVol, 1)}%)
                 </span>
               </div>
             </div>
@@ -925,7 +926,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                   <TrendingDown className="w-4 h-4 text-red-600" />
                 )}
                 <span className={`font-bold ${variance.diffGtcRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {variance.diffGtcRate >= 0 ? '+' : ''}{variance.diffGtcRate.toFixed(2)}%
+                  {variance.diffGtcRate >= 0 ? '+' : ''}{safeToFixed(variance.diffGtcRate, 2)}%
                 </span>
               </div>
             </div>
@@ -934,7 +935,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
               <span className="text-slate-400 text-[10px]">Đơn GTC Thành công:</span>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className={`font-bold ${variance.diffGtc >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {variance.diffGtc >= 0 ? '+' : ''}{variance.diffGtc.toLocaleString('vi-VN')} đơn
+                  {variance.diffGtc >= 0 ? '+' : ''}{safeFormatNumber(variance.diffGtc)} đơn
                 </span>
               </div>
             </div>
@@ -943,7 +944,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
               <span className="text-slate-400 text-[10px]">Biến động Quỹ Lương:</span>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {variance.diffSalary >= 0 ? '+' : ''}{(variance.diffSalary / 1e6).toFixed(1)} tr ({variance.pctSalary >= 0 ? '+' : ''}{variance.pctSalary.toFixed(1)}%)
+                  {variance.diffSalary >= 0 ? '+' : ''}{safeToFixed(variance.diffSalary / 1e6, 1)} tr ({variance.pctSalary >= 0 ? '+' : ''}{safeToFixed(variance.pctSalary, 1)}%)
                 </span>
               </div>
             </div>
@@ -1033,11 +1034,11 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                       </td>
 
                       <td className="px-3 py-2.5 text-right text-blue-600 font-bold">
-                        {m.assignedRate.toFixed(1)}%
+                        {safeFormatPercent(m.assignedRate, 1)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {m.sldGTC.toLocaleString('vi-VN')}
+                        {safeFormatNumber(m.sldGTC)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-black">
@@ -1046,29 +1047,29 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                           m.gtcRate < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                         }`}>
-                          {m.gtcRate.toFixed(2)}%
+                          {safeFormatPercent(m.gtcRate, 2)}
                         </span>
                         {prev && (
                           <div className={`text-[10px] font-bold ${gtcRateDelta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {gtcRateDelta >= 0 ? '+' : ''}{gtcRateDelta.toFixed(2)}%
+                            {gtcRateDelta >= 0 ? '+' : ''}{safeToFixed(gtcRateDelta, 2)}%
                           </div>
                         )}
                       </td>
 
                       <td className="px-3 py-2.5 text-right text-amber-600 font-medium">
-                        {m.returnRate.toFixed(2)}%
+                        {safeFormatPercent(m.returnRate, 2)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-medium">
-                        {m.leadtime.toFixed(1)}
+                        {safeToFixed(m.leadtime, 1)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right text-rose-600 font-bold">
-                        {m.tonDong.toLocaleString('vi-VN')}
+                        {safeFormatNumber(m.tonDong)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-semibold text-emerald-600">
-                        {(m.totalSalary / 1e6).toFixed(1)} tr
+                        {safeToFixed(m.totalSalary / 1e6, 1)} tr
                       </td>
 
                       <td className="px-3 py-2.5 text-center">
@@ -1094,9 +1095,9 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                                 </span>
                               </div>
                               <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                                Tổng Volume: <span className="text-orange-600 font-bold">{m.volume.toLocaleString('vi-VN')} đơn</span> &bull; 
-                                Tỷ lệ GTC: <span className="text-emerald-600 font-bold">{m.gtcRate.toFixed(2)}%</span> &bull; 
-                                Quỹ lương: <span className="text-slate-800 dark:text-slate-100 font-bold">{(m.totalSalary / 1e6).toFixed(1)} triệu</span>
+                                Tổng Volume: <span className="text-orange-600 font-bold">{safeFormatNumber(m.volume)} đơn</span> &bull; 
+                                Tỷ lệ GTC: <span className="text-emerald-600 font-bold">{safeFormatPercent(m.gtcRate, 2)}</span> &bull; 
+                                Quỹ lương: <span className="text-slate-800 dark:text-slate-100 font-bold">{safeToFixed(m.totalSalary / 1e6, 1)} triệu</span>
                               </div>
                             </div>
 
@@ -1135,10 +1136,10 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                                         {d.sldGan.toLocaleString('vi-VN')}
                                       </td>
                                       <td className="px-2 py-2 text-right font-bold text-blue-600">
-                                        {d.assignedRate.toFixed(1)}%
+                                        {safeFormatPercent(d.assignedRate, 1)}
                                       </td>
                                       <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                                        {d.sldGTC.toLocaleString('vi-VN')}
+                                        {safeFormatNumber(d.sldGTC)}
                                       </td>
                                       <td className="px-3 py-2 text-right font-black">
                                         <span className={`px-2 py-0.5 rounded-full inline-block text-[10px] ${
@@ -1146,20 +1147,20 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                                           d.gtcRate < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                                         }`}>
-                                          {d.gtcRate.toFixed(2)}%
+                                          {safeFormatPercent(d.gtcRate, 2)}
                                         </span>
                                       </td>
                                       <td className="px-2 py-2 text-right text-amber-600 font-medium">
-                                        {d.returnRate.toFixed(2)}%
+                                        {safeFormatPercent(d.returnRate, 2)}
                                       </td>
                                       <td className="px-2 py-2 text-right text-slate-600 dark:text-slate-300">
-                                        {d.leadtime.toFixed(1)}
+                                        {safeToFixed(d.leadtime, 1)}
                                       </td>
                                       <td className="px-3 py-2 text-right font-bold text-rose-600">
-                                        {d.tonDong.toLocaleString('vi-VN')}
+                                        {safeFormatNumber(d.tonDong)}
                                       </td>
                                       <td className="px-3 py-2 text-right font-medium text-emerald-600">
-                                        {d.totalSalary > 0 ? d.totalSalary.toLocaleString('vi-VN') : '-'}
+                                        {d.totalSalary > 0 ? safeFormatNumber(d.totalSalary) : '-'}
                                       </td>
                                       <td className="px-2 py-2 text-center">
                                         {d.activeStaff > 0 ? (

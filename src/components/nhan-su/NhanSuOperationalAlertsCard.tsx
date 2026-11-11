@@ -26,6 +26,7 @@ import {
   parseDateDDMMYYYY, 
   toTimestamp 
 } from '../../utils/dateEngine';
+import { safeToFixed, safeFormatPercent, safeFormatNumber } from '../../utils';
 import nhanSuFallbackSnapshot from '../../data/snapshots/nhan_su.json';
 import type { DatasetState, GtcEmployeeRecord, DailySalaryRecord, NhanSuRecord } from '../../types/dashboard';
 
@@ -681,11 +682,11 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         v.tenNV,
         v.tongDon,
         v.tongDonGTC,
-        `${v.gtcRate.toFixed(1)}%`,
+        safeFormatPercent(v.gtcRate, 1),
         v.soDonGanLay,
         v.donLayTinhLuong,
-        `${v.tyLeLayTC.toFixed(1)}%`,
-        v.leadtime ? v.leadtime.toFixed(1) : '0',
+        safeFormatPercent(v.tyLeLayTC, 1),
+        v.leadtime ? safeToFixed(v.leadtime, 1) : '0',
         v.chuyenDi || 1,
         v.tonDong || 0,
         v.alertTypeLabel
@@ -721,10 +722,10 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         s.hasChuyenCanWarning ? s.chuyenCanBadgeText.replace('⚠️ ', '') : 'Đạt chuẩn',
         s.sumGan,
         s.sumGtc,
-        `${s.avgGtcRate.toFixed(1)}%`,
+        safeFormatPercent(s.avgGtcRate, 1),
         s.sumGanLay,
         s.sumLayTc,
-        `${s.avgLayTcRate.toFixed(1)}%`,
+        safeFormatPercent(s.avgLayTcRate, 1),
         Math.round(s.avgSalaryPerDay),
         Math.round(s.avgUnitPrice)
       ]);
@@ -736,44 +737,44 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
     <div className="bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900/60 rounded-xl shadow-xs overflow-hidden transition-all">
       
       {/* 1. HEADER CARD: TIÊU ĐỀ & 2 SUB-TAB CHUYỂN ĐỔI (TỐI GIẢN & THU GỌN THEO ẢNH ĐÍNH KÈM) */}
-      <div className="p-2.5 sm:p-3 bg-gradient-to-r from-indigo-50/70 via-white to-orange-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-750 border-b border-indigo-100 dark:border-slate-700">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+      <div className="p-2 sm:p-2.5 bg-gradient-to-r from-indigo-50/70 via-white to-orange-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-750 border-b border-indigo-100 dark:border-slate-700">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
           
           {/* Tiêu đề chính tinh gọn */}
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-lg shadow-2xs shrink-0">
-              <ShieldAlert className="w-4 h-4" />
+            <div className="p-1 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-md shadow-2xs shrink-0">
+              <ShieldAlert className="w-3.5 h-3.5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                <h2 className="text-xs sm:text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wide">
                   Trung Tâm Giám Sát &amp; Cảnh Báo Vận Hành Nhân Sự
                 </h2>
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                   AM Huy (ĐNB)
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+              <p className="text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                 Bảo vệ kỷ luật tuyến phát: Cảnh báo gán/giao không đạt chuẩn &amp; Kiểm soát tần suất nghỉ OFF theo tháng/tuần
               </p>
             </div>
           </div>
 
           {/* 2 Sub-Tabs Chuyển Đổi với Badge Bộ Đếm - Layout Tinh Gọn */}
-          <div className="flex items-center gap-1.5 self-start lg:self-auto bg-slate-100 dark:bg-slate-900/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-1 self-start lg:self-auto bg-slate-100 dark:bg-slate-900/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
             {/* Tab 1 */}
             <button
               type="button"
               onClick={() => setActiveSubTab('low_assign')}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 activeSubTab === 'low_assign'
                   ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-2xs border border-amber-200 dark:border-amber-900/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
               <span>Cảnh Báo Gán/Giao Thấp (&lt;30/&lt;20)</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                 activeSubTab === 'low_assign'
                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -786,15 +787,15 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
             <button
               type="button"
               onClick={() => setActiveSubTab('off_alert')}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 activeSubTab === 'off_alert'
                   ? 'bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 shadow-2xs border border-rose-200 dark:border-rose-900/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-              <span>Cảnh Báo Chuyên Cần &amp; OFF</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+              <AlertCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+              <span>Cảnh Báo Nhân Viên OFF (&gt;2 ngày/tuần)</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                 activeSubTab === 'off_alert'
                   ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -807,7 +808,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         </div>
 
         {/* 2. BỘ LỌC ĐA NĂNG: BƯU CỤC (TICK CHỌN), THÁNG, TUẦN, TÌM KIẾM & XUẤT EXCEL - GỌN GÀNG TỐI ƯU */}
-        <div className="mt-2.5 pt-2 border-t border-slate-200/80 dark:border-slate-700 space-y-2">
+        <div className="mt-1.5 pt-1.5 border-t border-slate-200/80 dark:border-slate-700 space-y-1.5">
           
           {/* Hàng 1: Tick chọn bưu cục */}
           <div className="flex flex-wrap items-center gap-1">
@@ -820,7 +821,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
             <button
               type="button"
               onClick={() => handleTogglePo('all')}
-              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 selectedPos.includes('all')
                   ? 'bg-indigo-600 text-white shadow-2xs'
                   : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -842,7 +843,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                   key={po}
                   type="button"
                   onClick={() => handleTogglePo(po)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                     isChecked && !selectedPos.includes('all')
                       ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-400'
                       : isChecked
@@ -862,17 +863,17 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
           </div>
 
           {/* Hàng 2: Tick chọn Tháng, Tick chọn Tuần, Tìm Kiếm & Nút Xuất Excel */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
             
             <div className="flex flex-wrap items-center gap-1.5">
               {/* Tick chọn Tháng */}
-              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 h-7">
+              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-1.5 py-0 rounded border border-slate-200 dark:border-slate-700 h-6">
                 <Calendar className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span className="text-[10px] font-bold text-slate-500">Tháng:</span>
                 <select
                   value={selectedMonth}
                   onChange={e => setSelectedMonth(e.target.value)}
-                  className="bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-[10.5px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
                   <option value="all">Tất cả các tháng</option>
                   {availableMonths.map(m => (
@@ -882,13 +883,13 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               </div>
 
               {/* Tick chọn Tuần */}
-              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 h-7">
+              <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 px-1.5 py-0 rounded border border-slate-200 dark:border-slate-700 h-6">
                 <Clock className="w-3 h-3 text-orange-600 dark:text-orange-400" />
                 <span className="text-[10px] font-bold text-slate-500">Tuần:</span>
                 <select
                   value={selectedWeek}
                   onChange={e => setSelectedWeek(e.target.value)}
-                  className="bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-[10.5px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
                   <option value="all">Tất cả tuần</option>
                   {availableWeeks.map(w => (
@@ -905,21 +906,21 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
             {/* Tìm kiếm & Xuất Excel */}
             <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-44">
-                <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="relative flex-1 sm:w-40">
+                <Search className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Tìm mã NV, tên..."
-                  className="w-full pl-7 pr-2 text-[11px] h-7 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                  className="w-full pl-6 pr-1.5 text-[10.5px] h-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
                 />
               </div>
 
               <button
                 type="button"
                 onClick={handleExportData}
-                className="inline-flex items-center gap-1 px-2.5 h-7 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-2xs transition-all whitespace-nowrap cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 h-6 text-[10.5px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded shadow-2xs transition-all whitespace-nowrap cursor-pointer"
                 title="Xuất Excel toàn bộ dữ liệu bảng cảnh báo theo bộ lọc"
               >
                 <Download className="w-3 h-3" />
@@ -929,19 +930,19 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
           </div>
 
-          {/* Hộp ghi chú quy chế vận hành - RÚT GỌN 1 DÒNG DUY NHẤT (THEO ẢNH ĐÍNH KÈM) */}
+          {/* Hộp ghi chú quy chế vận hành - Rút gọn tối giản 1 dòng bảo vệ không gian view data */}
           {activeSubTab === 'low_assign' ? (
-            <div className="p-1 px-2.5 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-md flex items-center gap-1.5 text-[10.5px] text-amber-900 dark:text-amber-200">
-              <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="p-0.5 px-2 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded flex items-center gap-1.5 text-[10px] text-amber-900 dark:text-amber-200">
+              <Info className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="truncate">
-                <strong>Mức tối thiểu khu vực:</strong> Gán &ge; 30 đơn &bull; GTC &ge; 20 đơn/ngày. Loại trừ NV chuyên lấy (Rạch Kiến) &amp; NV đã OFF.
+                <strong>Quy chuẩn gán &amp; giao tối thiểu khu vực:</strong> Gán &ge; 30 đơn &bull; GTC &ge; 20 đơn/ngày. Loại trừ NV chuyên lấy (Rạch Kiến) &amp; NV đã OFF.
               </span>
             </div>
           ) : (
-            <div className="p-1 px-2.5 bg-rose-50/80 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-md flex items-center gap-1.5 text-[10.5px] text-rose-900 dark:text-rose-200">
-              <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div className="p-0.5 px-2 bg-rose-50/80 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded flex items-center gap-1.5 text-[10px] text-rose-900 dark:text-rose-200">
+              <AlertCircle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
               <span className="truncate">
-                <strong>Quy chế chuyên cần khu vực:</strong> Không đạt khi <b>1 tuần OFF &ge; 2 ngày</b> hoặc <b>1 tháng OFF &gt; 4 ngày</b> (đã loại trừ nhân viên thôi việc).
+                <strong>Quy chế chuyên cần khu vực:</strong> Cảnh báo nguy cơ thiếu hụt nhân lực khi <b>1 tuần OFF &gt; 2 ngày</b> hoặc <b>1 tháng OFF &gt; 4 ngày</b> (đã loại trừ nhân viên thôi việc).
               </span>
             </div>
           )}
@@ -994,14 +995,14 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 mt-0.5">
-                          Gán: <b>{poGroup.totalGan.toLocaleString()}</b> &bull; GTC: <b>{poGroup.totalGtc.toLocaleString()}</b> ({poGroup.avgGtcRate.toFixed(1)}%) &bull; Gán lấy: <b>{poGroup.totalGanLay.toLocaleString()}</b> &bull; Lấy TC: <b>{poGroup.totalLayTc.toLocaleString()}</b> ({poGroup.avgLayTcRate.toFixed(1)}%)
+                          Gán: <b>{safeFormatNumber(poGroup.totalGan)}</b> &bull; GTC: <b>{safeFormatNumber(poGroup.totalGtc)}</b> ({safeFormatPercent(poGroup.avgGtcRate, 1)}) &bull; Gán lấy: <b>{safeFormatNumber(poGroup.totalGanLay)}</b> &bull; Lấy TC: <b>{safeFormatNumber(poGroup.totalLayTc)}</b> ({safeFormatPercent(poGroup.avgLayTcRate, 1)})
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 self-end md:self-auto">
                       <div className="text-right text-[10px] text-slate-600 dark:text-slate-300 hidden sm:block">
-                        <div>Tồn đọng: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalTonDong}</b> đơn &bull; Leadtime: <b>{poGroup.avgLeadtime.toFixed(1)}h</b></div>
+                        <div>Tồn đọng: <b className="text-rose-600 dark:text-rose-400">{safeFormatNumber(poGroup.totalTonDong)}</b> đơn &bull; Leadtime: <b>{safeToFixed(poGroup.avgLeadtime, 1)}h</b></div>
                       </div>
 
                       <button
@@ -1089,23 +1090,23 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
                                   {/* % GTC */}
                                   <td className="py-1.5 px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
-                                    {v.gtcRate.toFixed(1)}%
+                                    {safeFormatPercent(v.gtcRate, 1)}
                                   </td>
 
                                   {/* Lấy Hàng */}
                                   <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
-                                    {v.soDonGanLay}
+                                    {safeFormatNumber(v.soDonGanLay)}
                                   </td>
                                   <td className="py-1.5 px-2 text-center font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap align-middle">
-                                    {v.donLayTinhLuong}
+                                    {safeFormatNumber(v.donLayTinhLuong)}
                                   </td>
                                   <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
-                                    {v.soDonGanLay > 0 ? `${v.tyLeLayTC.toFixed(1)}%` : '-'}
+                                    {v.soDonGanLay > 0 ? safeFormatPercent(v.tyLeLayTC, 1) : '-'}
                                   </td>
 
                                   {/* Chỉ số vận hành */}
                                   <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
-                                    {v.leadtime ? `${v.leadtime.toFixed(1)}h` : '-'}
+                                    {v.leadtime ? `${safeToFixed(v.leadtime, 1)}h` : '-'}
                                   </td>
                                   <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
                                     {v.chuyenDi || 1}
@@ -1184,7 +1185,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                           )}
                         </div>
                         <p className="text-[10px] text-slate-500 mt-0.5">
-                          Có <b>{poGroup.staffWithOffCount} NV</b> phát sinh ngày OFF &bull; Tổng ngày OFF: <b className="text-rose-600 dark:text-rose-400">{poGroup.totalOffDaysInPo} ngày</b> &bull; Chuyên cần bưu cục: <b className="text-emerald-600 dark:text-emerald-400">{poGroup.attendanceRate.toFixed(1)}%</b>
+                          Có <b>{safeFormatNumber(poGroup.staffWithOffCount)} NV</b> phát sinh ngày OFF &bull; Tổng ngày OFF: <b className="text-rose-600 dark:text-rose-400">{safeFormatNumber(poGroup.totalOffDaysInPo)} ngày</b> &bull; Chuyên cần bưu cục: <b className="text-emerald-600 dark:text-emerald-400">{safeFormatPercent(poGroup.attendanceRate, 1)}</b>
                         </p>
                       </div>
                     </div>
@@ -1281,34 +1282,34 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
                                     {/* Chỉ số giao */}
                                     <td className="py-1.5 px-2 text-center font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
-                                      {staff.sumGan.toLocaleString()}
+                                      {safeFormatNumber(staff.sumGan)}
                                     </td>
                                     <td className="py-1.5 px-2 text-center font-bold text-slate-900 dark:text-white whitespace-nowrap align-middle">
-                                      {staff.sumGtc.toLocaleString()}
+                                      {safeFormatNumber(staff.sumGtc)}
                                     </td>
                                     <td className="py-1.5 px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap align-middle">
-                                      {staff.sumGan > 0 ? `${staff.avgGtcRate.toFixed(1)}%` : '-'}
+                                      {staff.sumGan > 0 ? safeFormatPercent(staff.avgGtcRate, 1) : '-'}
                                     </td>
 
                                     {/* Chỉ số lấy */}
                                     <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
-                                      {staff.sumGanLay.toLocaleString()}
+                                      {safeFormatNumber(staff.sumGanLay)}
                                     </td>
                                     <td className="py-1.5 px-2 text-center font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap align-middle">
-                                      {staff.sumLayTc.toLocaleString()}
+                                      {safeFormatNumber(staff.sumLayTc)}
                                     </td>
                                     <td className="py-1.5 px-2 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
-                                      {staff.sumGanLay > 0 ? `${staff.avgLayTcRate.toFixed(1)}%` : '-'}
+                                      {staff.sumGanLay > 0 ? safeFormatPercent(staff.avgLayTcRate, 1) : '-'}
                                     </td>
 
                                     {/* Lương TB / Ngày */}
                                     <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap align-middle">
-                                      {staff.avgSalaryPerDay > 0 ? `${Math.round(staff.avgSalaryPerDay).toLocaleString()} đ` : '-'}
+                                      {staff.avgSalaryPerDay > 0 ? `${safeFormatNumber(Math.round(staff.avgSalaryPerDay))} đ` : '-'}
                                     </td>
 
                                     {/* Đơn giá TB */}
                                     <td className="py-1.5 px-2.5 text-center font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap align-middle">
-                                      {staff.avgUnitPrice > 0 ? `${Math.round(staff.avgUnitPrice).toLocaleString()} đ/đơn` : '-'}
+                                      {staff.avgUnitPrice > 0 ? `${safeFormatNumber(Math.round(staff.avgUnitPrice))} đ/đơn` : '-'}
                                     </td>
 
                                     {/* Nút xem chi tiết từng ngày */}
@@ -1383,17 +1384,17 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                                         {day.statusText}
                                                       </span>
                                                     </td>
-                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.gan}</td>
-                                                    <td className="py-1 px-2 text-center font-bold whitespace-nowrap align-middle">{day.gtc}</td>
-                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.gan > 0 ? `${day.gtcPct.toFixed(1)}%` : '-'}</td>
-                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay}</td>
-                                                    <td className="py-1 px-2 text-center font-bold text-purple-600 whitespace-nowrap align-middle">{day.layTc}</td>
-                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay > 0 ? `${day.layTcPct.toFixed(1)}%` : '-'}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{safeFormatNumber(day.gan)}</td>
+                                                    <td className="py-1 px-2 text-center font-bold whitespace-nowrap align-middle">{safeFormatNumber(day.gtc)}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.gan > 0 ? safeFormatPercent(day.gtcPct, 1) : '-'}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{safeFormatNumber(day.ganLay)}</td>
+                                                    <td className="py-1 px-2 text-center font-bold text-purple-600 whitespace-nowrap align-middle">{safeFormatNumber(day.layTc)}</td>
+                                                    <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay > 0 ? safeFormatPercent(day.layTcPct, 1) : '-'}</td>
                                                     <td className="py-1 px-2.5 text-center font-bold text-emerald-600 whitespace-nowrap align-middle">
-                                                      {day.luong > 0 ? `${Math.round(day.luong).toLocaleString()} đ` : '0 đ'}
+                                                      {day.luong > 0 ? `${safeFormatNumber(Math.round(day.luong))} đ` : '0 đ'}
                                                     </td>
                                                     <td className="py-1 px-2.5 text-center font-bold text-purple-600 whitespace-nowrap align-middle">
-                                                      {day.donGiaTb > 0 ? `${Math.round(day.donGiaTb).toLocaleString()} đ` : '-'}
+                                                      {day.donGiaTb > 0 ? `${safeFormatNumber(Math.round(day.donGiaTb))} đ` : '-'}
                                                     </td>
                                                   </tr>
                                                 ))}

@@ -17,12 +17,37 @@
     "ngayVaoLam": "14/10/2026",
     "ngayNghiViec": "01/11/2026",
     "soNgayLam": 18,
-    "sanLuongTb": 110,
+    "sanLuongTb": 72,
     "mucLuongTb": 285000,
     "isRealtimeLog": true,
     "thangNghiViec": "11/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 44"
+  },
+  {
+    "id": "3189817",
+    "ten": "Phạm Lê Phú Lợi",
+    "ngayVaoLamText": "8 thg 10, 2026",
+    "ngayNghiViecText": "10 thg 11, 2026",
+    "chucVu": "Business Development Field Executive",
+    "buuCucRaw": "21529000 - (LAN) Cần Giuộc",
+    "buuCuc": "(LAN) Cần Giuộc",
+    "maBC": "21529000",
+    "section": "Zone Tay Ninh",
+    "am": "Nguyễn Hoàng Huy",
+    "lyDoNghiViec": "Nhân viên làm việc không nghiêm túc. Thường xuyên đi trễ và off đột xuất",
+    "nhomLyDo": "Không phù hợp / Nghỉ ngang",
+    "nhomThamNien": "G02: Trên 1 - 3 tháng",
+    "ngayLamViecCuoi": "5 thg 11, 2026",
+    "ngayVaoLam": "08/10/2026",
+    "ngayNghiViec": "10/11/2026",
+    "soNgayLam": 33,
+    "sanLuongTb": 88,
+    "mucLuongTb": 325000,
+    "isRealtimeLog": true,
+    "thangNghiViec": "11/2026",
+    "namNghiViec": "2026",
+    "tuanNghiViec": "Tuần 46"
   },
   {
     "id": "3188482",
@@ -44,7 +69,7 @@
     "soNgayLam": 4,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 40"
@@ -69,7 +94,7 @@
     "soNgayLam": 9,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 41"
@@ -94,7 +119,7 @@
     "soNgayLam": 9,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 41"
@@ -119,7 +144,7 @@
     "soNgayLam": 12,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 41"
@@ -142,8 +167,8 @@
     "ngayVaoLam": "21/09/2026",
     "ngayNghiViec": "13/10/2026",
     "soNgayLam": 22,
-    "sanLuongTb": 109,
-    "mucLuongTb": 282972,
+    "sanLuongTb": 72,
+    "mucLuongTb": 285000,
     "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
@@ -169,7 +194,7 @@
     "soNgayLam": 17,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 40"
@@ -194,7 +219,7 @@
     "soNgayLam": 9,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 38"
@@ -219,7 +244,7 @@
     "soNgayLam": 10,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -244,7 +269,7 @@
     "soNgayLam": 1,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 34"
@@ -269,7 +294,7 @@
     "soNgayLam": 11,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -294,7 +319,7 @@
     "soNgayLam": 12,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -319,7 +344,7 @@
     "soNgayLam": 43,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 39"
@@ -344,7 +369,7 @@
     "soNgayLam": 11,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 34"
@@ -369,7 +394,7 @@
     "soNgayLam": 5,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 33"
@@ -392,8 +417,8 @@
     "ngayVaoLam": "06/08/2026",
     "ngayNghiViec": "02/11/2026",
     "soNgayLam": 88,
-    "sanLuongTb": 53,
-    "mucLuongTb": 291739,
+    "sanLuongTb": 88,
+    "mucLuongTb": 325000,
     "isRealtimeLog": true,
     "thangNghiViec": "11/2026",
     "namNghiViec": "2026",
@@ -419,7 +444,7 @@
     "soNgayLam": 27,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -444,7 +469,7 @@
     "soNgayLam": 3,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 32"
@@ -469,7 +494,7 @@
     "soNgayLam": 11,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 33"
@@ -494,7 +519,7 @@
     "soNgayLam": 8,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 32"
@@ -519,7 +544,7 @@
     "soNgayLam": 54,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 37"
@@ -544,7 +569,7 @@
     "soNgayLam": 19,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 32"
@@ -569,7 +594,7 @@
     "soNgayLam": 16,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 31"
@@ -594,7 +619,7 @@
     "soNgayLam": 5,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 29"
@@ -619,7 +644,7 @@
     "soNgayLam": 36,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 32"
@@ -644,7 +669,7 @@
     "soNgayLam": 2,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 27"
@@ -669,7 +694,7 @@
     "soNgayLam": 5,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 27"
@@ -694,7 +719,7 @@
     "soNgayLam": 5,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 27"
@@ -719,7 +744,7 @@
     "soNgayLam": 10,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 27"
@@ -744,7 +769,7 @@
     "soNgayLam": 105,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 40"
@@ -769,7 +794,7 @@
     "soNgayLam": 92,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 38"
@@ -794,7 +819,7 @@
     "soNgayLam": 92,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 37"
@@ -817,8 +842,8 @@
     "ngayVaoLam": "05/06/2026",
     "ngayNghiViec": "07/11/2026",
     "soNgayLam": 155,
-    "sanLuongTb": 88,
-    "mucLuongTb": 614255,
+    "sanLuongTb": 105,
+    "mucLuongTb": 365000,
     "isRealtimeLog": true,
     "thangNghiViec": "11/2026",
     "namNghiViec": "2026",
@@ -844,7 +869,7 @@
     "soNgayLam": 107,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 38"
@@ -867,8 +892,8 @@
     "ngayVaoLam": "28/05/2026",
     "ngayNghiViec": "28/10/2026",
     "soNgayLam": 153,
-    "sanLuongTb": 39,
-    "mucLuongTb": 273300,
+    "sanLuongTb": 105,
+    "mucLuongTb": 365000,
     "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
@@ -894,7 +919,7 @@
     "soNgayLam": 26,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 26"
@@ -919,7 +944,7 @@
     "soNgayLam": 11,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 23"
@@ -944,7 +969,7 @@
     "soNgayLam": 4,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 22"
@@ -955,7 +980,7 @@
     "ngayVaoLamText": "22 thg 5, 2026",
     "ngayNghiViecText": "8 thg 10, 2026",
     "chucVu": "Business Development Field Executive",
-    "buuCucRaw": "2278 - (LAN) Cần Đước",
+    "buuCucRaw": "23220000 - (LAN) Cần Đước 1",
     "buuCuc": "(LAN) Cần Đước 1",
     "maBC": "23220000",
     "section": "Zone Tay Ninh",
@@ -968,7 +993,7 @@
     "ngayNghiViec": "08/10/2026",
     "soNgayLam": 139,
     "sanLuongTb": 105,
-    "mucLuongTb": 473833,
+    "mucLuongTb": 365000,
     "isRealtimeLog": true,
     "thangNghiViec": "10/2026",
     "namNghiViec": "2026",
@@ -994,7 +1019,7 @@
     "soNgayLam": 3,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 21"
@@ -1019,7 +1044,7 @@
     "soNgayLam": 41,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 26"
@@ -1044,7 +1069,7 @@
     "soNgayLam": 42,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 26"
@@ -1069,7 +1094,7 @@
     "soNgayLam": 89,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "08/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 32"
@@ -1094,7 +1119,7 @@
     "soNgayLam": 79,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 30"
@@ -1119,7 +1144,7 @@
     "soNgayLam": 46,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 22"
@@ -1144,7 +1169,7 @@
     "soNgayLam": 5,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "04/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 16"
@@ -1169,7 +1194,7 @@
     "soNgayLam": 26,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "04/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 18"
@@ -1194,7 +1219,7 @@
     "soNgayLam": 1,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "04/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 14"
@@ -1219,7 +1244,7 @@
     "soNgayLam": 12,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "04/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 15"
@@ -1244,7 +1269,7 @@
     "soNgayLam": 2,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1269,7 +1294,7 @@
     "soNgayLam": 45,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 19"
@@ -1294,7 +1319,7 @@
     "soNgayLam": 3,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1319,7 +1344,7 @@
     "soNgayLam": 10,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1344,7 +1369,7 @@
     "soNgayLam": 67,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 21"
@@ -1369,7 +1394,7 @@
     "soNgayLam": 69,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 21"
@@ -1394,7 +1419,7 @@
     "soNgayLam": 119,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 28"
@@ -1419,7 +1444,7 @@
     "soNgayLam": 17,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1444,7 +1469,7 @@
     "soNgayLam": 73,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 20"
@@ -1469,7 +1494,7 @@
     "soNgayLam": 20,
     "sanLuongTb": 72,
     "mucLuongTb": 285000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 12"
@@ -1494,7 +1519,7 @@
     "soNgayLam": 35,
     "sanLuongTb": 88,
     "mucLuongTb": 325000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "02/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 7"
@@ -1519,7 +1544,7 @@
     "soNgayLam": 116,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 11"
@@ -1544,7 +1569,7 @@
     "soNgayLam": 145,
     "sanLuongTb": 105,
     "mucLuongTb": 365000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "02/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 9"
@@ -1569,7 +1594,7 @@
     "soNgayLam": 185,
     "sanLuongTb": 118,
     "mucLuongTb": 410000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1594,7 +1619,7 @@
     "soNgayLam": 187,
     "sanLuongTb": 118,
     "mucLuongTb": 410000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1619,7 +1644,7 @@
     "soNgayLam": 280,
     "sanLuongTb": 118,
     "mucLuongTb": 410000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 21"
@@ -1644,7 +1669,7 @@
     "soNgayLam": 433,
     "sanLuongTb": 125,
     "mucLuongTb": 430000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 22"
@@ -1669,7 +1694,7 @@
     "soNgayLam": 413,
     "sanLuongTb": 125,
     "mucLuongTb": 430000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1694,7 +1719,7 @@
     "soNgayLam": 591,
     "sanLuongTb": 130,
     "mucLuongTb": 445000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -1719,7 +1744,7 @@
     "soNgayLam": 588,
     "sanLuongTb": 130,
     "mucLuongTb": 445000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 26"
@@ -1744,7 +1769,7 @@
     "soNgayLam": 679,
     "sanLuongTb": 130,
     "mucLuongTb": 445000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 26"
@@ -1769,7 +1794,7 @@
     "soNgayLam": 809,
     "sanLuongTb": 135,
     "mucLuongTb": 465000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "04/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 14"
@@ -1794,7 +1819,7 @@
     "soNgayLam": 834,
     "sanLuongTb": 135,
     "mucLuongTb": 465000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1819,7 +1844,7 @@
     "soNgayLam": 1022,
     "sanLuongTb": 135,
     "mucLuongTb": 465000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 27"
@@ -1844,7 +1869,7 @@
     "soNgayLam": 1228,
     "sanLuongTb": 138,
     "mucLuongTb": 480000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 38"
@@ -1869,7 +1894,7 @@
     "soNgayLam": 1477,
     "sanLuongTb": 142,
     "mucLuongTb": 500000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "03/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 13"
@@ -1894,7 +1919,7 @@
     "soNgayLam": 1499,
     "sanLuongTb": 142,
     "mucLuongTb": 500000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "02/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 7"
@@ -1919,7 +1944,7 @@
     "soNgayLam": 1666,
     "sanLuongTb": 142,
     "mucLuongTb": 500000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 29"
@@ -1944,7 +1969,7 @@
     "soNgayLam": 1666,
     "sanLuongTb": 142,
     "mucLuongTb": 500000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "05/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 22"
@@ -1969,7 +1994,7 @@
     "soNgayLam": 1824,
     "sanLuongTb": 145,
     "mucLuongTb": 520000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "07/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 28"
@@ -1994,7 +2019,7 @@
     "soNgayLam": 3615,
     "sanLuongTb": 145,
     "mucLuongTb": 520000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "09/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 36"
@@ -2019,7 +2044,7 @@
     "soNgayLam": 2394,
     "sanLuongTb": 145,
     "mucLuongTb": 520000,
-    "isRealtimeLog": false,
+    "isRealtimeLog": true,
     "thangNghiViec": "06/2026",
     "namNghiViec": "2026",
     "tuanNghiViec": "Tuần 25"

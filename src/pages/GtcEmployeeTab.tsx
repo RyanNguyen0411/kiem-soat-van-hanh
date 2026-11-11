@@ -46,6 +46,7 @@ import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
 import { sortDatesDesc, extractMonths, extractWeeks } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
+import { safeFormatPercent, safeFormatNumber } from '../utils';
 
 export const GtcEmployeeTab: React.FC = () => {
   const { dataset, selectedBuuCucGlobal } = useDashboard();
@@ -2226,7 +2227,7 @@ export const GtcEmployeeTab: React.FC = () => {
                           po.avgGtcRate >= 70 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
                           'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                         }`}>
-                          {po.avgGtcRate.toFixed(1)}%
+                          {safeFormatPercent(po.avgGtcRate, 1)}
                         </span>
                       </td>
 
@@ -2273,7 +2274,7 @@ export const GtcEmployeeTab: React.FC = () => {
                               emp.avgGtcRate >= 70 ? 'text-amber-700 dark:text-amber-400' :
                               'text-rose-700 dark:text-rose-400'
                             }`}>
-                              {emp.avgGtcRate.toFixed(1)}%
+                              {safeFormatPercent(emp.avgGtcRate, 1)}
                             </span>
                           </td>
 
@@ -2289,10 +2290,10 @@ export const GtcEmployeeTab: React.FC = () => {
                                       dData.gtcRate >= 70 ? 'text-amber-600' :
                                       'text-rose-600'
                                     }`}>
-                                      {dData.gtcRate.toFixed(0)}%
+                                      {safeFormatPercent(dData.gtcRate, 0)}
                                     </span>
                                     <span className="text-[9px] text-slate-400 font-mono leading-none">
-                                      {dData.tongDonGTC}/{dData.tongDon}
+                                      {safeFormatNumber(dData.tongDonGTC)}/{safeFormatNumber(dData.tongDon)}
                                     </span>
                                   </div>
                                 ) : (
@@ -2318,14 +2319,14 @@ export const GtcEmployeeTab: React.FC = () => {
                   {dataset.gtcNhanVien.length > 0 ? `${new Set(dataset.gtcNhanVien.map(r => r.maNV)).size} NV` : '-'}
                 </td>
                 <td className="px-3 py-2 text-right border-r border-slate-300 dark:border-slate-600">
-                  {matrixData.regionTotal.totalDon.toLocaleString('vi-VN')}
+                  {safeFormatNumber(matrixData.regionTotal.totalDon)}
                 </td>
                 <td className="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400 border-r border-slate-300 dark:border-slate-600">
-                  {matrixData.regionTotal.totalDonGTC.toLocaleString('vi-VN')}
+                  {safeFormatNumber(matrixData.regionTotal.totalDonGTC)}
                 </td>
                 <td className="px-3 py-2 text-center border-r-2 border-orange-400 bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
                   <span className="px-2 py-0.5 rounded font-black text-xs">
-                    {matrixData.regionTotal.avgGtcRate.toFixed(1)}%
+                    {safeFormatPercent(matrixData.regionTotal.avgGtcRate, 1)}
                   </span>
                 </td>
                 {matrixDates.map(date => {

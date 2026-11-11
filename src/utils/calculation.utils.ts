@@ -11,6 +11,76 @@ export const calculateBacklog = (volume: number, gtcVolume: number): number => {
 };
 
 /**
+ * Hàm format số an toàn chuẩn hóa doanh nghiệp (safeToFixed)
+ * Xử lý chặt chẽ null, undefined, '', NaN, Infinity, chuỗi số
+ * Trả về '—' khi dữ liệu thiếu hoặc không hợp lệ, không tự ý biến thành 0
+ */
+export function safeToFixed(
+  value: unknown,
+  digits = 2
+): string {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return '—';
+  }
+
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value.trim())
+        : NaN;
+
+  if (!Number.isFinite(numericValue)) {
+    return '—';
+  }
+
+  const precision = Math.max(
+    0,
+    Math.min(20, Math.trunc(digits))
+  );
+
+  return numericValue.toFixed(precision);
+}
+
+/**
+ * Định dạng phần trăm an toàn (ví dụ: '84.5%')
+ * Trả về '—' nếu dữ liệu thiếu hoặc không hợp lệ
+ */
+export function safeFormatPercent(
+  value: unknown,
+  digits = 1
+): string {
+  const formatted = safeToFixed(value, digits);
+  return formatted === '—' ? '—' : `${formatted}%`;
+}
+
+/**
+ * Định dạng số có phân cách hàng nghìn kiểu Việt Nam an toàn
+ * Trả về '—' nếu dữ liệu thiếu hoặc không hợp lệ
+ */
+export function safeFormatNumber(
+  value: unknown,
+  fallback = '—'
+): string {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+  const numericValue = typeof value === 'number'
+    ? value
+    : typeof value === 'string'
+      ? Number(value.trim())
+      : NaN;
+  if (!Number.isFinite(numericValue)) {
+    return fallback;
+  }
+  return numericValue.toLocaleString('vi-VN');
+}
+
+/**
  * Chia an toàn không bao giờ văng ngoại lệ hay sinh ra NaN, Infinity
  */
 export const safeDivide = (

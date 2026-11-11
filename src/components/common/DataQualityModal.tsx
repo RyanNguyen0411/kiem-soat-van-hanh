@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import { exportToCSV } from '../../services/excelExportService';
+import { safeToFixed, safeFormatPercent, safeFormatNumber } from '../../utils';
 
 export const DataQualityModal: React.FC = () => {
   const { dataset, syncStatus, refreshData } = useDashboard();
@@ -190,8 +191,8 @@ export const DataQualityModal: React.FC = () => {
     const rows = [
       ['Tổng Volume GTC Bưu cục', reconData.totalVolume.toLocaleString('vi-VN'), reconData.totalVolume.toLocaleString('vi-VN'), 'KHỚP 100%', 'Tính từ 479 bản ghi GTC Bưu cục'],
       ['Tổng SLĐ GTC Bưu cục', reconData.totalSldGTC.toLocaleString('vi-VN'), reconData.totalSldGTC.toLocaleString('vi-VN'), 'KHỚP 100%', 'Tính từ 479 bản ghi GTC Bưu cục'],
-      ['%GTC Tổng Công Thức Chuẩn', `${reconData.exactGtcRate.toFixed(2)}%`, `${reconData.exactGtcRate.toFixed(2)}%`, 'CHUẨN AM HUY', 'SUM(SLĐ GTC) / SUM(Volume)'],
-      ['%GTC Tính Sai (Trung Bình Cộng)', `${reconData.avgOfRates.toFixed(2)}%`, 'Không áp dụng', 'LỆCH -10.03%', 'Đã loại trừ công thức sai AVERAGE(%GTC)'],
+      ['%GTC Tổng Công Thức Chuẩn', safeFormatPercent(reconData.exactGtcRate, 2), safeFormatPercent(reconData.exactGtcRate, 2), 'CHUẨN AM HUY', 'SUM(SLĐ GTC) / SUM(Volume)'],
+      ['%GTC Tính Sai (Trung Bình Cộng)', safeFormatPercent(reconData.avgOfRates, 2), 'Không áp dụng', 'LỆCH -10.03%', 'Đã loại trừ công thức sai AVERAGE(%GTC)'],
       ['Tồn đọng GLT', reconData.gltCount.toLocaleString('vi-VN'), reconData.gltCount.toLocaleString('vi-VN'), 'KHỚP 100%', 'Tồn đọng tại 5 bưu cục Long An'],
       ['Tồn đọng Luân Chuyển LC', reconData.lcCount.toLocaleString('vi-VN'), reconData.lcCount.toLocaleString('vi-VN'), 'KHỚP 100%', 'Đơn luân chuyển kho'],
       ['Trùng lặp đơn GLT & LC', '0 đơn', '0 đơn', 'KHÔNG TRÙNG', '2 giai đoạn bưu gửi tách biệt'],
@@ -210,8 +211,8 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
 1. KẾT QUẢ ĐỐI CHIẾU KPI CỐT LÕI:
 - Tổng Volume: ${reconData.totalVolume.toLocaleString('vi-VN')} đơn
 - Tổng SLĐ GTC: ${reconData.totalSldGTC.toLocaleString('vi-VN')} đơn
-- %GTC Tổng (Công thức chuẩn SUM/SUM): ${reconData.exactGtcRate.toFixed(2)}%
-- %GTC Trung bình cộng (Công thức sai): ${reconData.avgOfRates.toFixed(2)}% (Lệch: ${reconData.rateDelta.toFixed(2)}%)
+- %GTC Tổng (Công thức chuẩn SUM/SUM): ${safeFormatPercent(reconData.exactGtcRate, 2)}
+- %GTC Trung bình cộng (Công thức sai): ${safeFormatPercent(reconData.avgOfRates, 2)} (Lệch: ${safeToFixed(reconData.rateDelta, 2)}%)
 - Tồn đọng GLT: ${reconData.gltCount.toLocaleString('vi-VN')} đơn
 - Tồn đọng LC: ${reconData.lcCount.toLocaleString('vi-VN')} đơn
 - Trùng lặp đơn GLT & LC: ${reconData.overlapCount} đơn (Độc lập 100%)
@@ -411,7 +412,7 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
               <div className="p-3 rounded-xl bg-orange-50/80 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 flex items-start gap-2.5 text-xs text-orange-950 dark:text-orange-200">
                 <Scale className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong>Bảo vệ chuẩn mực toán học (%GTC Tổng):</strong> Bắt buộc sử dụng <code>SUM(SLĐ GTC) / SUM(Volume)</code>. Tuyệt đối không sử dụng <code>AVERAGE(% GTC)</code> vì trung bình cộng tỷ lệ sẽ bóp méo <strong>{Math.abs(reconData.rateDelta).toFixed(2)}%</strong> số liệu thực tế của toàn khu vực!
+                  <strong>Bảo vệ chuẩn mực toán học (%GTC Tổng):</strong> Bắt buộc sử dụng <code>SUM(SLĐ GTC) / SUM(Volume)</code>. Tuyệt đối không sử dụng <code>AVERAGE(% GTC)</code> vì trung bình cộng tỷ lệ sẽ bóp méo <strong>{safeToFixed(Math.abs(reconData.rateDelta), 2)}%</strong> số liệu thực tế của toàn khu vực!
                 </div>
               </div>
 
@@ -424,7 +425,7 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="text-[11px] text-slate-400">Công thức chuẩn AM Huy (SUM / SUM)</div>
                     <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
-                      {reconData.exactGtcRate.toFixed(2)}%
+                      {safeFormatPercent(reconData.exactGtcRate, 2)}
                     </div>
                     <div className="text-[10px] text-slate-400 mt-1">
                       172.908 đơn GTC / 269.744 Volume
@@ -434,7 +435,7 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="text-[11px] text-slate-400">Công thức sai (AVERAGE %GTC)</div>
                     <div className="text-2xl sm:text-3xl font-black text-rose-400 mt-1 line-through opacity-80">
-                      {reconData.avgOfRates.toFixed(2)}%
+                      {safeFormatPercent(reconData.avgOfRates, 2)}
                     </div>
                     <div className="text-[10px] text-rose-300 mt-1">
                       Bị bóp méo do chia đều trọng số bưu cục
@@ -444,7 +445,7 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="text-[11px] text-slate-400">Độ lệch sai số bị triệt tiêu</div>
                     <div className="text-2xl sm:text-3xl font-black text-orange-400 mt-1">
-                      +{reconData.rateDelta.toFixed(2)}%
+                      +{safeToFixed(reconData.rateDelta, 2)}%
                     </div>
                     <div className="text-[10px] text-emerald-400 font-bold mt-1">
                       ✓ Đã chuẩn hóa chính xác 100%
@@ -612,11 +613,11 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                             po.rate >= 60 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
                             'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                           }`}>
-                            {po.rate.toFixed(1)}%
+                            {safeFormatPercent(po.rate, 1)}
                           </span>
                         </td>
-                        <td className="p-2.5 text-right text-rose-600 font-bold">{po.gltBacklog.toLocaleString('vi-VN')}</td>
-                        <td className="p-2.5 text-right text-blue-600 font-bold">{po.lcBacklog.toLocaleString('vi-VN')}</td>
+                        <td className="p-2.5 text-right text-rose-600 font-bold">{safeFormatNumber(po.gltBacklog)}</td>
+                        <td className="p-2.5 text-right text-blue-600 font-bold">{safeFormatNumber(po.lcBacklog)}</td>
                         <td className="p-2.5 text-center font-bold text-slate-800 dark:text-slate-200">{po.staffActive} NV</td>
                         <td className="p-2.5 text-center text-slate-400">{po.staffResigned} ca</td>
                       </tr>

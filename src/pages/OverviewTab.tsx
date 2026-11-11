@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
+  LayoutDashboard,
   TrendingUp, 
   Package, 
   CheckCircle2, 
@@ -65,10 +66,16 @@ import {
   extractMonths, 
   extractWeeks 
 } from '../utils/dateEngine';
+import { 
+  safeToFixed, 
+  safeFormatPercent, 
+  safeFormatNumber 
+} from '../utils';
 
 export const OverviewTab: React.FC = () => {
   const { 
     dataset, 
+    syncStatus,
     setActiveTab, 
     navigateToTab, 
     selectedBuuCucGlobal, 
@@ -1083,6 +1090,21 @@ export const OverviewTab: React.FC = () => {
   };
 
   const handleDrillDownVolume = () => {
+    // Chuẩn hóa trước khi render: bổ sung assignedRate, gtcRate dạng số an toàn
+    const safeVolumeData = filteredGtcBc.map((row) => {
+      const volume = Number(row.volume) || 0;
+      const sldGan = Number(row.sldGan) || 0;
+      const sldGTC = Number(row.sldGTC) || 0;
+      return {
+        ...row,
+        volume,
+        sldGan,
+        sldGTC,
+        assignedRate: volume > 0 ? (sldGan / volume) * 100 : 0,
+        gtcRate: volume > 0 ? (sldGTC / volume) * 100 : 0,
+      };
+    });
+
     setDrillDownState({
       isOpen: true,
       title: 'Drill-Down Chi Tiết: Sản Lượng Volume Vận Hành',
@@ -1091,16 +1113,16 @@ export const OverviewTab: React.FC = () => {
         { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
         { label: 'Thời gian', value: filterMonth !== 'all' ? `Tháng ${filterMonth}` : 'Toàn bộ kỳ' }
       ],
-      data: filteredGtcBc,
+      data: safeVolumeData,
       columns: [
         { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
         { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
-        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
-        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => r.sldGan.toLocaleString('vi-VN') },
-        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${r.assignedRate.toFixed(1)}%` },
-        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
-        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> }
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.volume), exportValue: (r: any) => safeToFixed(r.volume, 0) },
+        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.sldGan), exportValue: (r: any) => safeToFixed(r.sldGan, 0) },
+        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => safeFormatPercent(r.assignedRate, 1), exportValue: (r: any) => safeToFixed(r.assignedRate, 1) },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{safeFormatNumber(r.sldGTC)}</span>, exportValue: (r: any) => safeToFixed(r.sldGTC, 0) },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{safeFormatPercent(r.gtcRate, 1)}</span>, exportValue: (r: any) => safeToFixed(r.gtcRate, 1) }
       ],
       summaryKpis: [
         { label: 'Tổng Volume', value: kpis.totalVolume.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-orange-600' },
@@ -1113,6 +1135,22 @@ export const OverviewTab: React.FC = () => {
   };
 
   const handleDrillDownGtc = () => {
+    // Chuẩn hóa trước khi render: bổ sung gtcRate, sldChuyenTra / tonDong an toàn
+    const safeGtcData = filteredGtcBc.map((row) => {
+      const volume = Number(row.volume) || 0;
+      const sldGTC = Number(row.sldGTC) || 0;
+      const sldGan = Number(row.sldGan) || 0;
+      const chuyenTra = Number((row as any).sldChuyenTra || (row as any).tonDong || 0);
+      return {
+        ...row,
+        volume,
+        sldGTC,
+        sldGan,
+        gtcRate: volume > 0 ? (sldGTC / volume) * 100 : 0,
+        sldChuyenTra: chuyenTra,
+      };
+    });
+
     setDrillDownState({
       isOpen: true,
       title: 'Drill-Down Chi Tiết: Giao Thành Công (GTC)',
@@ -1121,15 +1159,15 @@ export const OverviewTab: React.FC = () => {
         { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
         { label: 'Chỉ số', value: '% GTC Chuẩn: ' + kpis.gtcRateTotal.toFixed(2) + '%' }
       ],
-      data: filteredGtcBc,
+      data: safeGtcData,
       columns: [
         { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
         { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
-        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{r.sldGTC.toLocaleString('vi-VN')}</span> },
-        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => r.volume.toLocaleString('vi-VN') },
-        { key: 'gtcRate', header: '% GTC Dòng', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> },
-        { key: 'sldChuyenTra', header: 'Chuyển Trả', align: 'right', sortable: true, render: (r: any) => r.sldChuyenTra.toLocaleString('vi-VN') }
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{safeFormatNumber(r.sldGTC)}</span>, exportValue: (r: any) => safeToFixed(r.sldGTC, 0) },
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.volume), exportValue: (r: any) => safeToFixed(r.volume, 0) },
+        { key: 'gtcRate', header: '% GTC Dòng', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{safeFormatPercent(r.gtcRate, 1)}</span>, exportValue: (r: any) => safeToFixed(r.gtcRate, 1) },
+        { key: 'sldChuyenTra', header: 'Chuyển Trả / Tồn', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.sldChuyenTra), exportValue: (r: any) => safeToFixed(r.sldChuyenTra, 0) }
       ],
       summaryKpis: [
         { label: 'Tổng GTC', value: kpis.totalSldGTC.toLocaleString('vi-VN') + ' đơn', colorClass: 'text-emerald-600' },
@@ -1151,12 +1189,12 @@ export const OverviewTab: React.FC = () => {
       ],
       data: filteredGlt,
       columns: [
-        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-orange-600">{r.maDonHang}</span> },
+        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-orange-600">{r.maDonHang || '-'}</span> },
         { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'tenNhanVien', header: 'Bưu Tá Phụ Trách', align: 'left', sortable: true, render: (r: any) => r.tenNhanVien || 'Chưa gán' },
         { key: 'loaiDon', header: 'Loại Đơn', align: 'center', sortable: true },
         { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
-        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong}h</span> },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong || 0}h</span> },
         { key: 'canhBao', header: 'Cảnh Báo', align: 'center', sortable: true, render: (r: any) => {
           const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
           return (
@@ -1190,11 +1228,11 @@ export const OverviewTab: React.FC = () => {
       ],
       data: filteredLc,
       columns: [
-        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-blue-600">{r.maDonHang}</span> },
+        { key: 'maDonHang', header: 'Mã Đơn Hàng', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-blue-600">{r.maDonHang || '-'}</span> },
         { key: 'tenBC', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'loaiDon', header: 'Loại Đơn', align: 'center', sortable: true },
         { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
-        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong}h</span> },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.thoiGianTonDong || 0}h</span> },
         { key: 'canhBao', header: 'Cảnh Báo', align: 'center', sortable: true, render: (r: any) => {
           const h = parseFloat(String(r.thoiGianTonDong || '0').replace(/[^0-9.]/g, '')) || 0;
           return (
@@ -1228,11 +1266,11 @@ export const OverviewTab: React.FC = () => {
       ],
       data: overdueList,
       columns: [
-        { key: 'maDonHang', header: 'Mã Đơn', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-red-600">{r.maDonHang}</span> },
+        { key: 'maDonHang', header: 'Mã Đơn', align: 'left', sortable: true, render: (r: any) => <span className="font-mono font-bold text-red-600">{r.maDonHang || '-'}</span> },
         { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'tenNhanVien', header: 'Bưu Tá', align: 'left', sortable: true, render: (r: any) => r.tenNhanVien || 'Chưa gán' },
         { key: 'sdtNhanVien', header: 'SĐT Bưu Tá', align: 'center', sortable: true, render: (r: any) => r.sdtNhanVien || '-' },
-        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-black text-rose-600">{r.thoiGianTonDong}h</span> },
+        { key: 'thoiGianTonDong', header: 'Giờ Tồn', align: 'right', sortable: true, render: (r: any) => <span className="font-black text-rose-600">{r.thoiGianTonDong || 0}h</span> },
         { key: 'trangThai', header: 'Trạng Thái', align: 'left', sortable: true },
         { key: 'canhBao', header: 'Mức Cảnh Báo', align: 'center', sortable: true, render: (r: any) => (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white">
@@ -1249,6 +1287,19 @@ export const OverviewTab: React.FC = () => {
   };
 
   const handleDrillDownSalary = () => {
+    // Chuẩn hóa trước khi render: map donGTC, donLTC, tongLuong an toàn
+    const safeSalaryData = filteredHh.map((row) => {
+      const tongLuong = Number(row.tongLuong || (row as any).luongHHNgay) || 0;
+      const donGTC = Number((row as any).donGiaoTinhLuong ?? (row as any).donGTC) || 0;
+      const donLTC = Number((row as any).donLayTinhLuong ?? (row as any).donLTC) || 0;
+      return {
+        ...row,
+        tongLuong,
+        donGTC,
+        donLTC
+      };
+    });
+
     setDrillDownState({
       isOpen: true,
       title: 'Drill-Down Chi Tiết: Hoa Hồng & Quỹ Lương Quản Trị',
@@ -1257,15 +1308,15 @@ export const OverviewTab: React.FC = () => {
         { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
         { label: 'Phân hệ', value: 'Hoa Hồng Ngày' }
       ],
-      data: filteredHh,
+      data: safeSalaryData,
       columns: [
         { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
         { key: 'tenBC', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'maNV', header: 'Mã NV', align: 'center', sortable: true },
         { key: 'tenNV', header: 'Tên Nhân Viên', align: 'left', sortable: true },
-        { key: 'tongLuong', header: 'Tổng Lương (VNĐ)', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{r.tongLuong.toLocaleString('vi-VN')}đ</span> },
-        { key: 'donGTC', header: 'Đơn GTC', align: 'right', sortable: true, render: (r: any) => r.donGTC.toLocaleString('vi-VN') },
-        { key: 'donLTC', header: 'Đơn LTC', align: 'right', sortable: true, render: (r: any) => r.donLTC.toLocaleString('vi-VN') }
+        { key: 'tongLuong', header: 'Tổng Lương (VNĐ)', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{safeFormatNumber(r.tongLuong)}đ</span>, exportValue: (r: any) => safeToFixed(r.tongLuong, 0) },
+        { key: 'donGTC', header: 'Đơn GTC', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.donGTC), exportValue: (r: any) => safeToFixed(r.donGTC, 0) },
+        { key: 'donLTC', header: 'Đơn LTC', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.donLTC), exportValue: (r: any) => safeToFixed(r.donLTC, 0) }
       ],
       summaryKpis: [
         { label: 'Tổng Quỹ Lương', value: kpis.totalSalary.toLocaleString('vi-VN') + ' đ', colorClass: 'text-emerald-600' },
@@ -1276,29 +1327,47 @@ export const OverviewTab: React.FC = () => {
   };
 
   const handleDrillDownEmployees = () => {
+    // Chuẩn hóa trước khi render: map chuyenDi, nangSuatTB an toàn
+    const safeEmpData = empSummaries.map((row) => {
+      const tongDon = Number(row.tongDon) || 0;
+      const tongDonGTC = Number(row.tongDonGTC) || 0;
+      const gtcRate = tongDon > 0 ? (tongDonGTC / tongDon) * 100 : 0;
+      const soChuyenDi = Number((row as any).chuyenDi ?? (row as any).soChuyenDi) || 1;
+      const workDays = Number((row as any).workDays) || 1;
+      const nangSuatTB = workDays > 0 ? Math.round(tongDon / workDays) : tongDon;
+      return {
+        ...row,
+        tongDon,
+        tongDonGTC,
+        gtcRate,
+        soChuyenDi,
+        nangSuatTB
+      };
+    });
+
     setDrillDownState({
       isOpen: true,
       title: 'Drill-Down Chi Tiết: Danh Sách Bưu Tá & Hiệu Suất Giao Hàng',
-      subtitle: `Tổng số bưu tá: ${empSummaries.length} nhân sự`,
+      subtitle: `Tổng số bưu tá: ${safeEmpData.length} nhân sự`,
       appliedFilters: [
         { label: 'Bưu cục', value: filterBuuCuc === 'all' ? 'Tất cả 5 bưu cục' : filterBuuCuc },
         { label: 'Phân hệ', value: 'GTC Nhân Viên' }
       ],
-      data: empSummaries,
+      data: safeEmpData,
       columns: [
         { key: 'buuCuc', header: 'Bưu Cục', align: 'left', sortable: true },
         { key: 'maNV', header: 'Mã NV', align: 'center', sortable: true },
         { key: 'tenNV', header: 'Tên Bưu Tá', align: 'left', sortable: true },
-        { key: 'tongDon', header: 'Tổng Đơn', align: 'right', sortable: true, render: (r: any) => r.tongDon.toLocaleString('vi-VN') },
-        { key: 'tongDonGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{r.tongDonGTC.toLocaleString('vi-VN')}</span> },
-        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{r.gtcRate.toFixed(1)}%</span> },
-        { key: 'soChuyenDi', header: 'Chuyến Đi', align: 'center', sortable: true, render: (r: any) => r.soChuyenDi },
-        { key: 'nangSuatTB', header: 'Năng Suất TB', align: 'right', sortable: true, render: (r: any) => `${r.nangSuatTB.toFixed(0)} đơn/ngày` }
+        { key: 'tongDon', header: 'Tổng Đơn', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.tongDon), exportValue: (r: any) => safeToFixed(r.tongDon, 0) },
+        { key: 'tongDonGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600">{safeFormatNumber(r.tongDonGTC)}</span>, exportValue: (r: any) => safeToFixed(r.tongDonGTC, 0) },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{safeFormatPercent(r.gtcRate, 1)}</span>, exportValue: (r: any) => safeToFixed(r.gtcRate, 1) },
+        { key: 'soChuyenDi', header: 'Chuyến Đi', align: 'center', sortable: true, render: (r: any) => safeFormatNumber(r.soChuyenDi), exportValue: (r: any) => safeToFixed(r.soChuyenDi, 0) },
+        { key: 'nangSuatTB', header: 'Năng Suất TB', align: 'right', sortable: true, render: (r: any) => `${safeToFixed(r.nangSuatTB, 0)} đơn/ngày`, exportValue: (r: any) => safeToFixed(r.nangSuatTB, 0) }
       ],
       summaryKpis: [
-        { label: 'Tổng Bưu Tá', value: empSummaries.length + ' NV', colorClass: 'text-purple-600' },
-        { label: 'Bưu Tá Đạt Chuẩn (≥70%)', value: empSummaries.filter(e => e.gtcRate >= 70).length + ' NV', colorClass: 'text-emerald-600' },
-        { label: 'Bưu Tá Dưới Chuẩn (<60%)', value: empSummaries.filter(e => e.gtcRate < 60).length + ' NV', colorClass: 'text-rose-600' }
+        { label: 'Tổng Bưu Tá', value: safeEmpData.length + ' NV', colorClass: 'text-purple-600' },
+        { label: 'Bưu Tá Đạt Chuẩn (≥70%)', value: safeEmpData.filter(e => e.gtcRate >= 70).length + ' NV', colorClass: 'text-emerald-600' },
+        { label: 'Bưu Tá Dưới Chuẩn (<60%)', value: safeEmpData.filter(e => e.gtcRate < 60).length + ' NV', colorClass: 'text-rose-600' }
       ],
       exportFileName: `GHN_NhanVien_Drilldown_${filterBuuCuc}`
     });
@@ -1312,7 +1381,7 @@ export const OverviewTab: React.FC = () => {
     setDrillDownState({
       isOpen: true,
       title: `Drill-Down Chi Tiết Vận Hành: ${buuCucName}`,
-      subtitle: `Sản lượng: ${poSummary?.volume.toLocaleString('vi-VN') || 0} đơn • %GTC: ${poSummary?.gtcRate.toFixed(2) || 0}% • Tồn GLT: ${poGltRows.length.toLocaleString('vi-VN')} đơn`,
+      subtitle: `Sản lượng: ${(poSummary?.volume || 0).toLocaleString('vi-VN')} đơn • %GTC: ${(poSummary?.gtcRate || 0).toFixed(2)}% • Tồn GLT: ${poGltRows.length.toLocaleString('vi-VN')} đơn`,
       appliedFilters: [
         { label: 'Bưu cục', value: buuCucName },
         { label: 'Thời gian', value: filterMonth !== 'all' ? `Tháng ${filterMonth}` : 'Toàn bộ thời gian' }
@@ -1335,11 +1404,11 @@ export const OverviewTab: React.FC = () => {
       columns: [
         { key: 'ngay', header: 'Ngày', align: 'center', sortable: true },
         { key: 'loaiHang', header: 'Loại Hàng / Ca', align: 'left', sortable: true },
-        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => (Number(r.volume) || 0).toLocaleString('vi-VN') },
-        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => (Number(r.sldGan) || 0).toLocaleString('vi-VN') },
-        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => `${(Number(r.assignedRate) || 0).toFixed(1)}%` },
-        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{(Number(r.sldGTC) || 0).toLocaleString('vi-VN')}</span> },
-        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{(Number(r.gtcRate) || 0).toFixed(1)}%</span> }
+        { key: 'volume', header: 'Volume Nhập', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.volume), exportValue: (r: any) => safeToFixed(r.volume, 0) },
+        { key: 'sldGan', header: 'SLĐ Gán', align: 'right', sortable: true, render: (r: any) => safeFormatNumber(r.sldGan), exportValue: (r: any) => safeToFixed(r.sldGan, 0) },
+        { key: 'assignedRate', header: '% Gán', align: 'right', sortable: true, render: (r: any) => safeFormatPercent(r.assignedRate, 1), exportValue: (r: any) => safeToFixed(r.assignedRate, 1) },
+        { key: 'sldGTC', header: 'SLĐ GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{safeFormatNumber(r.sldGTC)}</span>, exportValue: (r: any) => safeToFixed(r.sldGTC, 0) },
+        { key: 'gtcRate', header: '% GTC', align: 'right', sortable: true, render: (r: any) => <span className="font-bold">{safeFormatPercent(r.gtcRate, 1)}</span>, exportValue: (r: any) => safeToFixed(r.gtcRate, 1) }
       ],
       summaryKpis: [
         { label: 'Volume Bưu Cục', value: (poSummary?.volume || 0).toLocaleString('vi-VN') + ' đơn', colorClass: 'text-orange-600' },
@@ -1352,30 +1421,113 @@ export const OverviewTab: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
-  {/* =========================================================================
+    <div className="p-3 sm:p-4 md:p-5 max-w-7xl mx-auto space-y-3.5 sm:space-y-4">
+      {/* =========================================================================
           CỐ ĐỊNH & THU GỌN: HEADER ĐIỀU HÀNH & BỘ LỌC TOÀN DIỆN CHO TASK TỔNG QUAN
           ========================================================================= */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md shadow-md border border-slate-200/90 dark:border-slate-700/90 rounded-xl px-3.5 py-2 transition-all">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Cụm Tiêu Đề Gọn Nhẹ */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-orange-600 animate-pulse"></span>
-              <h2 className="text-xs md:text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider whitespace-nowrap">
-                BẢNG ĐIỀU HÀNH TỔNG HỢP KHU VỰC
-              </h2>
+      <div className="sticky top-0 z-30 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md pb-1.5 -mt-1 pt-1 transition-all">
+        <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs px-3.5 sm:px-4 py-2 sm:py-2.5 transition-all">
+          
+          {/* TẦNG 1: BREADCRUMB + PAGE TITLE + SIBLING TABS */}
+          <div className="space-y-1.5">
+            {/* 1.1. Breadcrumb siêu gọn */}
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 flex-wrap">
+              <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block"></span>
+                GHN Khu Vực Long An
+              </span>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                <LayoutDashboard className="w-3 h-3 text-orange-500" />
+                VẬN HÀNH &amp; GTC
+              </span>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <span className="text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.2 rounded border border-orange-200 dark:border-orange-800/60">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-600 animate-ping"></span>
+                TỔNG QUAN
+              </span>
+            </nav>
+
+            {/* 1.2. Page Title + Live Badge + BI Center + SubTitle (Trái) & Tab cùng nhóm (Phải) */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Tiêu đề & Mô tả */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-2xs shrink-0">
+                  <LayoutDashboard className="w-4 h-4 stroke-[2.3]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <h1 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight whitespace-nowrap">
+                      TỔNG QUAN (BI CONTROL CENTER)
+                    </h1>
+                    {/* Badge Trạng thái LIVE / SNAPSHOT động */}
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-black text-white shadow-2xs ${
+                      syncStatus?.source === 'LIVE_SHEETS' ? 'bg-emerald-600' : 'bg-amber-600'
+                    }`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      {syncStatus?.source === 'LIVE_SHEETS' ? 'LIVE' : 'SNAPSHOT'}
+                    </span>
+                    {/* Badge BI Center */}
+                    <span className="px-1.5 py-0.2 rounded-md text-[9px] font-black bg-orange-100 text-orange-800 dark:bg-orange-950/80 dark:text-orange-300 border border-orange-300/60 dark:border-orange-800/60">
+                      BI Center
+                    </span>
+                  </div>
+                  <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight line-clamp-1">
+                    Trung tâm chỉ huy điều hành vĩ mô &amp; cảnh báo trọng yếu 5 bưu cục Long An
+                  </p>
+                </div>
+              </div>
+
+              {/* Các tab cùng nhóm (Đưa sang bên phải) */}
+              <div className="flex items-center gap-1 text-xs font-bold shrink-0">
+                <span className="text-[10px] text-slate-400 mr-1 hidden xl:inline">Cùng nhóm:</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-orange-600 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <span>Tổng Quan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('bao_cao_gtc_bc')}
+                  className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <span>Báo Cáo GTC BC</span>
+                  <span className="px-1 py-0.1 rounded text-[8px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+                    Live
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('gtc_buu_cuc')}
+                  className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <span>GTC Bưu Cục</span>
+                  <span className="px-1 py-0.1 rounded text-[8px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
+                    5 BC
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('gtc_nhan_vien')}
+                  className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <span>GTC Bưu Tá</span>
+                  <span className="px-1 py-0.1 rounded text-[8px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
+                    74 NV
+                  </span>
+                </button>
+              </div>
             </div>
-            <span className="px-2 py-0.5 text-[11px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 rounded-md shrink-0">
-              {filterBuuCuc === 'all' ? '5 Bưu cục Long An' : filterBuuCuc}
-            </span>
           </div>
 
-          {/* Cụm Bộ Lọc Inline Thu Gọn (1 Hàng Tiện Ích, Dạng Cuộn Chuyên Nghiệp) */}
-          <div className="flex flex-wrap items-center gap-2 text-xs" ref={filterBarRef}>
-            <div className="flex items-center gap-1 text-slate-500 font-bold text-[11px] uppercase tracking-wide">
+          {/* TẦNG 2: FILTER TOOLBAR - ĐẶT NGAY DƯỚI PAGE TITLE (CÙNG KHỐI CARD, CHIỀU CAO CONTROL 34-36px) */}
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs" ref={filterBarRef}>
+            {/* Nhãn Lọc */}
+            <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-bold text-[11px] uppercase tracking-wide h-[34px]">
               <Filter className="w-3.5 h-3.5 text-orange-600" />
-              <span className="hidden sm:inline">Lọc:</span>
+              <span>Lọc:</span>
             </div>
 
             {/* 1. Lọc Bưu Cục */}
@@ -1388,7 +1540,7 @@ export const OverviewTab: React.FC = () => {
                   setFilterBuuCuc(val);
                   setSelectedBuuCucGlobal(val);
                 }}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
+                className="h-[34px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
                 title="Lọc theo bưu cục"
               >
                 <option value="all">Tất cả 5 bưu cục</option>
@@ -1400,15 +1552,15 @@ export const OverviewTab: React.FC = () => {
               </select>
             </div>
 
-            {/* 2. Lọc Tháng Dạng Cuộn (Tiết Kiệm Không Gian, Tự Động Ẩn Khi Nhấn Ngoài) */}
+            {/* 2. Lọc Tháng Dạng Cuộn */}
             <div className="relative inline-block text-left">
               <button
                 type="button"
                 onClick={() => setOpenDropdown(prev => prev === 'month' ? null : 'month')}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                className={`h-[34px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
                   filterMonth !== 'all'
                     ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
-                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
                 }`}
                 title="Nhấn để mở danh sách dạng cuộn và chọn Tháng vận hành"
               >
@@ -1485,15 +1637,15 @@ export const OverviewTab: React.FC = () => {
               )}
             </div>
 
-            {/* 3. Lọc Tuần Dạng Cuộn (Tiết Kiệm Không Gian, Tự Động Ẩn Khi Nhấn Ngoài) */}
+            {/* 3. Lọc Tuần Dạng Cuộn */}
             <div className="relative inline-block text-left">
               <button
                 type="button"
                 onClick={() => setOpenDropdown(prev => prev === 'week' ? null : 'week')}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                className={`h-[34px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
                   filterWeek !== 'all'
                     ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
-                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
                 }`}
                 title="Nhấn để mở danh sách dạng cuộn và chọn Tuần vận hành"
               >
@@ -1570,15 +1722,15 @@ export const OverviewTab: React.FC = () => {
               )}
             </div>
 
-            {/* 4. Dropdown Dạng Cuộn: Tick Chọn Ngày Vận Hành (Đã Fix Lỗi Không Tick Được Ngày, Cuộn Gọn Gàng) */}
+            {/* 4. Dropdown Dạng Cuộn: Tick Chọn Ngày Vận Hành */}
             <div className="relative inline-block text-left">
               <button
                 type="button"
                 onClick={() => setOpenDropdown(prev => prev === 'date' ? null : 'date')}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                className={`h-[34px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
                   filterDates.length > 0
                     ? 'bg-orange-50 dark:bg-orange-950/60 border-orange-500 text-orange-900 dark:text-orange-200 ring-1 ring-orange-500 font-bold'
-                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-orange-400 hover:bg-white'
                 }`}
                 title="Nhấn để mở danh sách dạng cuộn và tick chọn ngày"
               >
@@ -1659,7 +1811,7 @@ export const OverviewTab: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Danh sách các ô tick ngày dạng cuộn dọc (Tiết kiệm không gian, chuyên nghiệp, phản hồi click tức thì) */}
+                  {/* Danh sách các ô tick ngày dạng cuộn dọc */}
                   <div className="max-h-60 overflow-y-auto scrollbar-thin space-y-1 pr-1">
                     {allUniqueDatesDesc.map((d, idx) => {
                       const isChecked = filterDates.includes(d);
@@ -1717,7 +1869,7 @@ export const OverviewTab: React.FC = () => {
               <select
                 value={filterLoaiHang}
                 onChange={e => setFilterLoaiHang(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2 py-1 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
+                className="h-[34px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer shadow-2xs"
                 title="Lọc loại hàng / ca"
               >
                 <option value="all">Tất cả loại hàng</option>
@@ -1734,7 +1886,7 @@ export const OverviewTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetAllFilters}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 rounded-lg transition-colors border border-rose-200 dark:border-rose-900 cursor-pointer shadow-2xs"
+                className="h-[34px] inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 rounded-lg transition-colors border border-rose-200 dark:border-rose-900 cursor-pointer shadow-2xs"
                 title="Xóa tất cả các bộ lọc đang chọn"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -1742,6 +1894,7 @@ export const OverviewTab: React.FC = () => {
               </button>
             )}
           </div>
+
         </div>
       </div>
 
@@ -2050,22 +2203,22 @@ export const OverviewTab: React.FC = () => {
                         <Building2 className="w-4 h-4 text-orange-600" />
                         <span>{po.buuCuc}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-center font-medium">{po.volume.toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-300">{po.sldGan.toLocaleString('vi-VN')}</td>
-                      <td className="px-2.5 py-2.5 text-center font-medium text-blue-600">{po.assignedRate.toFixed(1)}%</td>
-                      <td className="px-3 py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">{po.sldGTC.toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2.5 text-center font-medium">{safeFormatNumber(po.volume)}</td>
+                      <td className="px-3 py-2.5 text-center text-slate-600 dark:text-slate-300">{safeFormatNumber(po.sldGan)}</td>
+                      <td className="px-2.5 py-2.5 text-center font-medium text-blue-600">{safeFormatPercent(po.assignedRate, 1)}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">{safeFormatNumber(po.sldGTC)}</td>
                       <td className="px-3 py-2.5 text-center font-black text-slate-900 dark:text-white">
                         <span className={`px-2 py-0.5 rounded-full inline-flex items-center justify-center ${
-                          po.gtcRate < 62 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
-                          po.gtcRate < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                          (po.gtcRate || 0) < 62 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+                          (po.gtcRate || 0) < 67 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                         }`}>
-                          {po.gtcRate.toFixed(2)}%
+                          {safeFormatPercent(po.gtcRate, 2)}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-center font-bold text-rose-600">{po.gltBacklog.toLocaleString('vi-VN')}</td>
-                      <td className="px-2.5 py-2.5 text-center font-bold text-blue-600">{po.lcBacklog}</td>
-                      <td className="px-3 py-2.5 text-center font-medium text-emerald-600">{po.totalSalary.toLocaleString('vi-VN')}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-rose-600">{safeFormatNumber(po.gltBacklog)}</td>
+                      <td className="px-2.5 py-2.5 text-center font-bold text-blue-600">{safeFormatNumber(po.lcBacklog)}</td>
+                      <td className="px-3 py-2.5 text-center font-medium text-emerald-600">{safeFormatNumber(po.totalSalary)}</td>
                       <td className="px-3 py-2.5 text-center">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           po.status === 'Critical' ? 'bg-red-500 text-white' :
@@ -2766,9 +2919,9 @@ export const OverviewTab: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {e.tongDonGTC.toLocaleString('vi-VN')} đơn
+                      {safeFormatNumber(e.tongDonGTC)} đơn
                     </span>
-                    <span className="text-[10px] text-slate-400 ml-2">({e.gtcRate.toFixed(1)}%)</span>
+                    <span className="text-[10px] text-slate-400 ml-2">({safeFormatPercent(e.gtcRate, 1)})</span>
                   </div>
                 </div>
               ))}
@@ -2799,9 +2952,9 @@ export const OverviewTab: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-red-600 dark:text-red-400">
-                        {e.gtcRate.toFixed(1)}%
+                        {safeFormatPercent(e.gtcRate, 1)}
                       </span>
-                      <span className="text-[10px] text-slate-400 ml-2">({e.tongDonGTC}/{e.tongDon} đơn)</span>
+                      <span className="text-[10px] text-slate-400 ml-2">({safeFormatNumber(e.tongDonGTC)}/{safeFormatNumber(e.tongDon)} đơn)</span>
                     </div>
                   </div>
                 ))}
@@ -2929,50 +3082,50 @@ export const OverviewTab: React.FC = () => {
                   {/* 2. Volume & % Gán */}
                   <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-slate-900 dark:text-white text-xs">
-                      {item.totalVol.toLocaleString('vi-VN')}
+                      {safeFormatNumber(item.totalVol)}
                     </div>
                     <div className="text-[10px] text-slate-500 font-medium">
-                      Gán: <strong className="text-blue-600 dark:text-blue-400">{item.assignedRate.toFixed(1)}%</strong>
+                      Gán: <strong className="text-blue-600 dark:text-blue-400">{safeFormatPercent(item.assignedRate, 1)}</strong>
                     </div>
                   </td>
 
                   {/* 3. % GTC & Khoảng Cách */}
                   <td className="py-2.5 px-2 text-center">
                     <div className="font-black text-xs text-slate-900 dark:text-white">
-                      {item.gtcRate.toFixed(2)}%
+                      {safeFormatPercent(item.gtcRate, 2)}
                     </div>
                     <div className={`text-[9.5px] font-bold ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}% vượt` : `${item.gtcGap.toFixed(1)}% vs chuẩn`}
+                      {item.gtcGap >= 0 ? `+${safeToFixed(item.gtcGap, 1)}% vượt` : `${safeToFixed(item.gtcGap, 1)}% vs chuẩn`}
                     </div>
                   </td>
 
                   {/* 4. Tồn Đọng (GLT + LC) */}
                   <td className="py-2.5 px-2 text-center">
                     <div className={`font-bold text-xs ${item.totalBacklog > 2000 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
-                      {item.totalBacklog.toLocaleString('vi-VN')} đơn
+                      {safeFormatNumber(item.totalBacklog)} đơn
                     </div>
                     <div className="text-[9.5px] text-slate-500 font-medium truncate">
-                      {item.gltCount.toLocaleString('vi-VN')} GLT &bull; {item.lcCount} LC ({item.backlogRate.toFixed(1)}%)
+                      {safeFormatNumber(item.gltCount)} GLT &bull; {safeFormatNumber(item.lcCount)} LC ({safeFormatPercent(item.backlogRate, 1)})
                     </div>
                   </td>
 
                   {/* 5. Nhân Sự & Chuyên Cần */}
                   <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-slate-900 dark:text-white text-xs">
-                      {item.totalStaff} NV
+                      {safeFormatNumber(item.totalStaff)} NV
                     </div>
                     <div className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
-                      {item.activeStaffInPeriod} đi làm ({item.attendanceRate.toFixed(0)}%)
+                      {safeFormatNumber(item.activeStaffInPeriod)} đi làm ({safeFormatPercent(item.attendanceRate, 0)})
                     </div>
                   </td>
 
                   {/* 6. Hiệu Quả Ca 2 */}
                   <td className="py-2.5 px-2 text-center">
                     <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xs">
-                      {item.ca2Rate.toFixed(1)}% GTC
+                      {safeFormatPercent(item.ca2Rate, 1)} GTC
                     </div>
                     <div className="text-[9.5px] text-slate-500 truncate">
-                      Vol: {item.ca2Vol.toLocaleString('vi-VN')}
+                      Vol: {safeFormatNumber(item.ca2Vol)}
                     </div>
                   </td>
 
@@ -3130,7 +3283,7 @@ export const OverviewTab: React.FC = () => {
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white text-xs">{po.buuCuc}</span>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      Vol: <strong>{po.totalVol.toLocaleString()}</strong> &bull; GTC: <strong className="text-emerald-600">{po.gtcRate.toFixed(1)}%</strong> &bull; Tồn: {po.totalBacklog}
+                      Vol: <strong>{safeFormatNumber(po.totalVol)}</strong> &bull; GTC: <strong className="text-emerald-600">{safeFormatPercent(po.gtcRate, 1)}</strong> &bull; Tồn: {safeFormatNumber(po.totalBacklog)}
                     </div>
                   </div>
                   <button
@@ -3168,7 +3321,7 @@ export const OverviewTab: React.FC = () => {
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white text-xs">{po.buuCuc}</span>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      Vol: <strong>{po.totalVol.toLocaleString()}</strong> &bull; GTC: <strong className="text-amber-600">{po.gtcRate.toFixed(1)}%</strong> &bull; Tồn: <strong className="text-rose-600">{po.totalBacklog}</strong>
+                      Vol: <strong>{safeFormatNumber(po.totalVol)}</strong> &bull; GTC: <strong className="text-amber-600">{safeFormatPercent(po.gtcRate, 1)}</strong> &bull; Tồn: <strong className="text-rose-600">{safeFormatNumber(po.totalBacklog)}</strong>
                     </div>
                   </div>
                   <button
@@ -3201,7 +3354,7 @@ export const OverviewTab: React.FC = () => {
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white text-xs">{po.buuCuc}</span>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      Vol: <strong>{po.totalVol.toLocaleString()}</strong> &bull; GTC: <strong className="text-sky-600">{po.gtcRate.toFixed(1)}%</strong> &bull; Tồn: {po.totalBacklog}
+                      Vol: <strong>{safeFormatNumber(po.totalVol)}</strong> &bull; GTC: <strong className="text-sky-600">{safeFormatPercent(po.gtcRate, 1)}</strong> &bull; Tồn: {safeFormatNumber(po.totalBacklog)}
                     </div>
                   </div>
                   <button
@@ -3234,7 +3387,7 @@ export const OverviewTab: React.FC = () => {
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white text-xs">{po.buuCuc}</span>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      Vol: <strong>{po.totalVol.toLocaleString()}</strong> &bull; GTC: <strong className="text-rose-600">{po.gtcRate.toFixed(1)}%</strong> &bull; Tồn: {po.totalBacklog}
+                      Vol: <strong>{safeFormatNumber(po.totalVol)}</strong> &bull; GTC: <strong className="text-rose-600">{safeFormatPercent(po.gtcRate, 1)}</strong> &bull; Tồn: {safeFormatNumber(po.totalBacklog)}
                     </div>
                   </div>
                   <button
@@ -3310,8 +3463,8 @@ export const OverviewTab: React.FC = () => {
                     <span className="truncate">{row.buuCuc}</span>
                   </td>
                   <td className="py-2.5 px-2 text-center font-bold text-slate-900 dark:text-white">
-                    {row.totalBacklog.toLocaleString('vi-VN')}
-                    <span className="text-[10px] text-slate-400 block font-normal">({row.backlogRate.toFixed(1)}% Vol)</span>
+                    {safeFormatNumber(row.totalBacklog)}
+                    <span className="text-[10px] text-slate-400 block font-normal">({safeFormatPercent(row.backlogRate, 1)} Vol)</span>
                   </td>
                   <td className="py-2.5 px-2 text-center font-semibold text-emerald-600 dark:text-emerald-400">
                     {row.under72.toLocaleString('vi-VN')}
@@ -3425,29 +3578,29 @@ export const OverviewTab: React.FC = () => {
                   <td className="py-3 px-2.5 text-center align-top space-y-1">
                     <div>
                       <span className="text-[10px] text-slate-400 block font-medium">Tỷ Lệ GTC:</span>
-                      <span className="font-black text-xs text-slate-900 dark:text-white">{item.gtcRate.toFixed(2)}%</span>
+                      <span className="font-black text-xs text-slate-900 dark:text-white">{safeFormatPercent(item.gtcRate, 2)}</span>
                       <span className={`text-[9.5px] font-bold ml-1 ${item.gtcGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                        ({item.gtcGap >= 0 ? `+${item.gtcGap.toFixed(1)}%` : `${item.gtcGap.toFixed(1)}%`})
+                        ({item.gtcGap >= 0 ? `+${safeToFixed(item.gtcGap, 1)}%` : `${safeToFixed(item.gtcGap, 1)}%`})
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Gán: <strong className="text-blue-600 dark:text-blue-400 font-bold">{item.assignedRate.toFixed(1)}%</strong>
+                      Gán: <strong className="text-blue-600 dark:text-blue-400 font-bold">{safeFormatPercent(item.assignedRate, 1)}</strong>
                     </div>
                     <div className="text-[10px] text-slate-600 dark:text-slate-300">
                       Tồn: <strong className={item.totalBacklog > 2000 ? 'text-rose-600 font-bold' : 'font-semibold'}>
-                        {item.totalBacklog.toLocaleString('vi-VN')} đơn
-                      </strong> ({item.backlogRatio.toFixed(1)}%)
+                        {safeFormatNumber(item.totalBacklog)} đơn
+                      </strong> ({safeFormatPercent(item.backlogRatio, 1)})
                     </div>
                     {(item.overdue192h > 0 || item.overdue120h > 0) && (
                       <div className="pt-0.5">
                         {item.overdue192h > 0 && (
                           <span className="inline-block px-1.5 py-0.2 rounded bg-rose-600 text-white font-bold text-[9px] mr-1">
-                            {item.overdue192h} đơn &gt;192h
+                            {safeFormatNumber(item.overdue192h)} đơn &gt;192h
                           </span>
                         )}
                         {item.overdue120h > 0 && (
                           <span className="inline-block px-1.5 py-0.2 rounded bg-amber-500 text-white font-bold text-[9px]">
-                            {item.overdue120h} đơn &gt;120h
+                            {safeFormatNumber(item.overdue120h)} đơn &gt;120h
                           </span>
                         )}
                       </div>
@@ -3459,20 +3612,20 @@ export const OverviewTab: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-slate-400 block font-medium">Bưu Tá Giao:</span>
                       <span className="font-bold text-xs text-slate-900 dark:text-white">
-                        {item.activeCouriers}/{item.totalStaff} NV
+                        {safeFormatNumber(item.activeCouriers)}/{safeFormatNumber(item.totalStaff)} NV
                       </span>
                       <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold ml-1">
-                        ({item.attendancePct.toFixed(0)}%)
+                        ({safeFormatPercent(item.attendancePct, 0)})
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Năng suất: <strong className="text-slate-800 dark:text-slate-200">{item.ordersPerCourier} đơn/NV</strong>
+                      Năng suất: <strong className="text-slate-800 dark:text-slate-200">{safeFormatNumber(item.ordersPerCourier)} đơn/NV</strong>
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Lương/GTC: <strong className="text-emerald-600 dark:text-emerald-400">{item.costPerDeliveredOrder.toLocaleString('vi-VN')}đ</strong>
+                      Lương/GTC: <strong className="text-emerald-600 dark:text-emerald-400">{safeFormatNumber(item.costPerDeliveredOrder)}đ</strong>
                     </div>
                     <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                      Ca 2: {item.ca2Rate.toFixed(1)}% GTC
+                      Ca 2: {safeFormatPercent(item.ca2Rate, 1)} GTC
                     </div>
                   </td>
 

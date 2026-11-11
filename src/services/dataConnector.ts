@@ -111,6 +111,64 @@ function getWeekNumberHelper(d: Date): number {
   return 1 + Math.round(((target.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
 }
 
+export const CANONICAL_TENURE_LABELS = [
+  'G01: Dưới 1 tháng',
+  'G02: Trên 1 - 3 tháng',
+  'G03: Trên 3 - 6 tháng',
+  'G04: Trên 6 tháng - 1 năm',
+  'G05: Trên 1 - 1,5 năm',
+  'G06: Trên 1,5 -2 năm',
+  'G07: Trên 2 - 3 năm',
+  'G08: Trên 3 - 4 năm',
+  'G09: Trên 4 - 5 năm',
+  'G10: Trên 5 năm'
+];
+
+export function calculateTenureGroup(dStart: Date | null, dEnd: Date | null): string {
+  if (!dStart || !dEnd || isNaN(dStart.getTime()) || isNaN(dEnd.getTime()) || dEnd < dStart) {
+    return 'G01: Dưới 1 tháng';
+  }
+
+  let months = (dEnd.getFullYear() - dStart.getFullYear()) * 12 + (dEnd.getMonth() - dStart.getMonth());
+  const startDay = dStart.getDate();
+  const endDay = dEnd.getDate();
+
+  if (endDay < startDay) {
+    const isEndLastDay = new Date(dEnd.getFullYear(), dEnd.getMonth() + 1, 0).getDate() === endDay;
+    const isStartLastDay = new Date(dStart.getFullYear(), dStart.getMonth() + 1, 0).getDate() === startDay;
+    if (!(isEndLastDay && isStartLastDay)) {
+      months -= 1;
+    }
+  }
+
+  months = Math.max(0, months);
+
+  if (months < 1) return 'G01: Dưới 1 tháng';
+  if (months < 3) return 'G02: Trên 1 - 3 tháng';
+  if (months < 6) return 'G03: Trên 3 - 6 tháng';
+  if (months < 12) return 'G04: Trên 6 tháng - 1 năm';
+  if (months < 18) return 'G05: Trên 1 - 1,5 năm';
+  if (months < 24) return 'G06: Trên 1,5 -2 năm';
+  if (months < 36) return 'G07: Trên 2 - 3 năm';
+  if (months < 48) return 'G08: Trên 3 - 4 năm';
+  if (months < 60) return 'G09: Trên 4 - 5 năm';
+  return 'G10: Trên 5 năm';
+}
+
+export function normalizeTenureGroup(rawTenure?: string, dStart?: Date | null, dEnd?: Date | null): string {
+  if (rawTenure) {
+    const clean = rawTenure.trim();
+    for (const label of CANONICAL_TENURE_LABELS) {
+      const code = label.split(':')[0].trim();
+      const desc = label.split(':')[1].trim().toLowerCase();
+      if (clean === label || clean.startsWith(code) || clean.toLowerCase().includes(desc)) {
+        return label;
+      }
+    }
+  }
+  return calculateTenureGroup(dStart || null, dEnd || null);
+}
+
 const benchmarkVolMap: Record<string, number> = {
   'G01: Dưới 1 tháng': 72,
   'G02: Trên 1 - 3 tháng': 88,
@@ -877,30 +935,40 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
     const reader = createHeaderReader(rows[0]);
     nghiViec = rows.slice(1)
       .filter(r => {
-        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id']);
-        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten']);
-        if (!id) return false;
+        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id', 'employee id', 'employee_id', 'mã nhân viên', 'ma nhan vien']);
+        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten', 'tên nhân viên', 'ten nhan vien']);
+        if (!id || id.toLowerCase() === 'id' || id.toLowerCase() === 'mã nv') return false;
         if (isExcludedStaff(ten, id)) return false;
         return true;
       })
       .map(r => {
-        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id']);
-        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten']);
-        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc']);
+        const id = reader.getCol(r, ['mã nv', 'ma nv', 'id', 'employee id', 'employee_id', 'mã nhân viên', 'ma nhan vien']);
+        const ten = reader.getCol(r, ['họ và tên', 'ho va ten', 'tên', 'ten', 'tên nhân viên', 'ten nhan vien']);
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'kho/ bưu cục', 'kho/buu cuc', 'kho / bưu cục', 'tên bc', 'ten bc', 'tên bưu cục']);
         const meta = lookupPostOffice(buuCucRaw);
         const stdBuuCucRaw = meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : buuCucRaw;
-        const lyDoNghiViec = reader.getCol(r, ['lý do nghỉ việc', 'ly do nghi viec']);
+        const lyDoNghiViec = reader.getCol(r, ['lý do nghỉ việc', 'ly do nghi viec', 'lý do', 'ly do', 'nguyên nhân', 'nguyen nhan']);
         const nhomLyDo = classifyResignationReason(lyDoNghiViec);
-        const nhomThamNien = reader.getCol(r, ['nhóm thâm niên', 'nhom tham nien']);
-        const ngayVaoLam = normalizeDate(reader.getCol(r, ['ngày vào làm', 'ngay vao lam'])).standard || '';
-        const ngayNghiViec = normalizeDate(reader.getCol(r, ['ngày nghỉ việc', 'ngay nghi viec'])).standard || '';
+        const rawNhomThamNien = reader.getCol(r, ['thâm niên', 'tham nien', 'nhóm thâm niên', 'nhom tham nien', 'tenure', 'seniority']);
 
-        const dStart = parseDateDDMMYYYYHelper(ngayVaoLam);
-        const dEnd = parseDateDDMMYYYYHelper(ngayNghiViec);
+        const allVaoLamCols = reader.getAllIndices(['ngày vào làm', 'ngay vao lam']);
+        const allNghiViecCols = reader.getAllIndices(['ngày nghỉ việc', 'ngay nghi viec']);
+        const vaoLamRaw = (allVaoLamCols.length > 1 ? r[allVaoLamCols[allVaoLamCols.length - 1]] : '') || reader.getCol(r, ['ngày vào làm', 'ngay vao lam']);
+        const nghiViecRaw = (allNghiViecCols.length > 1 ? r[allNghiViecCols[allNghiViecCols.length - 1]] : '') || reader.getCol(r, ['ngày nghỉ việc', 'ngay nghi viec']);
+
+        const normStart = normalizeDate(vaoLamRaw);
+        const normEnd = normalizeDate(nghiViecRaw);
+        const ngayVaoLam = normStart.standard || '';
+        const ngayNghiViec = normEnd.standard || '';
+
+        const dStart = normStart.dateObj || parseDateDDMMYYYYHelper(ngayVaoLam);
+        const dEnd = normEnd.dateObj || parseDateDDMMYYYYHelper(ngayNghiViec);
         let soNgayLam = 1;
         if (dStart && dEnd) {
           soNgayLam = Math.max(1, Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24)));
         }
+
+        const nhomThamNien = normalizeTenureGroup(rawNhomThamNien, dStart, dEnd);
 
         const perf = gtcPerfMap[id];
         const sal = hhSalaryMap[id];
@@ -922,14 +990,14 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         return {
           id,
           ten,
-          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm']),
-          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc']),
-          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu']),
+          ngayVaoLamText: reader.getCol(r, ['ngày vào làm (text)', 'ngày vào làm', 'ngay vao lam']),
+          ngayNghiViecText: reader.getCol(r, ['ngày nghỉ việc (text)', 'ngày nghỉ việc', 'ngay nghi viec']),
+          chucVu: reader.getCol(r, ['chức vụ', 'chuc vu', 'vị trí', 'vi tri']) || 'Business Development Field Executive',
           buuCucRaw: stdBuuCucRaw,
           buuCuc: meta.standardName,
           maBC: meta.standardCode,
-          section: reader.getCol(r, ['zone', 'section']) || 'Zone Tay Ninh',
-          am: reader.getCol(r, ['am', 'quản lý']) || 'Nguyễn Hoàng Huy',
+          section: reader.getCol(r, ['zone', 'section', 'khu vực']) || 'Zone Tay Ninh',
+          am: reader.getCol(r, ['am', 'quản lý', 'area manager']) || 'Nguyễn Hoàng Huy',
           lyDoNghiViec,
           nhomLyDo,
           nhomThamNien,
@@ -961,8 +1029,17 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
       .filter(r => !isExcludedStaff(r.ten, r.id))
       .map(r => {
         const meta = lookupPostOffice(r.buuCuc);
+        const dStart = parseDateDDMMYYYYHelper(r.ngayVaoLam);
+        const dEnd = parseDateDDMMYYYYHelper(r.ngayNghiViec);
+        const nhomThamNien = normalizeTenureGroup(r.nhomThamNien, dStart, dEnd);
+        let soNgayLam = r.soNgayLam;
+        if ((!soNgayLam || soNgayLam <= 1) && dStart && dEnd) {
+          soNgayLam = Math.max(1, Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24)));
+        }
         return {
           ...r,
+          nhomThamNien,
+          soNgayLam,
           buuCuc: meta.standardName,
           maBC: meta.standardCode,
           buuCucRaw: meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw

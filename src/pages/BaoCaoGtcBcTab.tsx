@@ -23,6 +23,7 @@ import { useDashboard } from '../context/DashboardContext';
 import { sortDatesDesc } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 import { normalizePostOfficeName, normalizeDate } from '../utils/normalizationEngine';
+import { safeToFixed, safeFormatPercent } from '../utils';
 import nhanSuFallbackSnapshot from '../data/snapshots/nhan_su.json';
 import { 
   capturePostOfficeCard, 
@@ -563,8 +564,8 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           nv.nhomThamNien || '-',
           nv.tongDon,
           nv.tongDonGTC,
-          `${nv.gtcRate.toFixed(1)}%`,
-          nv.leadtime?.toFixed(1) || '0',
+          safeFormatPercent(nv.gtcRate, 1),
+          nv.leadtime ? safeToFixed(nv.leadtime, 1) : '0',
           nv.chuyenDi || 1,
           nv.tonDong || 0,
           warningText,
@@ -1462,13 +1463,13 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                                     ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' 
                                     : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                                 }`}>
-                                  {nv.gtcRate.toFixed(1)}%
+                                  {safeFormatPercent(nv.gtcRate, 1)}
                                 </span>
                               </td>
 
                               {/* 6. Leadtime */}
                               <td className="py-2.5 px-3 text-center font-bold text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap align-middle">
-                                {nv.leadtime?.toFixed(1) || '0.0'}
+                                {nv.leadtime ? safeToFixed(nv.leadtime, 1) : '0.0'}
                               </td>
 
                               {/* 7. Chuyến Đi (Có giao ca 2 vs Chỉ giao 1 ca) */}
@@ -1510,11 +1511,12 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                           <td className="py-3 px-3 text-center font-black whitespace-nowrap align-middle">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-650 text-xs font-black whitespace-nowrap">
                               {finalActiveStaff.reduce((a, b) => a + b.tongDon, 0) > 0
-                                ? (
+                                ? safeFormatPercent(
                                     (finalActiveStaff.reduce((a, b) => a + b.tongDonGTC, 0) /
                                       finalActiveStaff.reduce((a, b) => a + b.tongDon, 0)) *
-                                    100
-                                  ).toFixed(1) + '%'
+                                    100,
+                                    1
+                                  )
                                 : '0%'}
                             </span>
                           </td>

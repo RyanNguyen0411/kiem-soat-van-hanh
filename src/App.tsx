@@ -50,8 +50,8 @@ const DashboardContent: React.FC = () => {
 
         {/* Content Area with smooth scrolling */}
         <main className="flex-1 min-h-0 overflow-y-auto bg-slate-100/70 dark:bg-slate-900/90 pb-20 lg:pb-12 scroll-smooth">
-          {/* Executive Breadcrumb & Highlighted Active View Banner */}
-          <ExecutiveBreadcrumbBar />
+          {/* Executive Breadcrumb & Highlighted Active View Banner (Dành cho các tab chuyên biệt; Tab Tổng quan sử dụng cụm Header điều hành 3 tầng tinh gọn tích hợp) */}
+          {activeTab !== 'overview' && <ExecutiveBreadcrumbBar />}
 
           {activeTab === 'overview' && <OverviewTab />}
           {activeTab === 'gtc_buu_cuc' && <GtcPostOfficeTab />}

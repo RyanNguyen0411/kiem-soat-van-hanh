@@ -153,8 +153,13 @@ export function DataTable<T extends Record<string, any>>({
     const headers = columns.map(c => c.header);
     const rows = sortedData.map(row => {
       return columns.map(c => {
-        if (c.exportValue) return c.exportValue(row);
-        return row[c.key] ?? '';
+        try {
+          if (c.exportValue) return c.exportValue(row);
+          return row[c.key] ?? '';
+        } catch (err) {
+          console.warn(`[DataTable] Error exporting cell for column "${c.key}":`, err, row);
+          return row[c.key] ?? '';
+        }
       });
     });
     exportToCSV(exportFilename, headers, rows);
@@ -321,7 +326,15 @@ export function DataTable<T extends Record<string, any>>({
                             } ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}
                             style={{ minWidth: col.width, left: col.stickyLeft }}
                           >
-                            {col.render ? col.render(row, idx) : (row[col.key] ?? '-')}
+                            {(() => {
+                              try {
+                                if (col.render) return col.render(row, idx);
+                                return row[col.key] ?? '—';
+                              } catch (err) {
+                                console.warn(`[DataTable] Error rendering cell for column "${col.key}":`, err, row);
+                                return row[col.key] ?? '—';
+                              }
+                            })()}
                           </td>
                         );
                       })}
