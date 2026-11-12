@@ -130,3 +130,81 @@ export async function verifyOtpWithUpstream(params: {
     timestamp: Date.now()
   });
 }
+
+export interface UpstreamOtpSendResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  upstreamUnavailable?: boolean;
+}
+
+export async function sendOtpWithUpstream(params: {
+  phone: string;
+}): Promise<UpstreamOtpSendResult> {
+  let endpoint: string;
+  try {
+    endpoint = readRequiredServerEnv('AUTH_UPSTREAM_WEBHOOK_URL');
+  } catch (err) {
+    return {
+      success: false,
+      upstreamUnavailable: true,
+      error: err instanceof Error ? err.message : 'Upstream auth endpoint not configured'
+    };
+  }
+
+  const upstreamSecret = process.env.UPSTREAM_AUTH_SECRET?.trim();
+  const payload = {
+    action: 'auth_send_otp',
+    phone: params.phone.trim().replace(/\s+/g, ''),
+    timestamp: Date.now(),
+    ...(upstreamSecret ? { serverSecret: upstreamSecret } : {})
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        upstreamUnavailable: response.status >= 500,
+        error: `Upstream OTP service returned HTTP ${response.status}`
+      };
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      error?: string;
+    };
+
+    if (data?.success) {
+      return {
+        success: true,
+        message: data.message || 'Mã OTP bảo mật đã được phát lệnh gửi thành công!'
+      };
+    }
+
+    return {
+      success: false,
+      error: data?.error || 'Không thể phát lệnh gửi mã OTP từ máy chủ.'
+    };
+  } catch (err) {
+    return {
+      success: false,
+      upstreamUnavailable: true,
+      error: err instanceof Error && err.name === 'AbortError'
+        ? 'Upstream OTP service timed out'
+        : 'Upstream OTP service unreachable'
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}

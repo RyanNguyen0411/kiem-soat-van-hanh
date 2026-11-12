@@ -2,12 +2,25 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getMissingEnvVars, redactSensitive } from '../_lib/env.js';
 import { HttpValidationError, readValidatedJsonBody, sendJson } from '../_lib/http.js';
 import { signIncidentSessionJwt } from '../_lib/jwt.js';
+import {
+  acquireLoginInflightSlot,
+  createSupabaseRateLimitStore,
+  extractTrustedClientIp,
+  guardLoginRateLimit,
+  recordLoginFailure,
+  releaseLoginInflightSlot,
+  resetLoginFailure,
+  sendRateLimited,
+  type RateLimitStore
+} from '../_lib/rateLimit.js';
 import { resolveRbacPolicyFromDb, type ResolvedRbacPolicy } from '../_lib/rbac.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
 import { verifyCredentialsWithUpstream, type UpstreamAuthResult } from '../_lib/upstreamAuth.js';
 
 export interface LoginDeps {
   getMissingEnv: () => string[];
+  getRateLimitStore?: () => RateLimitStore;
+  rateLimitSecret?: string;
   verifyUpstream: (params: { username: string; password?: string }) => Promise<UpstreamAuthResult>;
   resolveRbac: (identity: { username?: string; email?: string }) => Promise<ResolvedRbacPolicy>;
   signJwt: typeof signIncidentSessionJwt;
@@ -15,6 +28,7 @@ export interface LoginDeps {
 
 const defaultDeps: LoginDeps = {
   getMissingEnv: getMissingEnvVars,
+  getRateLimitStore: () => createSupabaseRateLimitStore(getSupabaseAdmin()),
   verifyUpstream: verifyCredentialsWithUpstream,
   resolveRbac: (identity) => resolveRbacPolicyFromDb(getSupabaseAdmin(), identity),
   signJwt: signIncidentSessionJwt
@@ -72,15 +86,70 @@ export async function processLoginRequest(
     return;
   }
 
+  const useRealRateLimit = Boolean(deps.getRateLimitStore);
+  const clientIp = extractTrustedClientIp(req);
+  if (useRealRateLimit && !clientIp) {
+    sendJson(res, 400, {
+      success: false,
+      error: 'Không xác minh được địa chỉ mạng hợp lệ của yêu cầu.'
+    });
+    return;
+  }
+
+  const store = deps.getRateLimitStore ? deps.getRateLimitStore() : null;
+  const effectiveIp = clientIp || '127.0.0.1';
+
   try {
-    const upstream = await deps.verifyUpstream({ username, password });
-    if (!upstream.success || !upstream.user) {
-      const status = upstream.upstreamUnavailable ? 503 : 401;
-      sendJson(res, status, {
-        success: false,
-        error: upstream.error || 'Xác thực không thành công'
-      });
-      return;
+    // 1. Check account & IP lock + consume IP quota BEFORE calling upstream
+    let inflightAcquired = false;
+    if (store) {
+      const rateDecision = await guardLoginRateLimit(
+        store,
+        { ip: effectiveIp, username },
+        deps.rateLimitSecret
+      );
+
+      if (rateDecision.blocked) {
+        sendRateLimited(res, rateDecision.retryAfterSeconds);
+        return;
+      }
+
+      // 2. Acquire per-account in-flight lease to prevent parallel burst bypass
+      inflightAcquired = await acquireLoginInflightSlot(
+        store,
+        { account: username },
+        10,
+        deps.rateLimitSecret
+      );
+      if (!inflightAcquired) {
+        sendRateLimited(res, 2);
+        return;
+      }
+    }
+
+    let upstream: UpstreamAuthResult;
+    try {
+      upstream = await deps.verifyUpstream({ username, password });
+      if (!upstream.success || !upstream.user) {
+        if (store && !upstream.upstreamUnavailable) {
+          await recordLoginFailure(store, { username }, deps.rateLimitSecret);
+        }
+        const status = upstream.upstreamUnavailable ? 503 : 401;
+        sendJson(res, status, {
+          success: false,
+          error: upstream.error || 'Xác thực không thành công'
+        });
+        return;
+      }
+
+      // Reset account failure counter upon successful upstream authentication
+      if (store) {
+        await resetLoginFailure(store, { username }, deps.rateLimitSecret);
+      }
+    } finally {
+      if (store && inflightAcquired) {
+        await releaseLoginInflightSlot(store, { account: username }, deps.rateLimitSecret).catch(() => {});
+      }
     }
 
     const rbac = await deps.resolveRbac({

@@ -2,12 +2,25 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getMissingEnvVars, redactSensitive } from '../_lib/env.js';
 import { HttpValidationError, readValidatedJsonBody, sendJson } from '../_lib/http.js';
 import { signIncidentSessionJwt } from '../_lib/jwt.js';
+import {
+  acquireVerifyOtpInflightSlot,
+  createSupabaseRateLimitStore,
+  extractTrustedClientIp,
+  guardVerifyOtpRateLimit,
+  recordVerifyOtpFailure,
+  releaseVerifyOtpInflightSlot,
+  resetVerifyOtpFailure,
+  sendRateLimited,
+  type RateLimitStore
+} from '../_lib/rateLimit.js';
 import { resolveRbacPolicyFromDb, type ResolvedRbacPolicy } from '../_lib/rbac.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
 import { verifyOtpWithUpstream, type UpstreamAuthResult } from '../_lib/upstreamAuth.js';
 
 export interface VerifyOtpDeps {
   getMissingEnv: () => string[];
+  getRateLimitStore?: () => RateLimitStore;
+  rateLimitSecret?: string;
   verifyOtp: (params: { phone: string; otp: string }) => Promise<UpstreamAuthResult>;
   resolveRbac: (identity: { username?: string; email?: string }) => Promise<ResolvedRbacPolicy>;
   signJwt: typeof signIncidentSessionJwt;
@@ -15,6 +28,7 @@ export interface VerifyOtpDeps {
 
 const defaultDeps: VerifyOtpDeps = {
   getMissingEnv: getMissingEnvVars,
+  getRateLimitStore: () => createSupabaseRateLimitStore(getSupabaseAdmin()),
   verifyOtp: verifyOtpWithUpstream,
   resolveRbac: (identity) => resolveRbacPolicyFromDb(getSupabaseAdmin(), identity),
   signJwt: signIncidentSessionJwt
@@ -50,7 +64,7 @@ export async function processVerifyOtpRequest(
     return;
   }
 
-  const phone = body.phone.trim();
+  const phone = body.phone.trim().replace(/\s+/g, '');
   const otp = body.otp.trim();
 
   if (phone.length < 10 || phone.length > 20 || otp.length < 6 || otp.length > 12) {
@@ -71,15 +85,70 @@ export async function processVerifyOtpRequest(
     return;
   }
 
+  const useRealRateLimit = Boolean(deps.getRateLimitStore);
+  const clientIp = extractTrustedClientIp(req);
+  if (useRealRateLimit && !clientIp) {
+    sendJson(res, 400, {
+      success: false,
+      error: 'Không xác minh được địa chỉ mạng hợp lệ của yêu cầu.'
+    });
+    return;
+  }
+
+  const store = deps.getRateLimitStore ? deps.getRateLimitStore() : null;
+  const effectiveIp = clientIp || '127.0.0.1';
+
   try {
-    const upstream = await deps.verifyOtp({ phone, otp });
-    if (!upstream.success || !upstream.user) {
-      const status = upstream.upstreamUnavailable ? 503 : 401;
-      sendJson(res, status, {
-        success: false,
-        error: upstream.error || 'Mã OTP không chính xác hoặc đã hết hiệu lực'
-      });
-      return;
+    // 1. Check both phone & IP failure locks BEFORE calling upstream
+    let inflightAcquired = false;
+    if (store) {
+      const rateDecision = await guardVerifyOtpRateLimit(
+        store,
+        { ip: effectiveIp, phone },
+        deps.rateLimitSecret
+      );
+
+      if (rateDecision.blocked) {
+        sendRateLimited(res, rateDecision.retryAfterSeconds);
+        return;
+      }
+
+      // 2. Acquire per-phone in-flight lease to prevent parallel burst bypass
+      inflightAcquired = await acquireVerifyOtpInflightSlot(
+        store,
+        { phone },
+        10,
+        deps.rateLimitSecret
+      );
+      if (!inflightAcquired) {
+        sendRateLimited(res, 2);
+        return;
+      }
+    }
+
+    let upstream: UpstreamAuthResult;
+    try {
+      upstream = await deps.verifyOtp({ phone, otp });
+      if (!upstream.success || !upstream.user) {
+        if (store && !upstream.upstreamUnavailable) {
+          await recordVerifyOtpFailure(store, { ip: effectiveIp, phone }, deps.rateLimitSecret);
+        }
+        const status = upstream.upstreamUnavailable ? 503 : 401;
+        sendJson(res, status, {
+          success: false,
+          error: upstream.error || 'Mã OTP không chính xác hoặc đã hết hiệu lực'
+        });
+        return;
+      }
+
+      // Reset phone failure counter on valid OTP
+      if (store) {
+        await resetVerifyOtpFailure(store, { phone }, deps.rateLimitSecret);
+      }
+    } finally {
+      if (store && inflightAcquired) {
+        await releaseVerifyOtpInflightSlot(store, { phone }, deps.rateLimitSecret).catch(() => {});
+      }
     }
 
     const rbac = await deps.resolveRbac({

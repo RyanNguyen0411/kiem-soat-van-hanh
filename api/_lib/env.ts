@@ -7,6 +7,7 @@ export interface AuthBrokerEnv {
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
   authJwtSecret: string;
+  rateLimitHmacSecret: string;
   authUpstreamWebhookUrl: string;
   upstreamAuthSecret?: string;
 }
@@ -15,6 +16,7 @@ const SENSITIVE_KEYS = new Set([
   'password',
   'pass',
   'otp',
+  'phone',
   'token',
   'secret',
   'serversecret',
@@ -22,6 +24,7 @@ const SENSITIVE_KEYS = new Set([
   'service_role',
   'supabase_service_role_key',
   'auth_jwt_secret',
+  'rate_limit_hmac_secret',
   'upstream_auth_secret'
 ]);
 
@@ -37,17 +40,22 @@ export function getAuthBrokerEnv(): AuthBrokerEnv {
   const supabaseUrl = readRequiredServerEnv('SUPABASE_URL');
   const supabaseServiceRoleKey = readRequiredServerEnv('SUPABASE_SERVICE_ROLE_KEY');
   const authJwtSecret = readRequiredServerEnv('AUTH_JWT_SECRET');
+  const rateLimitHmacSecret = readRequiredServerEnv('RATE_LIMIT_HMAC_SECRET');
   const authUpstreamWebhookUrl = readRequiredServerEnv('AUTH_UPSTREAM_WEBHOOK_URL');
   const upstreamAuthSecret = process.env.UPSTREAM_AUTH_SECRET?.trim() || undefined;
 
   if (authJwtSecret.length < 32) {
     throw new Error('AUTH_JWT_SECRET must be at least 32 characters long');
   }
+  if (rateLimitHmacSecret.length < 32) {
+    throw new Error('RATE_LIMIT_HMAC_SECRET must be at least 32 characters long');
+  }
 
   return {
     supabaseUrl,
     supabaseServiceRoleKey,
     authJwtSecret,
+    rateLimitHmacSecret,
     authUpstreamWebhookUrl,
     upstreamAuthSecret
   };
@@ -58,6 +66,7 @@ export function getMissingEnvVars(): string[] {
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
     'AUTH_JWT_SECRET',
+    'RATE_LIMIT_HMAC_SECRET',
     'AUTH_UPSTREAM_WEBHOOK_URL'
   ];
   return required.filter((k) => !process.env[k] || !process.env[k]!.trim());
