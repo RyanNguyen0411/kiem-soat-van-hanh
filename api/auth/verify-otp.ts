@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getMissingEnvVars, redactSensitive } from '../_lib/env.ts';
-import { HttpValidationError, readValidatedJsonBody, sendJson } from '../_lib/http.ts';
-import { signIncidentSessionJwt } from '../_lib/jwt.ts';
-import { resolveRbacPolicyFromDb, type ResolvedRbacPolicy } from '../_lib/rbac.ts';
-import { getSupabaseAdmin } from '../_lib/supabaseAdmin.ts';
-import { verifyOtpWithUpstream, type UpstreamAuthResult } from '../_lib/upstreamAuth.ts';
+import { getMissingEnvVars, redactSensitive } from '../_lib/env.js';
+import { HttpValidationError, readValidatedJsonBody, sendJson } from '../_lib/http.js';
+import { signIncidentSessionJwt } from '../_lib/jwt.js';
+import { resolveRbacPolicyFromDb, type ResolvedRbacPolicy } from '../_lib/rbac.js';
+import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { verifyOtpWithUpstream, type UpstreamAuthResult } from '../_lib/upstreamAuth.js';
 
 export interface VerifyOtpDeps {
   getMissingEnv: () => string[];

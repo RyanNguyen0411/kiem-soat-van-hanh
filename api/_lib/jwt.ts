@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { readRequiredServerEnv } from './env.ts';
+import { readRequiredServerEnv } from './env.js';
 
 export type RbacRole = 'admin' | 'area_manager' | 'viewer';
 export type IncidentPermission = 'incident_management' | 'incident_intake_submit';

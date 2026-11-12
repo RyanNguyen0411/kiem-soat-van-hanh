@@ -3,25 +3,42 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { register } from 'node:module';
 import { SignJWT } from 'jose';
 
-import {
+// Map relative `.js` imports inside `api/` to `.ts` source when running directly under Node 24
+const apiTsLoaderSource = `
+export async function resolve(specifier, context, nextResolve) {
+  if (specifier.endsWith('.js') && context.parentURL && context.parentURL.includes('/api/')) {
+    const tsSpecifier = specifier.slice(0, -3) + '.ts';
+    try {
+      return await nextResolve(tsSpecifier, context);
+    } catch {
+      // fall through to default resolution
+    }
+  }
+  return nextResolve(specifier, context);
+}
+`;
+register('data:text/javascript,' + encodeURIComponent(apiTsLoaderSource));
+
+const {
   signIncidentSessionJwt,
   verifyIncidentSessionJwt,
   JWT_ISSUER,
   JWT_AUDIENCE
-} from '../api/_lib/jwt.ts';
-import {
+} = await import('../api/_lib/jwt.ts');
+const {
   evaluateRbacRow,
   reconcileRbacMatches,
   sanitizeRolePermissions,
   authorizeIncidentAccess
-} from '../api/_lib/rbac.ts';
-import { redactSensitive, getMissingEnvVars } from '../api/_lib/env.ts';
-import { MAX_JSON_BODY_BYTES, readValidatedJsonBody, HttpValidationError } from '../api/_lib/http.ts';
-import { verifyCredentialsWithUpstream } from '../api/_lib/upstreamAuth.ts';
-import { processLoginRequest } from '../api/auth/login.ts';
-import { processVerifyOtpRequest } from '../api/auth/verify-otp.ts';
+} = await import('../api/_lib/rbac.ts');
+const { redactSensitive, getMissingEnvVars } = await import('../api/_lib/env.ts');
+const { MAX_JSON_BODY_BYTES, readValidatedJsonBody, HttpValidationError } = await import('../api/_lib/http.ts');
+const { verifyCredentialsWithUpstream } = await import('../api/_lib/upstreamAuth.ts');
+const { processLoginRequest } = await import('../api/auth/login.ts');
+const { processVerifyOtpRequest } = await import('../api/auth/verify-otp.ts');
 
 const TEST_SIGNING_SECRET = 'unit-test-only-signing-secret-minimum-32-chars!!';
 const WRONG_SIGNING_SECRET = 'wrong-attacker-signing-secret-minimum-32-chars!!';

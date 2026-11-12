@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { readRequiredServerEnv } from './env.ts';
+import { readRequiredServerEnv } from './env.js';
 
 let cachedClient: SupabaseClient | null = null;
 let cachedUrl = '';

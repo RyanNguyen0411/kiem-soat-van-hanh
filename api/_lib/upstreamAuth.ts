@@ -1,4 +1,4 @@
-import { readRequiredServerEnv } from './env.ts';
+import { readRequiredServerEnv } from './env.js';
 
 export interface UpstreamIdentity {
   id: string;

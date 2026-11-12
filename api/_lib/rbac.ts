@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { IncidentJwtClaims, IncidentPermission, RbacRole } from './jwt.ts';
+import type { IncidentJwtClaims, IncidentPermission, RbacRole } from './jwt.js';
 
 export interface RbacPolicyRow {
   id: string;
