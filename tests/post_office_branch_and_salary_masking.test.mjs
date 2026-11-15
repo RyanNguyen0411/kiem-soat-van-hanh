@@ -67,4 +67,25 @@ test('PHÂN HỆ BƯU CỤC & BẢO MẬT ẨN THU NHẬP BƯU TÁ - AUDIT SUITE
     assert.match(contextFile, /nhanSu: dataset\.nhanSu\.filter\(r => normalizePostOfficeName\(r\.buuCuc \|\| r\.buuCucRaw\) === stdAssigned\)/);
     assert.match(contextFile, /nghiViec: dataset\.nghiViec\.filter\(r => normalizePostOfficeName\(r\.buuCuc \|\| r\.buuCucRaw\) === stdAssigned\)/);
   });
+
+  await t.test('7. NhanSuTab ẩn hoàn toàn Báo Cáo Nhận Xét & Đánh Giá Chuyên Sâu Tình Hình Thực Trạng Nhân Sự đối với nhân viên', () => {
+    const nhanSuTabFile = fs.readFileSync(path.join(ROOT_DIR, 'src/pages/NhanSuTab.tsx'), 'utf8');
+    assert.match(nhanSuTabFile, /!isStaff && \(\s*<div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900/);
+    assert.match(nhanSuTabFile, /Báo Cáo Nhận Xét & Đánh Giá Chuyên Sâu Tình Hình Thực Trạng Nhân Sự/);
+  });
+
+  await t.test('8. NhanSuOperationalAlertsCard tự động chọn Tháng hiện tại khi isStaff', () => {
+    const alertsCardFile = fs.readFileSync(path.join(ROOT_DIR, 'src/components/nhan-su/NhanSuOperationalAlertsCard.tsx'), 'utf8');
+    assert.match(alertsCardFile, /isStaff && currentMonthKey && selectedMonth === 'all'/);
+    assert.match(alertsCardFile, /setSelectedMonth\(currentMonthKey\)/);
+  });
+
+  await t.test('9. Bảng Chi Tiết GTC Bưu Cục trong GtcPostOfficeTab có cố định tiêu đề và cuộn dọc độc lập', () => {
+    const postOfficeTabFile = fs.readFileSync(path.join(ROOT_DIR, 'src/pages/GtcPostOfficeTab.tsx'), 'utf8');
+    assert.match(postOfficeTabFile, /title="Bảng Chi Tiết GTC Bưu Cục"/);
+    assert.match(postOfficeTabFile, /maxHeight="max-h-\[540px\]"/);
+    assert.match(postOfficeTabFile, /stickyHeader=\{true\}/);
+    assert.match(postOfficeTabFile, /noWrap=\{true\}/);
+    assert.match(postOfficeTabFile, /key: 'buuCuc',\s*header: 'Bưu Cục',\s*sticky: 'left'/);
+  });
 });

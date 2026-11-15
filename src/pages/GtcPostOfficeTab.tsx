@@ -913,6 +913,8 @@ export const GtcPostOfficeTab: React.FC = () => {
     {
       key: 'buuCuc',
       header: 'Bưu Cục',
+      sticky: 'left',
+      stickyLeft: '0px',
       render: r => <span className="font-bold text-slate-800 dark:text-slate-100">{r.buuCuc}</span>
     },
     {
@@ -2745,6 +2747,9 @@ export const GtcPostOfficeTab: React.FC = () => {
           subtitle="Hiển thị chi tiết từng ca vận hành (Hàng mới ca 1, ca 2, hàng tồn) theo từng bưu cục và từng ngày"
           exportFilename="gtc_buu_cuc_chi_tiet_ghn"
           pageSizeDefault={15}
+          maxHeight="max-h-[540px]"
+          stickyHeader={true}
+          noWrap={true}
           keyExtractor={(r, idx) => `${r.buuCuc}_${r.loaiHang}_${r.time}_${r.ngay}_${idx}`}
           filterBar={
             <div className="space-y-2.5">

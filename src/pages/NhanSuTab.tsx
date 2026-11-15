@@ -1406,8 +1406,9 @@ export const NhanSuTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 7. KHỐI NHẬN XÉT & ĐÁNH GIÁ CHUYÊN SÂU THỰC TRẠNG (CROSS-REFERENCED OPERATIONAL ASSESSMENT) */}
-      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl p-6 border border-indigo-900/50">
+      {/* 7. KHỐI NHẬN XÉT & ĐÁNH GIÁ CHUYÊN SÂU THỰC TRẠNG (CHỈ DÀNH CHO AM, ẨN HOÀN TOÀN TRÊN TẤT CẢ PHÂN NHÁNH) */}
+      {!isStaff && (
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl p-6 border border-indigo-900/50">
         
         {/* Header Block */}
         <div className="flex items-center gap-3 pb-4 border-b border-indigo-800/60">
@@ -1776,6 +1777,7 @@ export const NhanSuTab: React.FC = () => {
         </div>
 
       </div>
+      )}
 
     </div>
   );

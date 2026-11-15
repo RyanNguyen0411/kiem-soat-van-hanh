@@ -24,7 +24,8 @@ import {
   extractWeeks, 
   sortDatesDesc, 
   parseDateDDMMYYYY, 
-  toTimestamp 
+  toTimestamp,
+  getCurrentMonthKey
 } from '../../utils/dateEngine';
 import { safeToFixed, safeFormatPercent, safeFormatNumber } from '../../utils';
 import nhanSuFallbackSnapshot from '../../data/snapshots/nhan_su.json';
@@ -153,6 +154,18 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
   const availableMonths = useMemo(() => {
     return extractMonths(allUniqueDates);
   }, [allUniqueDates]);
+
+  // Tháng hiện tại thực tế
+  const currentMonthKey = useMemo(() => {
+    return getCurrentMonthKey(availableMonths);
+  }, [availableMonths]);
+
+  // Luôn luôn hiển thị dữ liệu ở tháng hiện tại đối với tất cả các nhánh phân hệ
+  React.useEffect(() => {
+    if (isStaff && currentMonthKey && selectedMonth === 'all') {
+      setSelectedMonth(currentMonthKey);
+    }
+  }, [isStaff, currentMonthKey, selectedMonth]);
 
   // Danh sách Tuần có trong dữ liệu (lọc theo tháng nếu có)
   const availableWeeks = useMemo(() => {
