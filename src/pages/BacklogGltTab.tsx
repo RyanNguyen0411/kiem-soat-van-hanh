@@ -38,17 +38,24 @@ import {
   Legend 
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import type { BacklogGltRecord } from '../types/dashboard';
+import { normalizeOrderId, dedupeGltRecords, computeGltBacklogBreakdown } from '../services/kpiEngine';
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
 import { IndividualFilterDropdown } from '../components/common/IndividualFilterDropdown';
 
 export const BacklogGltTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { dataset, selectedBuuCucGlobal, setSelectedBuuCucGlobal } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
+
+  const lastPushedBcRef = React.useRef<string>(isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
 
   // Independent Filter state (Đồng bộ với bưu cục được chọn)
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
-    buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
+    buuCuc: isStaff && assignedPo ? [assignedPo] : (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []),
     loaiDon: [],
     trangThai: [],
     canhBao: [],
@@ -56,18 +63,24 @@ export const BacklogGltTab: React.FC = () => {
   }));
 
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (isStaff && assignedPo) {
+      setFilterValues(prev => ({ ...prev, buuCuc: [assignedPo] }));
+      return;
+    }
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        buuCuc: [selectedBuuCucGlobal]
+        buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
-  }, [selectedBuuCucGlobal]);
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
 
   // Options
   const buuCucOptions = useMemo(() => {
+    if (isStaff && assignedPo) return [{ label: assignedPo, value: assignedPo }];
     return [...new Set(dataset.tonDongGlt.map(r => r.buuCuc))].filter(Boolean).map(b => ({ label: b, value: b }));
-  }, [dataset.tonDongGlt]);
+  }, [dataset.tonDongGlt, isStaff, assignedPo]);
 
   const loaiDonOptions = useMemo(() => {
     return [...new Set(dataset.tonDongGlt.map(r => r.loaiDon))].filter(Boolean).map(l => ({ label: l, value: l }));
@@ -95,28 +108,42 @@ export const BacklogGltTab: React.FC = () => {
 
   const handleResetAllFilters = () => {
     setFilterValues({
-      buuCuc: [],
+      buuCuc: isStaff && assignedPo ? [assignedPo] : [],
       loaiDon: [],
       trangThai: [],
       canhBao: [],
       thoiGianTonDong: []
     });
+    if (!isStaff) {
+      lastPushedBcRef.current = 'all';
+      setSelectedBuuCucGlobal('all');
+    }
   };
 
-  // Apply filters
-  const filteredData = useMemo(() => {
-    return dataset.tonDongGlt.filter(r => {
-      if (filterValues.buuCuc?.length && !filterValues.buuCuc.includes(r.buuCuc)) return false;
-      if (filterValues.loaiDon?.length && !filterValues.loaiDon.includes(r.loaiDon)) return false;
-      if (filterValues.trangThai?.length && !filterValues.trangThai.includes(r.trangThai)) return false;
-      if (filterValues.canhBao?.length && !filterValues.canhBao.includes(r.canhBao)) return false;
-      if (filterValues.thoiGianTonDong?.length && !filterValues.thoiGianTonDong.includes(r.thoiGianTonDong)) return false;
-      return true;
-    });
+  // Apply filters & deduplicate by unique normalized maDonHang
+  const matchedRawRows = useMemo(() => {
+    const result: BacklogGltRecord[] = [];
+    for (const r of dataset.tonDongGlt) {
+      if (filterValues.buuCuc?.length && !filterValues.buuCuc.includes(r.buuCuc)) continue;
+      if (filterValues.loaiDon?.length && !filterValues.loaiDon.includes(r.loaiDon)) continue;
+      if (filterValues.trangThai?.length && !filterValues.trangThai.includes(r.trangThai)) continue;
+      if (filterValues.canhBao?.length && !filterValues.canhBao.includes(r.canhBao)) continue;
+      if (filterValues.thoiGianTonDong?.length && !filterValues.thoiGianTonDong.includes(r.thoiGianTonDong)) continue;
+      result.push(r);
+    }
+    return result;
   }, [dataset.tonDongGlt, filterValues]);
 
+  const gltBreakdown = useMemo(() => {
+    return computeGltBacklogBreakdown(matchedRawRows);
+  }, [matchedRawRows]);
+
+  const filteredData = useMemo(() => {
+    return dedupeGltRecords(matchedRawRows);
+  }, [matchedRawRows]);
+
   // State chọn nhóm KPI làm menu điều hướng danh sách chi tiết
-  type KpiGroup = 'all' | 'giao' | 'lay' | 'uutien' | 'chuacochuyen' | 'overdue' | 'tts';
+  type KpiGroup = 'all' | 'giao' | 'lay' | 'tra' | 'uutien' | 'chuacochuyen' | 'overdue' | 'tts';
   const [selectedKpi, setSelectedKpi] = useState<KpiGroup>('all');
   const [showKpiCards, setShowKpiCards] = useState<boolean>(true);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -132,34 +159,52 @@ export const BacklogGltTab: React.FC = () => {
     switch (selectedKpi) {
       case 'giao': return 'Đơn Giao Tồn';
       case 'lay': return 'Đơn Lấy Tồn';
+      case 'tra': return 'Đơn Trả Tồn';
       case 'uutien': return 'Ưu Tiên Giao / Đã Trễ';
       case 'chuacochuyen': return 'Chưa Có Chuyến Đi';
       case 'overdue': return 'Quá Hạn > 120h';
       case 'tts': return 'Đơn Hàng TikTok Shop (TTS)';
-      default: return 'Tổng Tồn GLT';
+      default: return 'Tổng Tồn GLT (Snapshot Hiện Hành)';
     }
   }, [selectedKpi]);
 
-  // Tab KPIs
+  // Tab KPIs — Chuẩn hóa đếm mã đơn duy nhất (Set<normalizeOrderId(maDonHang)>) và phân tách đủ 4 nhóm GLT (Giao, Ưu tiên/Trễ, Lấy, Trả)
   const tabKPIs = useMemo(() => {
-    const totalCount = filteredData.length;
-    const donGiao = filteredData.filter(r => r.loaiDon === 'Giao').length;
-    const donLay = filteredData.filter(r => r.loaiDon === 'Lấy').length;
-    const donUuTienTre = filteredData.filter(r => r.loaiDon.includes('trễ')).length;
-    const chuaCoChuyen = filteredData.filter(r => r.trangThai.includes('Chưa có chuyến')).length;
-    const urgentOverdue = filteredData.filter(r => r.thoiGianTonDong === '120_192' || r.thoiGianTonDong === '192').length;
-    const ttsCount = filteredData.filter(r => r.khachHang === 'TTS').length;
+    let chuaCoChuyen = 0;
+    let urgentOverdue = 0;
+    let ttsCount = 0;
+
+    for (let i = 0; i < filteredData.length; i++) {
+      const r = filteredData[i];
+      if ((r.trangThai || '').includes('Chưa có chuyến')) {
+        chuaCoChuyen++;
+      }
+      if (r.thoiGianTonDong === '120_192' || r.thoiGianTonDong === '192') {
+        urgentOverdue++;
+      }
+      if (r.khachHang === 'TTS') {
+        ttsCount++;
+      }
+    }
 
     return {
-      totalCount,
-      donGiao,
-      donLay,
-      donUuTienTre,
+      totalCount: gltBreakdown.totalUnique,
+      donGiao: gltBreakdown.giao,
+      donLay: gltBreakdown.lay,
+      donTra: gltBreakdown.tra,
+      donUuTienTre: gltBreakdown.uuTienTre,
+      donUuTienDaTre: gltBreakdown.uuTienDaTre,
+      donUuTienTrongNgay: gltBreakdown.uuTienTrongNgay,
+      businessConflictCount: gltBreakdown.businessConflictCount,
+      secondaryDiffCount: gltBreakdown.secondaryDiffCount,
+      exactDuplicateCount: gltBreakdown.exactDuplicateCount,
+      duplicateRowsIgnored: gltBreakdown.duplicateRowsIgnored,
+      emptyOrderIdRowsIgnored: gltBreakdown.emptyOrderIdRowsIgnored,
       chuaCoChuyen,
       urgentOverdue,
       ttsCount
     };
-  }, [filteredData]);
+  }, [filteredData, gltBreakdown]);
 
   // Dữ liệu bảng chi tiết được liên kết với Menu KPI
   const tableData = useMemo(() => {
@@ -169,8 +214,14 @@ export const BacklogGltTab: React.FC = () => {
     if (selectedKpi === 'lay') {
       return filteredData.filter(r => r.loaiDon === 'Lấy');
     }
+    if (selectedKpi === 'tra') {
+      return filteredData.filter(r => r.loaiDon === 'Trả');
+    }
     if (selectedKpi === 'uutien') {
-      return filteredData.filter(r => r.loaiDon.includes('trễ'));
+      return filteredData.filter(r => {
+        const loaiLower = (r.loaiDon || '').toLowerCase();
+        return loaiLower.includes('ưu tiên') || loaiLower.includes('trễ');
+      });
     }
     if (selectedKpi === 'chuacochuyen') {
       return filteredData.filter(r => r.trangThai.includes('Chưa có chuyến'));
@@ -184,24 +235,30 @@ export const BacklogGltTab: React.FC = () => {
     return filteredData;
   }, [filteredData, selectedKpi]);
 
-  // Chart data: Backlog by Post Office
+  // Chart data: Backlog by Post Office (đếm mã đơn duy nhất)
   const poBacklogData = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, Set<string>> = {};
     filteredData.forEach(r => {
-      map[r.buuCuc] = (map[r.buuCuc] || 0) + 1;
+      const id = normalizeOrderId(r.maDonHang);
+      if (!r.buuCuc || !id) return;
+      if (!map[r.buuCuc]) map[r.buuCuc] = new Set();
+      map[r.buuCuc].add(id);
     });
     return Object.entries(map)
-      .map(([buuCuc, count]) => ({ buuCuc, count }))
+      .map(([buuCuc, set]) => ({ buuCuc, count: set.size }))
       .sort((a, b) => b.count - a.count);
   }, [filteredData]);
 
-  // Chart data: Backlog by Type
+  // Chart data: Backlog by Type (đếm mã đơn duy nhất)
   const typeBacklogData = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, Set<string>> = {};
     filteredData.forEach(r => {
-      map[r.loaiDon] = (map[r.loaiDon] || 0) + 1;
+      const id = normalizeOrderId(r.maDonHang);
+      if (!r.loaiDon || !id) return;
+      if (!map[r.loaiDon]) map[r.loaiDon] = new Set();
+      map[r.loaiDon].add(id);
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([name, set]) => ({ name, value: set.size }));
   }, [filteredData]);
 
   const TYPE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -528,7 +585,7 @@ export const BacklogGltTab: React.FC = () => {
                     Phân Hệ Tồn Đọng GLT (Giao - Lấy - Trả)
                   </h2>
                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 whitespace-nowrap">
-                    {dataset.tonDongGlt.length.toLocaleString('vi-VN')} đơn
+                    {tabKPIs.totalCount.toLocaleString('vi-VN')} đơn duy nhất (Snapshot hiện hành)
                   </span>
                 </div>
 
@@ -552,32 +609,46 @@ export const BacklogGltTab: React.FC = () => {
                   )}
                 </button>
 
-                {/* NÚT BÁO CÁO TELEGRAM TỒN ĐỌNG 120H & 192H */}
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt' } }))}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold text-[11px] shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-[#229ED9]/50"
-                  title="Xuất và gửi báo cáo Telegram Tồn Đọng 120h & 192h cho 5 bưu cục"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Báo Cáo Telegram</span>
-                </button>
+                {/* NÚT BÁO CÁO TELEGRAM TỒN ĐỌNG 120H & 192H (Ẩn đối với nhân viên) */}
+                {!isStaff && (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt' } }))}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold text-[11px] shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-[#229ED9]/50"
+                    title="Xuất và gửi báo cáo Telegram Tồn Đọng 120h & 192h cho 5 bưu cục"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Báo Cáo Telegram</span>
+                  </button>
+                )}
               </div>
             </div>
 
             {/* CÁC BỘ LỌC RIÊNG BIỆT (TÁCH RỜI - COMPACT TỐI ƯU KHÔNG GIAN) */}
             <div className="flex flex-wrap xl:flex-nowrap items-center gap-1.5 shrink-0">
-              {/* 1. Lọc Bưu Cục */}
-              <IndividualFilterDropdown
-                label="Bưu cục"
-                compact={true}
-                icon={<Building2 className="w-3.5 h-3.5" />}
-                options={buuCucOptions}
-                selectedValues={filterValues.buuCuc || []}
-                onChange={vals => setFilterValues(prev => ({ ...prev, buuCuc: vals }))}
-                searchPlaceholder="Tìm bưu cục..."
-                minWidth="w-56"
-              />
+              {/* 1. Lọc Bưu Cục (Chặn không cho chọn bưu cục khác nếu là tài khoản nhân viên) */}
+              {!isStaff ? (
+                <IndividualFilterDropdown
+                  label="Bưu cục"
+                  compact={true}
+                  icon={<Building2 className="w-3.5 h-3.5" />}
+                  options={buuCucOptions}
+                  selectedValues={filterValues.buuCuc || []}
+                  onChange={vals => {
+                    setFilterValues(prev => ({ ...prev, buuCuc: vals }));
+                    const targetBc = vals.length === 1 ? vals[0] : 'all';
+                    lastPushedBcRef.current = targetBc;
+                    setSelectedBuuCucGlobal(targetBc);
+                  }}
+                  searchPlaceholder="Tìm bưu cục..."
+                  minWidth="w-56"
+                />
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                  <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>{assignedPo || filterValues.buuCuc?.[0]}</span>
+                </div>
+              )}
 
               {/* 2. Lọc Loại Đơn */}
               <IndividualFilterDropdown
@@ -672,15 +743,15 @@ export const BacklogGltTab: React.FC = () => {
           </button>
         </div>
 
-        {/* Hàng 2: Menu 6 Thẻ KPI Tồn Đọng (Tương tác bấm để xem chi tiết bên dưới, có thể thu gọn trên điện thoại) */}
+        {/* Hàng 2: Menu 8 Thẻ KPI Tồn Đọng GLT (4 nhóm chuẩn Giao / Ưu tiên-Trễ / Lấy / Trả cộng khớp 100% + 3 thẻ SLA/TTS) */}
         {showKpiCards && (
           <div className="py-1.5 px-3 md:px-6 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
-            <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
-            {/* 1. Tổng Tồn GLT */}
+            <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+            {/* 1. Tổng Tồn GLT (Snapshot hiện hành) */}
             <button
               type="button"
               onClick={() => handleKpiCardClick('all')}
-              title="Nhấn để xem toàn bộ danh sách đơn tồn GLT"
+              title="Nhấn để xem toàn bộ danh sách đơn tồn GLT (Snapshot hiện hành - đếm theo mã đơn duy nhất)"
               className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'all'
                   ? 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-400/40 shadow-xs'
@@ -699,7 +770,7 @@ export const BacklogGltTab: React.FC = () => {
                 {tabKPIs.totalCount.toLocaleString('vi-VN')}
               </div>
               <div className={`text-[9px] truncate ${selectedKpi === 'all' ? 'text-rose-200' : 'text-slate-400'}`}>
-                100% đơn duy nhất
+                Snapshot đơn duy nhất
               </div>
             </button>
 
@@ -726,11 +797,38 @@ export const BacklogGltTab: React.FC = () => {
                 {tabKPIs.donGiao.toLocaleString('vi-VN')}
               </div>
               <div className="text-[9px] text-slate-400 truncate">
-                {((tabKPIs.donGiao / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% cơ cấu
+                {((tabKPIs.donGiao / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% cơ cấu GLT
               </div>
             </button>
 
-            {/* 3. Đơn Lấy Tồn */}
+            {/* 3. Ưu Tiên Giao / Đã Trễ */}
+            <button
+              type="button"
+              onClick={() => handleKpiCardClick('uutien')}
+              title={`Nhấn để xem chi tiết Đơn Ưu Tiên Giao / Đã Trễ (Đã trễ: ${tabKPIs.donUuTienDaTre.toLocaleString('vi-VN')} | Trong ngày: ${tabKPIs.donUuTienTrongNgay.toLocaleString('vi-VN')})`}
+              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+                selectedKpi === 'uutien'
+                  ? 'bg-red-50/90 dark:bg-red-950/60 border-red-500 ring-2 ring-red-500/40 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-slate-600 hover:shadow-2xs'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tight">
+                <span className={selectedKpi === 'uutien' ? 'text-red-700 dark:text-red-300' : 'text-slate-500 dark:text-slate-400'}>
+                  Ưu Tiên / Đã Trễ
+                </span>
+                <span className={`text-[9px] ${selectedKpi === 'uutien' ? 'text-red-600 font-bold' : 'text-slate-400 group-hover:text-red-600'} transition-colors`}>
+                  {selectedKpi === 'uutien' ? 'Đang lọc ↓' : 'Xem ↓'}
+                </span>
+              </div>
+              <div className="text-sm lg:text-base font-black text-red-600 mt-0.5 truncate">
+                {tabKPIs.donUuTienTre.toLocaleString('vi-VN')}
+              </div>
+              <div className="text-[9px] text-red-500 font-medium truncate">
+                Trễ: {tabKPIs.donUuTienDaTre.toLocaleString('vi-VN')} • Ngày: {tabKPIs.donUuTienTrongNgay.toLocaleString('vi-VN')}
+              </div>
+            </button>
+
+            {/* 4. Đơn Lấy Tồn */}
             <button
               type="button"
               onClick={() => handleKpiCardClick('lay')}
@@ -753,34 +851,34 @@ export const BacklogGltTab: React.FC = () => {
                 {tabKPIs.donLay.toLocaleString('vi-VN')}
               </div>
               <div className="text-[9px] text-slate-400 truncate">
-                {((tabKPIs.donLay / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% cơ cấu
+                {((tabKPIs.donLay / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% cơ cấu GLT
               </div>
             </button>
 
-            {/* 4. Ưu Tiên Giao / Trễ */}
+            {/* 5. Đơn Trả Tồn */}
             <button
               type="button"
-              onClick={() => handleKpiCardClick('uutien')}
-              title="Nhấn để xem chi tiết Đơn Hàng Ưu Tiên Giao / Đã Trễ"
+              onClick={() => handleKpiCardClick('tra')}
+              title="Nhấn để xem chi tiết danh sách Đơn Trả Tồn"
               className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
-                selectedKpi === 'uutien'
-                  ? 'bg-red-50/90 dark:bg-red-950/60 border-red-500 ring-2 ring-red-500/40 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-slate-600 hover:shadow-2xs'
+                selectedKpi === 'tra'
+                  ? 'bg-sky-50/90 dark:bg-sky-950/60 border-sky-500 ring-2 ring-sky-500/40 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-600 hover:shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tight">
-                <span className={selectedKpi === 'uutien' ? 'text-red-700 dark:text-red-300' : 'text-slate-500 dark:text-slate-400'}>
-                  Ưu Tiên Giao / Trễ
+                <span className={selectedKpi === 'tra' ? 'text-sky-700 dark:text-sky-300' : 'text-slate-500 dark:text-slate-400'}>
+                  Đơn Trả Tồn
                 </span>
-                <span className={`text-[9px] ${selectedKpi === 'uutien' ? 'text-red-600 font-bold' : 'text-slate-400 group-hover:text-red-600'} transition-colors`}>
-                  {selectedKpi === 'uutien' ? 'Đang lọc ↓' : 'Xem ↓'}
+                <span className={`text-[9px] ${selectedKpi === 'tra' ? 'text-sky-600 font-bold' : 'text-slate-400 group-hover:text-sky-600'} transition-colors`}>
+                  {selectedKpi === 'tra' ? 'Đang lọc ↓' : 'Xem ↓'}
                 </span>
               </div>
-              <div className="text-sm lg:text-base font-black text-red-600 mt-0.5 truncate">
-                {tabKPIs.donUuTienTre.toLocaleString('vi-VN')}
+              <div className="text-sm lg:text-base font-black text-sky-600 dark:text-sky-400 mt-0.5 truncate">
+                {tabKPIs.donTra.toLocaleString('vi-VN')}
               </div>
-              <div className="text-[9px] text-red-500 font-medium truncate">
-                Cần giải phóng gấp
+              <div className="text-[9px] text-slate-400 truncate">
+                {((tabKPIs.donTra / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% cơ cấu GLT
               </div>
             </button>
 
@@ -1675,4 +1773,4 @@ export const BacklogGltTab: React.FC = () => {
   );
 };
 
-export default BacklogGltTab;
+export default React.memo(BacklogGltTab);

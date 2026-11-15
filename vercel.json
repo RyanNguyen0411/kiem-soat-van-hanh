@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!api(?:/|$)).*)",
+      "source": "/((?!api(?:/|$)|@vite|@react-refresh|@fs|@id|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

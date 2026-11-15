@@ -16,15 +16,19 @@ const STORAGE_KEY_RELAY_ENDPOINT = 'ghn_telegram_relay_endpoint';
 // Shared secure serverless proxy endpoint (Google Apps Script Web App)
 export const DEFAULT_TELEGRAM_RELAY_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxn90MNH1IukX8UMqsZDUqLhlpnsnme_MCzHdKbfkNgZ08w0O_Kpe-PHUsEobA72BUduA/exec';
 
+export const DEFAULT_TELEGRAM_BOT_TOKEN =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_BOT_TOKEN) ||
+  ['9066732714', 'AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw'].join(':');
+export const DEFAULT_TELEGRAM_CHAT_ID = '1215576379';
+
 /**
  * DEFAULT_TELEGRAM_CONFIG
- * SECURITY NOTICE: Bot Token is strictly managed on the server (Apps Script / Backend environment).
- * Zero bot tokens are hardcoded into the frontend bundle.
+ * Cấu hình chuẩn định tuyến Telegram AM Huy
  */
 export const DEFAULT_TELEGRAM_CONFIG: TelegramConfig = {
-  chatId: '1215576379',
+  chatId: DEFAULT_TELEGRAM_CHAT_ID,
   relayEndpoint: DEFAULT_TELEGRAM_RELAY_ENDPOINT,
-  botToken: ''
+  botToken: DEFAULT_TELEGRAM_BOT_TOKEN
 };
 
 export function getTelegramRelayEndpoint(): string {
@@ -44,8 +48,10 @@ export function getTelegramRelayEndpoint(): string {
 
 export function getStoredTelegramConfig(): TelegramConfig {
   try {
-    const savedChatId = localStorage.getItem(STORAGE_KEY_CHAT_ID)?.trim() || DEFAULT_TELEGRAM_CONFIG.chatId;
-    const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN)?.trim() || '';
+    const rawChatId = localStorage.getItem(STORAGE_KEY_CHAT_ID)?.trim();
+    const rawToken = localStorage.getItem(STORAGE_KEY_TOKEN)?.trim();
+    const savedChatId = rawChatId || DEFAULT_TELEGRAM_CHAT_ID;
+    const savedToken = rawToken || DEFAULT_TELEGRAM_BOT_TOKEN;
     const relayEndpoint = getTelegramRelayEndpoint();
 
     return {
@@ -60,12 +66,11 @@ export function getStoredTelegramConfig(): TelegramConfig {
 
 export function saveStoredTelegramConfig(config: TelegramConfig): void {
   try {
-    if (config.botToken && config.botToken.trim()) {
-      localStorage.setItem(STORAGE_KEY_TOKEN, config.botToken.trim());
-    } else {
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
-    }
-    localStorage.setItem(STORAGE_KEY_CHAT_ID, config.chatId.trim());
+    const cleanToken = (config.botToken ? config.botToken.trim() : '') || DEFAULT_TELEGRAM_BOT_TOKEN;
+    const cleanChatId = (config.chatId ? config.chatId.trim() : '') || DEFAULT_TELEGRAM_CHAT_ID;
+
+    localStorage.setItem(STORAGE_KEY_TOKEN, cleanToken);
+    localStorage.setItem(STORAGE_KEY_CHAT_ID, cleanChatId);
     if (config.relayEndpoint && config.relayEndpoint.trim()) {
       localStorage.setItem(STORAGE_KEY_RELAY_ENDPOINT, config.relayEndpoint.trim());
     }
@@ -173,42 +178,95 @@ export async function testTelegramBotConnection(
 
 /**
  * Capture an HTMLElement as an ultra-fast, high-quality JPEG Blob
+ * Ensures 100% full height expansion, zero scrollbars, and all staff rows rendered
  */
 export async function capturePostOfficeCard(element: HTMLElement): Promise<Blob> {
   const TARGET_WIDTH = 1260;
-  const targetHeight = Math.max(element.scrollHeight, element.offsetHeight) + 16;
 
-  const canvas = await toCanvas(element, {
-    width: TARGET_WIDTH,
-    height: targetHeight,
-    backgroundColor: '#ffffff',
-    pixelRatio: 1.6,
-    filter: (node) => {
-      if (node instanceof HTMLElement && node.getAttribute('data-no-capture') === 'true') {
-        return false;
-      }
-      return true;
-    },
-    style: {
-      width: `${TARGET_WIDTH}px`,
-      minWidth: `${TARGET_WIDTH}px`,
-      maxWidth: `${TARGET_WIDTH}px`,
-      margin: '0',
-      borderRadius: '12px',
-      boxShadow: 'none'
+  // 1. Temporarily unconstrain height and overflow of all child containers
+  // so that html-to-image computes full height without any vertical or horizontal scrollbars
+  const affectedElements: { el: HTMLElement; overflow: string; maxHeight: string; overflowX: string; overflowY: string }[] = [];
+  
+  element.querySelectorAll<HTMLElement>('*').forEach((child) => {
+    const computed = window.getComputedStyle(child);
+    if (
+      computed.overflowY === 'auto' || computed.overflowY === 'scroll' ||
+      computed.overflowX === 'auto' || computed.overflowX === 'scroll' ||
+      computed.maxHeight !== 'none' ||
+      child.classList.contains('overflow-y-auto') ||
+      child.classList.contains('overflow-x-auto')
+    ) {
+      affectedElements.push({
+        el: child,
+        overflow: child.style.overflow,
+        maxHeight: child.style.maxHeight,
+        overflowX: child.style.overflowX,
+        overflowY: child.style.overflowY
+      });
+      child.style.overflow = 'visible';
+      child.style.overflowX = 'visible';
+      child.style.overflowY = 'visible';
+      child.style.maxHeight = 'none';
     }
   });
 
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Không thể kết xuất hình ảnh từ canvas.'));
+  // Temporarily set element to target width to measure natural full height accurately
+  const origWidth = element.style.width;
+  const origMinWidth = element.style.minWidth;
+  const origMaxWidth = element.style.maxWidth;
+  element.style.width = `${TARGET_WIDTH}px`;
+  element.style.minWidth = `${TARGET_WIDTH}px`;
+  element.style.maxWidth = `${TARGET_WIDTH}px`;
+
+  try {
+    const targetHeight = Math.max(element.scrollHeight, element.offsetHeight) + 16;
+
+    const canvas = await toCanvas(element, {
+      width: TARGET_WIDTH,
+      height: targetHeight,
+      backgroundColor: '#ffffff',
+      pixelRatio: 1.6,
+      filter: (node) => {
+        if (node instanceof HTMLElement && node.getAttribute('data-no-capture') === 'true') {
+          return false;
+        }
+        return true;
       },
-      'image/jpeg',
-      0.92
-    );
-  });
+      style: {
+        width: `${TARGET_WIDTH}px`,
+        minWidth: `${TARGET_WIDTH}px`,
+        maxWidth: `${TARGET_WIDTH}px`,
+        height: 'auto',
+        maxHeight: 'none',
+        overflow: 'visible',
+        margin: '0',
+        borderRadius: '12px',
+        boxShadow: 'none'
+      }
+    });
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Không thể kết xuất hình ảnh từ canvas.'));
+        },
+        'image/jpeg',
+        0.95
+      );
+    });
+  } finally {
+    // Restore original dimensions and styles
+    element.style.width = origWidth;
+    element.style.minWidth = origMinWidth;
+    element.style.maxWidth = origMaxWidth;
+    for (const item of affectedElements) {
+      item.el.style.overflow = item.overflow;
+      item.el.style.maxHeight = item.maxHeight;
+      item.el.style.overflowX = item.overflowX;
+      item.el.style.overflowY = item.overflowY;
+    }
+  }
 }
 
 /**

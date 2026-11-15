@@ -207,6 +207,8 @@ export const GtcDeliveryMatrixWidget: React.FC<GtcDeliveryMatrixWidgetProps> = (
     const totalSldGan = filteredGtcDeliveryDaily.reduce((acc, r) => acc + r.sldGan, 0);
     const totalSldGTC = filteredGtcDeliveryDaily.reduce((acc, r) => acc + r.sldGTC, 0);
     const totalTonDong = totalVolume - totalSldGTC;
+    const anomalyRowCount = filteredGtcDeliveryDaily.filter(r => r.sldGTC > r.volume).length;
+    const hasGtcExceedsVolumeAnomaly = totalSldGTC > totalVolume || anomalyRowCount > 0;
     const tiLeGan = totalVolume > 0 ? (totalSldGan / totalVolume) * 100 : 0;
     const tiLeGTC = totalVolume > 0 ? (totalSldGTC / totalVolume) * 100 : 0;
 
@@ -215,6 +217,8 @@ export const GtcDeliveryMatrixWidget: React.FC<GtcDeliveryMatrixWidgetProps> = (
       totalSldGan,
       totalSldGTC,
       totalTonDong,
+      hasGtcExceedsVolumeAnomaly,
+      anomalyRowCount,
       tiLeGan,
       tiLeGTC,
       rowCount: filteredGtcDeliveryDaily.length
@@ -685,14 +689,14 @@ export const GtcDeliveryMatrixWidget: React.FC<GtcDeliveryMatrixWidgetProps> = (
                     </div>
                   </th>
   
-                  {/* 8. Tồn Đọng */}
+                  {/* 8. Tồn Giao Trong Ca (Volume - SLĐ GTC) */}
                   <th
                     onClick={() => handleSortGtcDelivery('tonDong')}
                     className="px-3 py-2.5 text-center cursor-pointer select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    title="Nhấn để sắp xếp theo Tồn Đọng = (Volume - SLĐ GTC)"
+                    title="Tồn giao trong ca = Volume - SLĐ GTC (Không dùng Math.max(0, ...) để bảo toàn cảnh báo khi SLĐ GTC > Volume)"
                   >
                     <div className="flex items-center justify-center gap-1">
-                      <span>Tồn Đọng</span>
+                      <span>Tồn Giao Ca</span>
                       {gtcDeliverySortField === 'tonDong' ? (
                         gtcDeliverySortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
                       ) : (

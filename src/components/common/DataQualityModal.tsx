@@ -15,6 +15,13 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import { exportToCSV } from '../../services/excelExportService';
+import {
+  normalizeOrderId,
+  dedupeGltRecords,
+  dedupeLcRecords,
+  computeGltBacklogBreakdown,
+  computeLcBacklogBreakdown
+} from '../../services/kpiEngine';
 import { safeToFixed, safeFormatPercent, safeFormatNumber } from '../../utils';
 
 export const DataQualityModal: React.FC = () => {
@@ -46,9 +53,11 @@ export const DataQualityModal: React.FC = () => {
 
     const rateDelta = exactGtcRate - avgOfRates;
 
-    // Đơn tồn GLT & LC và kiểm tra trùng lặp
-    const gltOrders = new Set(dataset.tonDongGlt.map(r => r.maDonHang));
-    const lcOrders = new Set(dataset.tonDongLc.map(r => r.maDonHang));
+    // Đơn tồn GLT & LC và kiểm tra trùng lặp / xung đột Nhóm A & Nhóm B
+    const gltBreakdown = computeGltBacklogBreakdown(dataset.tonDongGlt);
+    const lcBreakdown = computeLcBacklogBreakdown(dataset.tonDongLc);
+    const gltOrders = new Set(dataset.tonDongGlt.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean));
+    const lcOrders = new Set(dataset.tonDongLc.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean));
     let overlapCount = 0;
     lcOrders.forEach(code => {
       if (gltOrders.has(code)) overlapCount++;
@@ -66,8 +75,14 @@ export const DataQualityModal: React.FC = () => {
       exactGtcRate,
       avgOfRates,
       rateDelta,
-      gltCount: dataset.tonDongGlt.length,
-      lcCount: dataset.tonDongLc.length,
+      gltCount: gltBreakdown.totalUnique,
+      lcCount: lcBreakdown.totalUnique,
+      gltBusinessConflictCount: gltBreakdown.businessConflictCount,
+      gltSecondaryDiffCount: gltBreakdown.secondaryDiffCount,
+      gltExactDuplicateCount: gltBreakdown.exactDuplicateCount,
+      lcBusinessConflictCount: lcBreakdown.businessConflictCount,
+      lcSecondaryDiffCount: lcBreakdown.secondaryDiffCount,
+      lcExactDuplicateCount: lcBreakdown.exactDuplicateCount,
       overlapCount,
       activeStaffCount,
       resignedStaffCount,
@@ -168,8 +183,8 @@ export const DataQualityModal: React.FC = () => {
       const gtc = gtcBcList.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
       const rate = vol > 0 ? (gtc / vol) * 100 : 0;
       
-      const gltBacklog = dataset.tonDongGlt.filter(r => r.buuCuc === po).length;
-      const lcBacklog = dataset.tonDongLc.filter(r => r.tenBC === po).length;
+      const gltBacklog = dedupeGltRecords(dataset.tonDongGlt).filter(r => r.buuCuc === po).length;
+      const lcBacklog = dedupeLcRecords(dataset.tonDongLc).filter(r => r.tenBC === po).length;
       const staffActive = dataset.nhanSu.filter(r => r.buuCuc === po).length;
       const staffResigned = dataset.nghiViec.filter(r => r.buuCuc === po).length;
 
@@ -497,10 +512,24 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                     </tr>
                     <tr>
                       <td className="p-2.5 font-sans font-bold">Trùng Lặp Đơn Giữa GLT &amp; LC</td>
-                      <td className="p-2.5 text-right font-bold text-emerald-600">0 đơn</td>
-                      <td className="p-2.5 text-right">0 đơn</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-600">{reconData.overlapCount} đơn</td>
+                      <td className="p-2.5 text-right">{reconData.overlapCount} đơn</td>
                       <td className="p-2.5 text-center"><span className="text-emerald-600 font-bold">✓ ĐỘC LẬP</span></td>
                       <td className="p-2.5 font-sans text-slate-500">Không có giao thoa mã đơn (giai đoạn riêng)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-sans font-bold">Xung Đột Nghiệp Vụ Mã Đơn (Nhóm A)</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-600">{reconData.gltBusinessConflictCount + reconData.lcBusinessConflictCount} mã</td>
+                      <td className="p-2.5 text-right">GLT: {reconData.gltBusinessConflictCount} | LC: {reconData.lcBusinessConflictCount}</td>
+                      <td className="p-2.5 text-center"><span className="text-emerald-600 font-bold">✓ HỢP LỆ</span></td>
+                      <td className="p-2.5 font-sans text-slate-500">Kiểm tra trùng mã nhưng khác loại đơn / trạng thái / bưu cục</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-sans font-bold">Khác Biệt Thông Tin Phụ (Nhóm B)</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-600">{reconData.gltSecondaryDiffCount + reconData.lcSecondaryDiffCount} mã</td>
+                      <td className="p-2.5 text-right">GLT: {reconData.gltSecondaryDiffCount} | LC: {reconData.lcSecondaryDiffCount}</td>
+                      <td className="p-2.5 text-center"><span className="text-emerald-600 font-bold">✓ HỢP LỆ</span></td>
+                      <td className="p-2.5 font-sans text-slate-500">Kiểm tra trùng mã cùng trường cốt lõi nhưng khác cảnh báo / thời gian tồn</td>
                     </tr>
                     <tr>
                       <td className="p-2.5 font-sans font-bold">Tổng Nhân Sự Quản Trị</td>

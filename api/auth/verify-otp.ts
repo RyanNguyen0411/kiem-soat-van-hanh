@@ -15,6 +15,7 @@ import {
 } from '../_lib/rateLimit.js';
 import { resolveRbacPolicyFromDb, type ResolvedRbacPolicy } from '../_lib/rbac.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { normalizePhoneNumber } from '../_lib/telegramDispatcher.js';
 import { verifyOtpWithUpstream, type UpstreamAuthResult } from '../_lib/upstreamAuth.js';
 
 export interface VerifyOtpDeps {
@@ -29,6 +30,7 @@ export interface VerifyOtpDeps {
 const defaultDeps: VerifyOtpDeps = {
   getMissingEnv: getMissingEnvVars,
   getRateLimitStore: () => createSupabaseRateLimitStore(getSupabaseAdmin()),
+  rateLimitSecret: process.env.RATE_LIMIT_HMAC_SECRET,
   verifyOtp: verifyOtpWithUpstream,
   resolveRbac: (identity) => resolveRbacPolicyFromDb(getSupabaseAdmin(), identity),
   signJwt: signIncidentSessionJwt
@@ -64,13 +66,21 @@ export async function processVerifyOtpRequest(
     return;
   }
 
-  const phone = body.phone.trim().replace(/\s+/g, '');
+  const phone = normalizePhoneNumber(body.phone);
   const otp = body.otp.trim();
 
-  if (phone.length < 10 || phone.length > 20 || otp.length < 6 || otp.length > 12) {
+  if (phone.length < 10 || phone.length > 20) {
     sendJson(res, 400, {
       success: false,
-      error: 'Số điện thoại hoặc mã OTP không hợp lệ.'
+      error: 'Số điện thoại không hợp lệ.'
+    });
+    return;
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    sendJson(res, 400, {
+      success: false,
+      error: 'Mã OTP không hợp lệ! Mã OTP phải gồm đúng 6 chữ số.'
     });
     return;
   }
@@ -143,7 +153,9 @@ export async function processVerifyOtpRequest(
 
       // Reset phone failure counter on valid OTP
       if (store) {
-        await resetVerifyOtpFailure(store, { phone }, deps.rateLimitSecret);
+        await resetVerifyOtpFailure(store, { phone }, deps.rateLimitSecret).catch((err) => {
+          console.warn('Reset verify otp failure notice:', err);
+        });
       }
     } finally {
       if (store && inflightAcquired) {

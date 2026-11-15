@@ -19,8 +19,12 @@ import {
 import {
   DEFAULT_SPREADSHEET_ID,
   DEFAULT_DRIVE_FOLDER_ID,
+  DEFAULT_TELEGRAM_BOT_TOKEN,
+  DEFAULT_TELEGRAM_CHAT_ID,
   extractSpreadsheetId,
   extractDriveFolderId,
+  extractTelegramToken,
+  extractTelegramChatId,
   getRuntimeSettings,
   getSpreadsheetUrl,
   getDriveFolderUrl,
@@ -35,7 +39,11 @@ import {
 } from '../../services/settingsService';
 import type { ConnectionTestResult } from '../../services/settingsService';
 import { getDriveWebhookUrl } from '../../services/excelExportService';
-import { getStoredTelegramConfig, saveStoredTelegramConfig } from '../../services/telegramService';
+import {
+  getStoredTelegramConfig,
+  saveStoredTelegramConfig,
+  testTelegramBotConnection
+} from '../../services/telegramService';
 
 type FieldErrors = Partial<Record<'sheet' | 'folder' | 'script' | 'chat' | 'token', string>>;
 
@@ -87,8 +95,10 @@ export const SettingsModal: React.FC = () => {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [sheetTest, setSheetTest] = useState<ConnectionTestResult | null>(null);
   const [scriptTest, setScriptTest] = useState<ConnectionTestResult | null>(null);
+  const [telegramTest, setTelegramTest] = useState<ConnectionTestResult | null>(null);
   const [testingSheet, setTestingSheet] = useState(false);
   const [testingScript, setTestingScript] = useState(false);
+  const [testingTelegram, setTestingTelegram] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [needConfirm, setNeedConfirm] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -104,12 +114,13 @@ export const SettingsModal: React.FC = () => {
     setFolderLink(getDriveFolderUrl());
     setFolderId(s.driveFolderId);
     setScriptUrl(getDriveWebhookUrl());
-    setChatId(tg.chatId || '');
-    setBotToken(tg.botToken || '');
+    setChatId(tg.chatId || DEFAULT_TELEGRAM_CHAT_ID);
+    setBotToken(tg.botToken || DEFAULT_TELEGRAM_BOT_TOKEN);
     setShowToken(false);
     setErrors({});
     setSheetTest(null);
     setScriptTest(null);
+    setTelegramTest(null);
     setNeedConfirm(false);
     setConfirmReset(false);
     setCopied(false);
@@ -172,8 +183,8 @@ export const SettingsModal: React.FC = () => {
     const sid = extractSpreadsheetId(sheetId) || extractSpreadsheetId(sheetLink);
     const fid = extractDriveFolderId(folderId) || extractDriveFolderId(folderLink);
     const script = scriptUrl.trim();
-    const token = botToken.trim();
-    const chat = chatId.trim();
+    const token = extractTelegramToken(botToken) || botToken.trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
+    const chat = extractTelegramChatId(chatId) || chatId.trim() || DEFAULT_TELEGRAM_CHAT_ID;
 
     if (!sid) next.sheet = 'Link/ID Google Sheets không hợp lệ. Hãy dán link dạng .../spreadsheets/d/<ID>/...';
     if (!fid) next.folder = 'Link/ID thư mục Drive không hợp lệ. Hãy dán link dạng .../drive/folders/<ID>';
@@ -186,6 +197,25 @@ export const SettingsModal: React.FC = () => {
     setErrors(next);
     if (Object.keys(next).length > 0 || !sid || !fid) return null;
     return { spreadsheetId: sid, driveFolderId: fid, appsScriptUrl: script, token, chat };
+  };
+
+  const handleTestTelegram = async () => {
+    const token = extractTelegramToken(botToken) || botToken.trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
+    const chat = extractTelegramChatId(chatId) || chatId.trim() || DEFAULT_TELEGRAM_CHAT_ID;
+    setTestingTelegram(true);
+    setTelegramTest(null);
+    try {
+      const res = await testTelegramBotConnection({
+        botToken: token,
+        chatId: chat,
+        relayEndpoint: scriptUrl.trim() || undefined
+      });
+      setTelegramTest({ ok: res.ok, message: res.message });
+    } catch (err: any) {
+      setTelegramTest({ ok: false, message: `Lỗi kết nối: ${err?.message || 'Không thể kiểm tra'}` });
+    } finally {
+      setTestingTelegram(false);
+    }
   };
 
   const handleTestSheet = async () => {
@@ -505,10 +535,12 @@ export const SettingsModal: React.FC = () => {
                   inputMode="numeric"
                   value={chatId}
                   onChange={e => {
-                    setChatId(e.target.value);
+                    const extracted = extractTelegramChatId(e.target.value);
+                    setChatId(extracted || e.target.value);
+                    setTelegramTest(null);
                     clearError('chat');
                   }}
-                  placeholder="VD: 1215576379"
+                  placeholder={DEFAULT_TELEGRAM_CHAT_ID}
                   aria-invalid={Boolean(errors.chat)}
                   aria-describedby="st-chat-err"
                   className={`${inputClass} ${borderFor(errors.chat)}`}
@@ -517,7 +549,7 @@ export const SettingsModal: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <label htmlFor="st-token" className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                  Bot Token
+                  Bot Token (hoặc dán link)
                 </label>
                 <div className="relative">
                   <input
@@ -525,10 +557,12 @@ export const SettingsModal: React.FC = () => {
                     type={showToken ? 'text' : 'password'}
                     value={botToken}
                     onChange={e => {
-                      setBotToken(e.target.value);
+                      const extracted = extractTelegramToken(e.target.value);
+                      setBotToken(extracted || e.target.value);
+                      setTelegramTest(null);
                       clearError('token');
                     }}
-                    placeholder="123456789:AAxxxxxxxx"
+                    placeholder={DEFAULT_TELEGRAM_BOT_TOKEN}
                     autoComplete="off"
                     spellCheck={false}
                     aria-invalid={Boolean(errors.token)}
@@ -547,9 +581,20 @@ export const SettingsModal: React.FC = () => {
                 <FieldError id="st-token-err" message={errors.token} />
               </div>
             </div>
+            <div>
+              <button
+                type="button"
+                onClick={handleTestTelegram}
+                disabled={testingTelegram}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-[11px] font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+              >
+                {testingTelegram ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3 text-sky-500" />}
+                Kiểm tra kết nối Bot Telegram
+              </button>
+            </div>
+            <TestResult result={telegramTest} />
             <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-snug">
-              Token chỉ được lưu trong trình duyệt này (không gửi đi đâu ngoài Telegram/Apps Script của anh). Để trống Token nếu
-              muốn dùng token đặt sẵn ở phía máy chủ Apps Script. Không dùng chung máy khi đã nhập token.
+              Hệ thống tự động tách Token kể cả khi bạn dán link (URL). Luôn mặc định sử dụng Bot Telegram của AM Huy (Chat ID <code>1215576379</code>).
             </p>
           </section>
 

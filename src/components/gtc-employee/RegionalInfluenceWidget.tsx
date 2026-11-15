@@ -110,16 +110,15 @@ export const RegionalInfluenceWidget: React.FC<RegionalInfluenceWidgetProps> = (
       }
       const don = r.tongDon || 0;
       const gtc = r.tongDonGTC || 0;
-      const ton = r.tonDong || 0;
 
       poMap[bc].totalDon += don;
       poMap[bc].totalGTC += gtc;
-      poMap[bc].totalTon += ton;
+      poMap[bc].totalTon = poMap[bc].totalDon - poMap[bc].totalGTC;
       if (r.maNV) poMap[bc].staffSet.add(r.maNV);
 
       totalRegionDon += don;
       totalRegionGtc += gtc;
-      totalRegionTon += ton;
+      totalRegionTon = totalRegionDon - totalRegionGtc;
     });
 
     const avgRegionGtcRate = totalRegionDon > 0 ? (totalRegionGtc / totalRegionDon) * 100 : 0;

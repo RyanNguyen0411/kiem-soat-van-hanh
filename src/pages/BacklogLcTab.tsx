@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Truck } from 'lucide-react';
+import { Truck, Building2 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -14,7 +14,9 @@ import {
   Legend 
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import type { BacklogLcRecord } from '../types/dashboard';
+import { dedupeLcRecords, computeLcBacklogBreakdown } from '../services/kpiEngine';
 import { DataTable } from '../components/common/DataTable';
 import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import type { Column } from '../components/common/DataTable';
@@ -22,29 +24,40 @@ import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
 
 export const BacklogLcTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { dataset, selectedBuuCucGlobal, setSelectedBuuCucGlobal } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
+
+  const lastPushedBcRef = React.useRef<string>(isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
 
   // Independent Filter state (Đồng bộ bưu cục)
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
-    tenBC: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
+    tenBC: isStaff && assignedPo ? [assignedPo] : (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []),
     loaiDon: [],
     trangThai: [],
     canhBao: []
   }));
 
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (isStaff && assignedPo) {
+      setFilterValues(prev => ({ ...prev, tenBC: [assignedPo] }));
+      return;
+    }
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        tenBC: [selectedBuuCucGlobal]
+        tenBC: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
-  }, [selectedBuuCucGlobal]);
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
 
   // Options
   const buuCucOptions = useMemo(() => {
+    if (isStaff && assignedPo) return [{ label: assignedPo, value: assignedPo }];
     return [...new Set(dataset.tonDongLc.map(r => r.tenBC))].filter(Boolean).map(b => ({ label: b, value: b }));
-  }, [dataset.tonDongLc]);
+  }, [dataset.tonDongLc, isStaff, assignedPo]);
 
   const loaiDonOptions = useMemo(() => {
     return [...new Set(dataset.tonDongLc.map(r => r.loaiDon))].filter(Boolean).map(l => ({ label: l, value: l }));
@@ -59,31 +72,41 @@ export const BacklogLcTab: React.FC = () => {
   }, [dataset.tonDongLc]);
 
   const filterFields: FilterFieldConfig[] = [
-    { key: 'tenBC', label: 'Bưu cục', options: buuCucOptions },
+    ...(!isStaff ? [{ key: 'tenBC', label: 'Bưu cục', options: buuCucOptions }] : []),
     { key: 'loaiDon', label: 'Loại đơn LC', options: loaiDonOptions },
     { key: 'trangThai', label: 'Trạng thái kiện', options: trangThaiOptions },
     { key: 'canhBao', label: 'Mức cảnh báo', options: canhBaoOptions }
   ];
 
-  // Apply filters
-  const filteredData = useMemo(() => {
-    return dataset.tonDongLc.filter(r => {
-      if (filterValues.tenBC?.length && !filterValues.tenBC.includes(r.tenBC)) return false;
-      if (filterValues.loaiDon?.length && !filterValues.loaiDon.includes(r.loaiDon)) return false;
-      if (filterValues.trangThai?.length && !filterValues.trangThai.includes(r.trangThai)) return false;
-      if (filterValues.canhBao?.length && !filterValues.canhBao.includes(r.canhBao)) return false;
-      return true;
-    });
+  // Apply filters & deduplicate by unique normalized maDonHang
+  const matchedRawRows = useMemo(() => {
+    const result: BacklogLcRecord[] = [];
+    for (const r of dataset.tonDongLc) {
+      if (filterValues.tenBC?.length && !filterValues.tenBC.includes(r.tenBC)) continue;
+      if (filterValues.loaiDon?.length && !filterValues.loaiDon.includes(r.loaiDon)) continue;
+      if (filterValues.trangThai?.length && !filterValues.trangThai.includes(r.trangThai)) continue;
+      if (filterValues.canhBao?.length && !filterValues.canhBao.includes(r.canhBao)) continue;
+      result.push(r);
+    }
+    return result;
   }, [dataset.tonDongLc, filterValues]);
+
+  const lcBreakdown = useMemo(() => {
+    return computeLcBacklogBreakdown(matchedRawRows);
+  }, [matchedRawRows]);
+
+  const filteredData = useMemo(() => {
+    return dedupeLcRecords(matchedRawRows);
+  }, [matchedRawRows]);
 
   // Tab KPIs
   const tabKPIs = useMemo(() => {
-    const totalCount = filteredData.length;
-    const lcGiao = filteredData.filter(r => r.loaiDon.includes('giao')).length;
-    const lcTra = filteredData.filter(r => r.loaiDon.includes('trả')).length;
-    const chuaDongKien = filteredData.filter(r => r.trangThai.includes('Chưa đóng')).length;
-    const daDongKien = filteredData.filter(r => r.trangThai.includes('Đã đóng')).length;
-    const boSungGap = filteredData.filter(r => r.canhBao.includes('gấp')).length;
+    const totalCount = lcBreakdown.totalUnique;
+    const lcGiao = lcBreakdown.lcGiao;
+    const lcTra = lcBreakdown.lcTra;
+    const chuaDongKien = filteredData.filter(r => (r.trangThai || '').includes('Chưa đóng')).length;
+    const daDongKien = filteredData.filter(r => (r.trangThai || '').includes('Đã đóng')).length;
+    const boSungGap = filteredData.filter(r => (r.canhBao || '').toLowerCase().includes('gấp')).length;
 
     return {
       totalCount,
@@ -91,9 +114,14 @@ export const BacklogLcTab: React.FC = () => {
       lcTra,
       chuaDongKien,
       daDongKien,
-      boSungGap
+      boSungGap,
+      businessConflictCount: lcBreakdown.businessConflictCount,
+      secondaryDiffCount: lcBreakdown.secondaryDiffCount,
+      exactDuplicateCount: lcBreakdown.exactDuplicateCount,
+      duplicateRowsIgnored: lcBreakdown.duplicateRowsIgnored,
+      emptyOrderIdRowsIgnored: lcBreakdown.emptyOrderIdRowsIgnored
     };
-  }, [filteredData]);
+  }, [filteredData, lcBreakdown]);
 
   // Chart data: Backlog by Post Office
   const poLcData = useMemo(() => {
@@ -192,17 +220,40 @@ export const BacklogLcTab: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Quản trị 284 vận đơn luân chuyển tồn, phân loại trạng thái đóng kiện và yêu cầu bổ sung gấp
+            Quản trị {tabKPIs.totalCount.toLocaleString('vi-VN')} vận đơn luân chuyển tồn duy nhất, phân loại trạng thái đóng kiện và yêu cầu bổ sung gấp
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {isStaff && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-xl text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+              <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+              <span>{assignedPo || filterValues.tenBC?.[0]}</span>
+            </div>
+          )}
           <IndependentFilter
             title="Lọc Tồn LC"
             fields={filterFields}
             selectedValues={filterValues}
-            onApply={val => setFilterValues(val)}
-            onReset={() => setFilterValues({ tenBC: [], loaiDon: [], trangThai: [], canhBao: [] })}
+            onApply={val => {
+              setFilterValues(val);
+              const bcs = val.tenBC || [];
+              const targetBc = bcs.length === 1 ? bcs[0] : 'all';
+              lastPushedBcRef.current = targetBc;
+              setSelectedBuuCucGlobal(targetBc);
+            }}
+            onReset={() => {
+              setFilterValues({ 
+                tenBC: isStaff && assignedPo ? [assignedPo] : [], 
+                loaiDon: [], 
+                trangThai: [], 
+                canhBao: [] 
+              });
+              if (!isStaff) {
+                lastPushedBcRef.current = 'all';
+                setSelectedBuuCucGlobal('all');
+              }
+            }}
           />
         </div>
       </div>
@@ -266,7 +317,11 @@ export const BacklogLcTab: React.FC = () => {
               <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Số Lượng Đơn Tồn LC Theo Bưu Cục
               </h3>
-              <p className="text-[11px] text-slate-400">Rạch Kiến chiếm 207/284 đơn (72,9%)</p>
+              <p className="text-[11px] text-slate-400">
+                {poLcData.length > 0 && tabKPIs.totalCount > 0
+                  ? `${poLcData[0].tenBC.replace('(LAN) ', '')} dẫn đầu với ${poLcData[0].count}/${tabKPIs.totalCount} đơn (${((poLcData[0].count / tabKPIs.totalCount) * 100).toFixed(1)}%)`
+                  : 'Phân bổ tồn luân chuyển theo bưu cục'}
+              </p>
             </div>
           </div>
           <div className="h-64">
@@ -346,4 +401,4 @@ export const BacklogLcTab: React.FC = () => {
   );
 };
 
-export default BacklogLcTab;
+export default React.memo(BacklogLcTab);

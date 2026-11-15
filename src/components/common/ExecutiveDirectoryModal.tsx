@@ -19,7 +19,7 @@ import {
   ChevronRight,
   Filter
 } from 'lucide-react';
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard, useTab } from '../../context/DashboardContext';
 import type { TabType } from '../../types/dashboard';
 
 interface SubFeatureItem {
@@ -60,7 +60,8 @@ export const ExecutiveDirectoryModal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>('all');
 
-  const { activeTab, setActiveTab, dataset } = useDashboard();
+  const { activeTab } = useTab();
+  const { setActiveTab, dataset } = useDashboard();
 
   // Listen to custom event and keyboard shortcut Ctrl+M / Cmd+M
   useEffect(() => {

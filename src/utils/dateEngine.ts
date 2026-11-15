@@ -107,6 +107,39 @@ export function extractMonths(dates: string[]): MonthFilterOption[] {
 }
 
 /**
+ * Lấy monthKey hiện tại (ưu tiên tháng của ngày hiện tại trên hệ thống, fallback tháng mới nhất có dữ liệu)
+ * Ví dụ: "2026-11"
+ */
+export function getCurrentMonthKey(availableMonths: MonthFilterOption[]): string {
+  if (!availableMonths || availableMonths.length === 0) return '';
+  const now = new Date();
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const found = availableMonths.find(m => m.key === currentKey);
+  return found ? found.key : availableMonths[0].key;
+}
+
+/**
+ * Lấy danh sách ngày thuộc tháng hiện tại
+ */
+export function getCurrentMonthDates(availableMonths: MonthFilterOption[]): string[] {
+  const key = getCurrentMonthKey(availableMonths);
+  if (!key) return [];
+  const found = availableMonths.find(m => m.key === key);
+  return found ? found.dates : [];
+}
+
+/**
+ * Lấy monthKey định dạng MM/YYYY cho các tab dùng định dạng này (ví dụ NghiViecTab: "11/2026")
+ */
+export function getCurrentMonthMMYYYY(availableMonthsList: string[]): string {
+  if (!availableMonthsList || availableMonthsList.length === 0) return '';
+  const now = new Date();
+  const currentMMYYYY = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+  const found = availableMonthsList.find(m => m === currentMMYYYY);
+  return found || availableMonthsList[0] || '';
+}
+
+/**
  * Extract sorted unique weeks from newest to oldest
  */
 export function extractWeeks(dates: string[]): WeekFilterOption[] {

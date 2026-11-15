@@ -11,6 +11,13 @@
  */
 
 import { safeDivide } from './calculation.utils.ts';
+import {
+  normalizeOrderId,
+  dedupeGltRecords,
+  dedupeLcRecords,
+  computeGltBacklogBreakdown,
+  computeLcBacklogBreakdown
+} from '../services/kpiEngine.ts';
 import type { 
   GtcPostOfficeRecord, 
   GtcEmployeeRecord, 
@@ -18,6 +25,14 @@ import type {
   BacklogGltRecord, 
   BacklogLcRecord 
 } from '../types/dashboard';
+
+export {
+  normalizeOrderId,
+  dedupeGltRecords,
+  dedupeLcRecords,
+  computeGltBacklogBreakdown,
+  computeLcBacklogBreakdown
+};
 
 // ============================================================================
 // 1. GTC BƯU CỤC (Sheet: GTC Bưu cục)
@@ -27,7 +42,10 @@ export interface GtcPoAggregatedResult {
   totalVolume: number;
   totalSldGan: number;
   totalSldGTC: number;
-  totalTonDong: number;
+  totalTonDong: number;  // Tồn giao trong ca = Volume - SLĐ GTC (không dùng Math.max(0, ...))
+  tonGiaoTrongCa: number;
+  hasGtcExceedsVolumeAnomaly: boolean;
+  anomalyRowCount: number;
   tiLeGan: number;       // SUM(SLĐ Gán) / SUM(Volume) * 100
   tiLeGTC: number;       // SUM(SLĐ GTC) / SUM(Volume) * 100
   avgLeadtime: number;   // Weighted by volume
@@ -46,6 +64,9 @@ export function calculateGtcPostOfficeMetrics(records: GtcPostOfficeRecord[]): G
       totalSldGan: 0,
       totalSldGTC: 0,
       totalTonDong: 0,
+      tonGiaoTrongCa: 0,
+      hasGtcExceedsVolumeAnomaly: false,
+      anomalyRowCount: 0,
       tiLeGan: 0,
       tiLeGTC: 0,
       avgLeadtime: 0,
@@ -59,6 +80,7 @@ export function calculateGtcPostOfficeMetrics(records: GtcPostOfficeRecord[]): G
   let totalSldGTC = 0;
   let weightedLtSum = 0;
   let weightedRetSum = 0;
+  let anomalyRowCount = 0;
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
@@ -66,6 +88,9 @@ export function calculateGtcPostOfficeMetrics(records: GtcPostOfficeRecord[]): G
     const gan = r.sldGan || 0;
     const gtc = r.sldGTC || 0;
     const lt = r.leadtime || 0;
+    if (gtc > vol) {
+      anomalyRowCount += 1;
+    }
     
     // Parse tỷ lệ chuyển trả nếu có
     let retRate = 0;
@@ -82,8 +107,9 @@ export function calculateGtcPostOfficeMetrics(records: GtcPostOfficeRecord[]): G
     weightedRetSum += retRate * vol;
   }
 
-  // Tồn đọng = Volume - SLĐ GTC
+  // Tồn giao trong ca = Volume - SLĐ GTC (Không dùng Math.max(0, ...) để giữ cảnh báo khi SLĐ GTC > Volume)
   const totalTonDong = totalVolume - totalSldGTC;
+  const hasGtcExceedsVolumeAnomaly = totalSldGTC > totalVolume || anomalyRowCount > 0;
 
   // Tỷ lệ % tổng: Bắt buộc lấy Tổng tử số / Tổng mẫu số * 100%
   const tiLeGan = safeDivide(totalSldGan, totalVolume, 0, true);
@@ -96,6 +122,9 @@ export function calculateGtcPostOfficeMetrics(records: GtcPostOfficeRecord[]): G
     totalSldGan,
     totalSldGTC,
     totalTonDong,
+    tonGiaoTrongCa: totalTonDong,
+    hasGtcExceedsVolumeAnomaly,
+    anomalyRowCount,
     tiLeGan: Number(tiLeGan.toFixed(2)),
     tiLeGTC: Number(tiLeGTC.toFixed(2)),
     avgLeadtime: Number(avgLeadtime.toFixed(2)),
@@ -113,7 +142,10 @@ export interface GtcEmployeeAggregatedResult {
   totalDonGTC: number;
   totalChuyenDi: number;
   tiLeGTC: number;       // SUM(Tổng đơn GTC) / SUM(Tổng đơn) * 100
-  totalTonDong: number;  // Tổng đơn - Tổng đơn GTC
+  totalTonDong: number;  // Tổng đơn - Tổng đơn GTC (không dùng Math.max(0, ...))
+  tonGiaoTrongCa: number;
+  hasGtcExceedsVolumeAnomaly: boolean;
+  anomalyRowCount: number;
   avgLeadtime: number;   // Weighted by tổng đơn
   activeStaffCount: number;
   rowCount: number;
@@ -131,6 +163,9 @@ export function calculateGtcEmployeeMetrics(records: GtcEmployeeRecord[]): GtcEm
       totalChuyenDi: 0,
       tiLeGTC: 0,
       totalTonDong: 0,
+      tonGiaoTrongCa: 0,
+      hasGtcExceedsVolumeAnomaly: false,
+      anomalyRowCount: 0,
       avgLeadtime: 0,
       activeStaffCount: 0,
       rowCount: 0
@@ -141,6 +176,7 @@ export function calculateGtcEmployeeMetrics(records: GtcEmployeeRecord[]): GtcEm
   let totalDonGTC = 0;
   let totalChuyenDi = 0;
   let weightedLtSum = 0;
+  let anomalyRowCount = 0;
   const uniqueStaff = new Set<string>();
 
   for (let i = 0; i < records.length; i++) {
@@ -149,6 +185,9 @@ export function calculateGtcEmployeeMetrics(records: GtcEmployeeRecord[]): GtcEm
     const gtc = r.tongDonGTC || 0;
     const chuyen = r.chuyenDi || 0;
     const lt = r.leadtime || 0;
+    if (gtc > don) {
+      anomalyRowCount += 1;
+    }
 
     totalDon += don;
     totalDonGTC += gtc;
@@ -158,6 +197,7 @@ export function calculateGtcEmployeeMetrics(records: GtcEmployeeRecord[]): GtcEm
   }
 
   const totalTonDong = totalDon - totalDonGTC;
+  const hasGtcExceedsVolumeAnomaly = totalDonGTC > totalDon || anomalyRowCount > 0;
   const tiLeGTC = safeDivide(totalDonGTC, totalDon, 0, true);
   const avgLeadtime = safeDivide(weightedLtSum, totalDon, 0, false);
 
@@ -167,6 +207,9 @@ export function calculateGtcEmployeeMetrics(records: GtcEmployeeRecord[]): GtcEm
     totalChuyenDi,
     tiLeGTC: Number(tiLeGTC.toFixed(2)),
     totalTonDong,
+    tonGiaoTrongCa: totalTonDong,
+    hasGtcExceedsVolumeAnomaly,
+    anomalyRowCount,
     avgLeadtime: Number(avgLeadtime.toFixed(2)),
     activeStaffCount: uniqueStaff.size,
     rowCount: records.length
@@ -278,11 +321,22 @@ export function calculateDailySalaryMetrics(records: DailySalaryRecord[]): Daily
 // ============================================================================
 
 export interface BacklogGltAggregatedResult {
-  totalOrders: number;
+  totalOrders: number;        // Tổng mã đơn GLT duy nhất (10,928)
+  giao: number;               // Giao (7,461)
+  uuTienTre: number;          // Ưu tiên giao / Đã trễ (1,161 = 713 + 448)
+  uuTienDaTre: number;        // Ưu tiên giao/đã trễ (713)
+  uuTienTrongNgay: number;    // Ưu tiên giao/trong ngày (448)
+  lay: number;                // Lấy (2,040)
+  tra: number;                // Trả (266)
   urgentOrders192: number;    // > 192 giờ
   urgentOrders120_192: number;// 120h - 192h
   overdueOrdersTotal: number; // >= 120 giờ
   normalOrdersUnder120: number;
+  businessConflictCount: number;
+  secondaryDiffCount: number;
+  exactDuplicateCount: number;
+  duplicateRowsIgnored: number;
+  emptyOrderIdRowsIgnored: number;
   rowCount: number;
 }
 
@@ -290,21 +344,32 @@ export function calculateBacklogGltMetrics(records: BacklogGltRecord[]): Backlog
   if (!records || records.length === 0) {
     return {
       totalOrders: 0,
+      giao: 0,
+      uuTienTre: 0,
+      uuTienDaTre: 0,
+      uuTienTrongNgay: 0,
+      lay: 0,
+      tra: 0,
       urgentOrders192: 0,
       urgentOrders120_192: 0,
       overdueOrdersTotal: 0,
       normalOrdersUnder120: 0,
+      businessConflictCount: 0,
+      secondaryDiffCount: 0,
+      exactDuplicateCount: 0,
+      duplicateRowsIgnored: 0,
+      emptyOrderIdRowsIgnored: 0,
       rowCount: 0
     };
   }
 
-  let totalOrders = 0;
+  const breakdown = computeGltBacklogBreakdown(records);
+  const deduped = dedupeGltRecords(records);
   let urgentOrders192 = 0;
   let urgentOrders120_192 = 0;
 
-  for (let i = 0; i < records.length; i++) {
-    const r = records[i];
-    totalOrders += 1;
+  for (let i = 0; i < deduped.length; i++) {
+    const r = deduped[i];
     if (r.thoiGianTonDong === '192') {
       urgentOrders192 += 1;
     } else if (r.thoiGianTonDong === '120_192') {
@@ -312,24 +377,41 @@ export function calculateBacklogGltMetrics(records: BacklogGltRecord[]): Backlog
     }
   }
 
+  const totalOrders = breakdown.totalUnique;
   const overdueOrdersTotal = urgentOrders192 + urgentOrders120_192;
   const normalOrdersUnder120 = totalOrders - overdueOrdersTotal;
 
   return {
     totalOrders,
+    giao: breakdown.giao,
+    uuTienTre: breakdown.uuTienTre,
+    uuTienDaTre: breakdown.uuTienDaTre,
+    uuTienTrongNgay: breakdown.uuTienTrongNgay,
+    lay: breakdown.lay,
+    tra: breakdown.tra,
     urgentOrders192,
     urgentOrders120_192,
     overdueOrdersTotal,
     normalOrdersUnder120,
+    businessConflictCount: breakdown.businessConflictCount,
+    secondaryDiffCount: breakdown.secondaryDiffCount,
+    exactDuplicateCount: breakdown.exactDuplicateCount,
+    duplicateRowsIgnored: breakdown.duplicateRowsIgnored,
+    emptyOrderIdRowsIgnored: breakdown.emptyOrderIdRowsIgnored,
     rowCount: records.length
   };
 }
 
 export interface BacklogLcAggregatedResult {
-  totalOrders: number;
-  totalGiao: number;
-  totalTra: number;
+  totalOrders: number; // Tổng mã đơn LC duy nhất (284)
+  totalGiao: number;   // Luân chuyển giao (229)
+  totalTra: number;    // Luân chuyển trả (55)
   count36_48h: number;
+  businessConflictCount: number;
+  secondaryDiffCount: number;
+  exactDuplicateCount: number;
+  duplicateRowsIgnored: number;
+  emptyOrderIdRowsIgnored: number;
   rowCount: number;
 }
 
@@ -340,20 +422,21 @@ export function calculateBacklogLcMetrics(records: BacklogLcRecord[]): BacklogLc
       totalGiao: 0,
       totalTra: 0,
       count36_48h: 0,
+      businessConflictCount: 0,
+      secondaryDiffCount: 0,
+      exactDuplicateCount: 0,
+      duplicateRowsIgnored: 0,
+      emptyOrderIdRowsIgnored: 0,
       rowCount: 0
     };
   }
 
-  let totalGiao = 0;
-  let totalTra = 0;
+  const breakdown = computeLcBacklogBreakdown(records);
+  const deduped = dedupeLcRecords(records);
   let count36_48h = 0;
 
-  for (let i = 0; i < records.length; i++) {
-    const r = records[i];
-    const loai = (r.loaiDon || '').toLowerCase();
-    if (loai.includes('giao')) totalGiao += 1;
-    else if (loai.includes('trả')) totalTra += 1;
-
+  for (let i = 0; i < deduped.length; i++) {
+    const r = deduped[i];
     const time = (r.thoiGianTonDong || '').toLowerCase();
     if (time.includes('36') || time.includes('48')) {
       count36_48h += 1;
@@ -361,10 +444,15 @@ export function calculateBacklogLcMetrics(records: BacklogLcRecord[]): BacklogLc
   }
 
   return {
-    totalOrders: records.length,
-    totalGiao,
-    totalTra,
+    totalOrders: breakdown.totalUnique,
+    totalGiao: breakdown.lcGiao,
+    totalTra: breakdown.lcTra,
     count36_48h,
+    businessConflictCount: breakdown.businessConflictCount,
+    secondaryDiffCount: breakdown.secondaryDiffCount,
+    exactDuplicateCount: breakdown.exactDuplicateCount,
+    duplicateRowsIgnored: breakdown.duplicateRowsIgnored,
+    emptyOrderIdRowsIgnored: breakdown.emptyOrderIdRowsIgnored,
     rowCount: records.length
   };
 }
@@ -379,11 +467,12 @@ export interface Ca2OperationsAggregatedResult {
   gtcCa2: number;
   gapVolGan: number;       // Volume Ca 2 - Gán Ca 2 (Dồn ứ sàn chia)
   tonCa2: number;          // Volume Ca 2 - GTC Ca 2
-  tiLeGtcCa2: number;      // GTC Ca 2 / Volume Ca 2 * 100
-  tiLeGanCa2: number;      // Gán Ca 2 / Volume Ca 2 * 100
-  coverageCouriersCa2: number; // Số bưu tá đi ca 2 (2 chuyến)
-  couriersOnlyCa1: number;     // Số bưu tá chỉ đi ca 1 (1 chuyến)
-  rateCoverageCa2: number;     // Bưu tá đi ca 2 / Tổng bưu tá đi tuyến * 100
+  tiLeGtcCa2: number;      // GTC Ca 2 / Volume Ca 2 * 100 (12,51%)
+  tiLeGtcTrenGanCa2: number; // GTC Ca 2 / Gán Ca 2 * 100 (66,17%)
+  tiLeGanCa2: number;      // Gán Ca 2 / Volume Ca 2 * 100 (18,91%)
+  coverageCouriersCa2: number; // Số lượt bưu tá-ngày đi ca 2 (chuyenDi >= 2: 1.224 lượt)
+  couriersOnlyCa1: number;     // Số lượt bưu tá-ngày chỉ đi ca 1 (1 chuyến: 604 lượt)
+  rateCoverageCa2: number;     // Bưu tá đi ca 2 / Tổng bưu tá đi tuyến * 100 (66,96%)
 }
 
 export function calculateCa2OperationsMetrics(
@@ -408,6 +497,7 @@ export function calculateCa2OperationsMetrics(
   const gapVolGan = volumeCa2 - ganCa2;
   const tonCa2 = volumeCa2 - gtcCa2;
   const tiLeGtcCa2 = safeDivide(gtcCa2, volumeCa2, 0, true);
+  const tiLeGtcTrenGanCa2 = safeDivide(gtcCa2, ganCa2, 0, true);
   const tiLeGanCa2 = safeDivide(ganCa2, volumeCa2, 0, true);
 
   // 2. Chỉ số nhân lực bưu tá từ GTC Nhân viên
@@ -434,6 +524,7 @@ export function calculateCa2OperationsMetrics(
     gapVolGan,
     tonCa2,
     tiLeGtcCa2: Number(tiLeGtcCa2.toFixed(2)),
+    tiLeGtcTrenGanCa2: Number(tiLeGtcTrenGanCa2.toFixed(2)),
     tiLeGanCa2: Number(tiLeGanCa2.toFixed(2)),
     coverageCouriersCa2,
     couriersOnlyCa1,

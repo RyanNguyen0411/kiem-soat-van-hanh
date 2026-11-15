@@ -32,7 +32,7 @@ export const PREVIEW_RATE_LIMITS: Record<RateLimitScope, RateLimitRule> = {
   login_ip: { scope: 'login_ip', maxAttempts: 20, windowSeconds: 15 * 60, lockSeconds: 15 * 60 },
   otp_send_phone: { scope: 'otp_send_phone', maxAttempts: 3, windowSeconds: 15 * 60, lockSeconds: 30 * 60 },
   otp_send_ip: { scope: 'otp_send_ip', maxAttempts: 10, windowSeconds: 15 * 60, lockSeconds: 30 * 60 },
-  otp_verify_phone: { scope: 'otp_verify_phone', maxAttempts: 5, windowSeconds: 10 * 60, lockSeconds: 30 * 60 },
+  otp_verify_phone: { scope: 'otp_verify_phone', maxAttempts: 5, windowSeconds: 10 * 60, lockSeconds: 60 },
   otp_verify_ip: { scope: 'otp_verify_ip', maxAttempts: 15, windowSeconds: 10 * 60, lockSeconds: 30 * 60 }
 };
 
@@ -267,6 +267,16 @@ export async function guardAndConsumeSendOtpRateLimit(
   params: { ip: string; phone: string },
   secretOverride?: string
 ): Promise<RateLimitDecision> {
+  // Prevent bypassing active 60s verification lockout by resending a new OTP
+  const verifyLockKey = computeRateLimitKeyHash('otp_verify_phone', params.phone, secretOverride);
+  const verifyCheck = await store.check(verifyLockKey);
+  if (verifyCheck.blocked) {
+    return {
+      blocked: true,
+      retryAfterSeconds: verifyCheck.retryAfterSeconds
+    };
+  }
+
   const phoneKey = computeRateLimitKeyHash('otp_send_phone', params.phone, secretOverride);
   const ipKey = computeRateLimitKeyHash('otp_send_ip', params.ip, secretOverride);
 

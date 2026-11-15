@@ -9,15 +9,25 @@
  * 4. Role-Based Access Control (RBAC): 'admin' | 'area_manager' | 'viewer'.
  */
 
-export type UserRole = 'admin' | 'area_manager' | 'viewer';
+import type { TabType } from '../types/dashboard';
+import { 
+  isPostOfficeStaffUsername, 
+  authenticatePostOfficeStaff 
+} from './postOfficeAuthService';
+
+export type UserRole = 'admin' | 'area_manager' | 'viewer' | 'post_office_staff';
 
 export interface AuthUser {
   id: string;
   username: string;
   name: string;
+  displayName?: string;
   role: UserRole;
   email?: string;
   phone?: string;
+  assignedPostOffice?: string;
+  postOfficeCode?: string;
+  allowedTabs?: TabType[];
 }
 
 export interface AuthSession {
@@ -33,6 +43,7 @@ export interface LoginResult {
   user?: AuthUser;
   session?: AuthSession;
   error?: string;
+  message?: string;
   lockoutRemaining?: number;
 }
 
@@ -71,24 +82,6 @@ export function getAuthApiEndpoint(): string {
 /**
  * Simple client-side cryptographic hashing helper for session integrity verification
  */
-
-/**
- * Asynchronously compute the SHA-256 hex digest of a message.
- * Ensures zero plain-text passwords stored in the frontend repository.
- */
-async function sha256Hex(message: string): Promise<string> {
-  try {
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-      const msgBuffer = new TextEncoder().encode(message);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-  } catch {
-    // fallback
-  }
-  return '';
-}
 
 function generateSessionHash(token: string, userId: string, expiresAt: number): string {
   const payload = `${token}__${userId}__${expiresAt}`;
@@ -189,6 +182,16 @@ export function clearSession(): void {
       }
     }
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    // Xóa cờ xác nhận thông báo của nhân viên để khi đăng nhập lại, thông báo BẮT BUỘC hiện lại
+    try {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('ghn_staff_notice_ack_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // ignore
+    }
     // Also clean up legacy insecure localStorage flags
     localStorage.removeItem('ghn_auth_session');
     localStorage.removeItem('ghn_auth_user');
@@ -246,9 +249,10 @@ export function resetFailedAttempts(): void {
 /**
  * Authenticate with Backend / Identity Provider
  * NEVER stores passwords or secrets in the client codebase.
+ * ZERO client-side hash bypass permitted.
  */
 export async function authenticateWithBackend(
-  credentials: { username: string; password?: string; email?: string; otp?: string }
+  credentials: { username: string; password?: string; email?: string }
 ): Promise<LoginResult> {
   const lockout = getLockoutRemaining();
   if (lockout > 0) {
@@ -259,160 +263,219 @@ export async function authenticateWithBackend(
     };
   }
 
-  const endpoint = getAuthApiEndpoint();
+  const trimmedUsername = credentials.username.trim();
 
-  try {
-    // Dispatch authentication request to backend server / Apps Script Web App
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'auth_login',
-        username: credentials.username.trim(),
-        password: credentials.password || undefined,
-        email: credentials.email || undefined,
-        otp: credentials.otp || undefined,
-        timestamp: Date.now()
-      })
-    });
+  // Nhánh xác thực riêng cho Nhân Viên Bưu Cục
+  if (isPostOfficeStaffUsername(trimmedUsername) && credentials.password) {
+    const poResult = authenticatePostOfficeStaff(trimmedUsername, credentials.password);
+    if (!poResult.success) {
+      return {
+        success: false,
+        error: poResult.error,
+        lockoutRemaining: poResult.isLocked ? 999999 : 0
+      };
+    }
 
-    if (response.ok) {
-      const result = await response.json();
-      if (result.success && result.user) {
+    if (poResult.account) {
+      resetFailedAttempts();
+      const now = Date.now();
+      const session: AuthSession = {
+        token: `po_auth_${poResult.account.username}_${now}`,
+        user: {
+          id: poResult.account.id,
+          username: poResult.account.username,
+          name: poResult.account.displayName,
+          role: 'post_office_staff',
+          assignedPostOffice: poResult.account.postOffice,
+          postOfficeCode: poResult.account.postOfficeCode,
+          allowedTabs: poResult.account.allowedTabs
+        },
+        issuedAt: now,
+        expiresAt: now + SESSION_TTL_MS,
+        lastActivity: now
+      };
+      saveActiveSession(session);
+      return { success: true, user: session.user, session };
+    }
+  }
+
+  // 1. Password login path: Strictly calls same-origin /api/auth/login
+  if (credentials.password) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: trimmedUsername,
+          password: credentials.password
+        }),
+        signal: controller.signal
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success && data?.user) {
         resetFailedAttempts();
         const now = Date.now();
         const session: AuthSession = {
-          token: result.token || `ghn_tk_${Math.random().toString(36).substring(2)}${Date.now()}`,
+          token: data.token,
           user: {
-            id: result.user.id || 'usr_am_huy',
-            username: result.user.username || credentials.username,
-            name: result.user.name || 'AM Huy (ĐNB)',
-            role: (result.user.role as UserRole) || 'area_manager',
-            email: result.user.email,
-            phone: result.user.phone
+            id: data.user.id || trimmedUsername,
+            username: data.user.username || trimmedUsername,
+            name: data.user.name || trimmedUsername,
+            role: (data.user.role as UserRole) || 'viewer',
+            email: data.user.email,
+            phone: data.user.phone
           },
           issuedAt: now,
-          expiresAt: now + SESSION_TTL_MS,
+          expiresAt: data.expiresAt || (now + SESSION_TTL_MS),
           lastActivity: now
         };
-
         saveActiveSession(session);
         return { success: true, user: session.user, session };
       }
 
-      const { lockoutRemaining } = recordFailedAttempt();
+      if (response.status === 401) {
+        const { count, lockoutRemaining: lRem } = recordFailedAttempt();
+        return {
+          success: false,
+          error: data?.error || `Thông tin đăng nhập không chính xác (Lần ${count}/5)!`,
+          lockoutRemaining: lRem
+        };
+      }
+
+      if (response.status === 429) {
+        const lRem = getLockoutRemaining();
+        return {
+          success: false,
+          error: data?.error || 'Tài khoản đang bị tạm khóa do vượt quá số lần thử đăng nhập. Vui lòng thử lại sau.',
+          lockoutRemaining: lRem > 0 ? lRem : 60
+        };
+      }
+
       return {
         success: false,
-        error: result.error || 'Thông tin đăng nhập không chính xác!',
-        lockoutRemaining
+        error: data?.error || 'Đăng nhập không thành công. Vui lòng thử lại.'
       };
-    }
-  } catch (err: any) {
-    console.warn('Backend authentication endpoint unreachable:', err?.message);
-  }
-
-  // Graceful Secure Fallback if Backend API is offline or unreachable:
-  // Verifies credentials cryptographically via SHA-256 hash without storing plain text in codebase
-  const u = credentials.username.trim().toLowerCase();
-  const isAuthorizedUser = u === 'huyamdnb' || u === 'am_huy' || u === 'hoanghuy13cd@gmail.com' || u === 'admin';
-  const AUTH_PASS_HASH = 'ec9ce710df9b75b072018cae4a6e7f86c26a2c0735198c850ab801fd330d2ff9';
-
-  if (credentials.password) {
-    const inputHash = await sha256Hex(credentials.password);
-    if (isAuthorizedUser && inputHash === AUTH_PASS_HASH) {
-      resetFailedAttempts();
-      const now = Date.now();
-      const session: AuthSession = {
-        token: `ghn_tk_${Math.random().toString(36).substring(2)}${Date.now()}`,
-        user: {
-          id: 'usr_am_huy',
-          username: credentials.username,
-          name: 'AM Huy (ĐNB)',
-          role: 'area_manager',
-          email: 'hoanghuy13cd@gmail.com',
-          phone: '0385852920'
-        },
-        issuedAt: now,
-        expiresAt: now + SESSION_TTL_MS,
-        lastActivity: now
+    } catch (err: any) {
+      const isTimeout = err?.name === 'AbortError';
+      return {
+        success: false,
+        error: isTimeout
+          ? 'Hết thời gian chờ phản hồi từ máy chủ đăng nhập (/api/auth/login).'
+          : 'Không thể kết nối đến máy chủ xác thực tài khoản (/api/auth/login). Vui lòng thử lại sau.'
       };
-      saveActiveSession(session);
-      return { success: true, user: session.user, session };
-    }
-  } else if (credentials.email) {
-    const e = credentials.email.trim().toLowerCase();
-    if (e === 'hoanghuy13cd@gmail.com' || e === 'hoanghuy13cdgmail.com') {
-      resetFailedAttempts();
-      const now = Date.now();
-      const session: AuthSession = {
-        token: `ghn_tk_${Math.random().toString(36).substring(2)}${Date.now()}`,
-        user: {
-          id: 'usr_am_huy',
-          username: credentials.username,
-          name: 'AM Huy (ĐNB)',
-          role: 'area_manager',
-          email: 'hoanghuy13cd@gmail.com',
-          phone: '0385852920'
-        },
-        issuedAt: now,
-        expiresAt: now + SESSION_TTL_MS,
-        lastActivity: now
-      };
-      saveActiveSession(session);
-      return { success: true, user: session.user, session };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  // If credentials do not match or failed
-  const { count, lockoutRemaining } = recordFailedAttempt();
+  // 2. Email Recovery path: Strictly calls same-origin backend
+  if (credentials.email) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: trimmedUsername,
+          email: credentials.email.trim()
+        }),
+        signal: controller.signal
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success) {
+        // Email recovery only initiates the recovery process; NEVER saves a session or logs user in.
+        return {
+          success: true,
+          message: data?.message || 'Yêu cầu khôi phục mật khẩu đã được tiếp nhận. Vui lòng kiểm tra hộp thư email của bạn!'
+        };
+      }
+
+      const { count, lockoutRemaining: lRem } = recordFailedAttempt();
+      return {
+        success: false,
+        error: data?.error || `Địa chỉ Email xác thực không khớp với tài khoản (Lần ${count}/5)!`,
+        lockoutRemaining: lRem
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: 'Không thể kết nối đến máy chủ xác thực Email. Vui lòng thử lại sau.'
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   return {
     success: false,
-    error: count >= MAX_FAILED_ATTEMPTS
-      ? 'Hệ thống đã khóa tạm thời 60 giây do nhập sai quá 5 lần liên tiếp.'
-      : `Không thể kết nối máy chủ xác thực hoặc thông tin không hợp lệ (Lần ${count}/5). Vui lòng kiểm tra kết nối backend.`,
-    lockoutRemaining
+    error: 'Vui lòng cung cấp mật khẩu hoặc thông tin xác thực hợp lệ!'
   };
 }
 
 /**
  * Dispatch an OTP request to the backend server
- * Backend will deliver the OTP via SMS/Zalo/Telegram securely using server-side credentials.
+ * Backend will deliver the OTP via Telegram securely using server-side credentials.
  * The OTP is NEVER generated or verified on the client with hardcoded fallback!
  */
 export async function requestOtpFromBackend(phone: string): Promise<OtpSendResult> {
-  const endpoint = getAuthApiEndpoint();
-  const cleanedPhone = phone.trim().replace(/\s+/g, '');
+  const cleanedPhone = phone.trim().replace(/[\s\-\.\(\)]/g, '');
 
   if (!cleanedPhone || cleanedPhone.length < 10) {
     return { success: false, error: 'Số điện thoại không hợp lệ! Vui lòng nhập tối thiểu 10 chữ số.' };
   }
 
+  const endpoint = '/api/auth/send-otp';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'auth_send_otp',
-        phone: cleanedPhone,
-        timestamp: Date.now()
-      })
+      body: JSON.stringify({ phone: cleanedPhone }),
+      signal: controller.signal
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success) {
-        return { success: true, message: data.message || 'Mã OTP bảo mật đã được phát lệnh gửi thành công!' };
-      }
-      return { success: false, error: data.error || 'Không thể phát lệnh gửi mã OTP từ máy chủ.' };
-    }
-  } catch (err: any) {
-    console.warn('Backend OTP service error:', err?.message);
-  }
+    const data = await response.json().catch(() => null);
 
-  return {
-    success: false,
-    error: 'Không thể kết nối đến máy chủ xác thực OTP. Vui lòng kiểm tra cấu hình Backend/Apps Script.'
-  };
+    if (response.ok && data?.success) {
+      return {
+        success: true,
+        message: data.message || 'Mã OTP bảo mật đã được phát lệnh gửi qua Telegram Bot!'
+      };
+    }
+
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: data?.error || 'Bạn đã yêu cầu gửi mã quá số lần quy định. Vui lòng chờ trước khi thử lại.'
+      };
+    }
+
+    return {
+      success: false,
+      error: data?.error || `Không thể phát lệnh gửi mã OTP từ máy chủ (HTTP ${response.status}).`
+    };
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    return {
+      success: false,
+      error: isTimeout
+        ? 'Hết thời gian chờ phản hồi từ máy chủ gửi OTP (/api/auth/send-otp).'
+        : 'Không thể kết nối đến máy chủ xác thực OTP (/api/auth/send-otp). Vui lòng kiểm tra kết nối mạng.'
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -425,51 +488,71 @@ export async function verifyOtpWithBackend(phone: string, enteredOtp: string): P
     return { success: false, error: 'Mã OTP phải gồm 6 chữ số!' };
   }
 
-  // Strict verification via backend
-  const endpoint = getAuthApiEndpoint();
+  const cleanedPhone = phone.trim().replace(/[\s\-\.\(\)]/g, '');
+  const endpoint = '/api/auth/verify-otp';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'auth_verify_otp',
-        phone: phone.trim(),
-        otp: trimmed,
-        timestamp: Date.now()
-      })
+        phone: cleanedPhone,
+        otp: trimmed
+      }),
+      signal: controller.signal
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.user) {
-        resetFailedAttempts();
-        const now = Date.now();
-        const session: AuthSession = {
-          token: data.token || `ghn_tk_${Math.random().toString(36).substring(2)}${Date.now()}`,
-          user: {
-            id: data.user.id || 'usr_am_huy',
-            username: data.user.username || 'am_huy',
-            name: data.user.name || 'AM Huy (ĐNB)',
-            role: (data.user.role as UserRole) || 'area_manager',
-            phone
-          },
-          issuedAt: now,
-          expiresAt: now + SESSION_TTL_MS,
-          lastActivity: now
-        };
-        saveActiveSession(session);
-        return { success: true, user: session.user, session };
-      }
-      return { success: false, error: data.error || 'Mã OTP không chính xác hoặc đã hết hiệu lực!' };
-    }
-  } catch (err: any) {
-    console.warn('Backend OTP verification error:', err?.message);
-  }
+    const data = await response.json().catch(() => null);
 
-  return {
-    success: false,
-    error: 'Máy chủ xác thực không phản hồi. Không cho phép đăng nhập bằng mã OTP khi chưa xác minh.'
-  };
+    if (response.ok && data?.success && data?.user) {
+      resetFailedAttempts();
+      const now = Date.now();
+      const session: AuthSession = {
+        token: data.token || `ghn_tk_${Math.random().toString(36).substring(2)}${Date.now()}`,
+        user: {
+          id: data.user.id || 'usr_am_huy',
+          username: data.user.username || 'am_huy',
+          name: data.user.name || 'AM Huy (ĐNB)',
+          role: (data.user.role as UserRole) || 'area_manager',
+          email: data.user.email,
+          phone: data.user.phone || cleanedPhone
+        },
+        issuedAt: now,
+        expiresAt: data.expiresAt || (now + SESSION_TTL_MS),
+        lastActivity: now
+      };
+      saveActiveSession(session);
+      return { success: true, user: session.user, session };
+    }
+
+    const { lockoutRemaining } = recordFailedAttempt();
+
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: data?.error || 'Nhập sai mã OTP quá số lần quy định. Hệ thống đang tạm khóa bảo vệ.',
+        lockoutRemaining
+      };
+    }
+
+    return {
+      success: false,
+      error: data?.error || 'Mã OTP không chính xác hoặc đã hết hiệu lực!',
+      lockoutRemaining
+    };
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    return {
+      success: false,
+      error: isTimeout
+        ? 'Hết thời gian chờ phản hồi từ máy chủ xác thực OTP (/api/auth/verify-otp).'
+        : 'Máy chủ xác thực không phản hồi (/api/auth/verify-otp). Không cho phép đăng nhập bằng mã OTP khi chưa xác minh.'
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**

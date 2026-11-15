@@ -32,11 +32,12 @@ import {
   Cell 
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import { exportToCSV } from '../services/excelExportService';
 import { NhanSuOperationalAlertsCard } from '../components/nhan-su/NhanSuOperationalAlertsCard';
 
-// Helper to calculate seniority days: Current/Ref Date - NgayVaoLam
-function calcSeniorityDays(ngayVaoLamStr: string, refDateStr: string = '07/11/2026'): number {
+// Helper to calculate seniority days: Reference Dataset Date - NgayVaoLam
+function calcSeniorityDays(ngayVaoLamStr: string, refDateStr?: string): number {
   if (!ngayVaoLamStr) return 0;
   const parts = ngayVaoLamStr.split('/');
   if (parts.length === 3) {
@@ -45,7 +46,7 @@ function calcSeniorityDays(ngayVaoLamStr: string, refDateStr: string = '07/11/20
     const year = parseInt(parts[2], 10);
     const hireDate = new Date(year, month, day);
 
-    const refParts = refDateStr.split('/');
+    const refParts = (refDateStr || '').split('/');
     const refDate = refParts.length === 3 
       ? new Date(parseInt(refParts[2], 10), parseInt(refParts[1], 10) - 1, parseInt(refParts[0], 10))
       : new Date();
@@ -144,6 +145,9 @@ const SENIORITY_GROUPS_DEF = [
 
 export const NhanSuTab: React.FC = () => {
   const { dataset, selectedBuuCucGlobal, navigateToTab, setActiveTab } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
   
   // State quản lý xem chi tiết nhóm thâm niên
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -153,14 +157,16 @@ export const NhanSuTab: React.FC = () => {
     return dataset.nhanSu || [];
   }, [dataset.nhanSu]);
 
-  // Tab filter: 'all' or post office name (Đồng bộ toàn hệ thống)
-  const [selectedBuuCuc, setSelectedBuuCuc] = useState<string>(() => selectedBuuCucGlobal || 'all');
+  // Tab filter: 'all' or post office name (Đồng bộ toàn hệ thống, khóa chặt nếu là nhân viên phân hệ)
+  const [selectedBuuCuc, setSelectedBuuCuc] = useState<string>(() => isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
 
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
-      setSelectedBuuCuc(selectedBuuCucGlobal);
+    if (isStaff && assignedPo) {
+      setSelectedBuuCuc(assignedPo);
+      return;
     }
-  }, [selectedBuuCucGlobal]);
+    setSelectedBuuCuc(selectedBuuCucGlobal || 'all');
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [selectedContract, setSelectedContract] = useState<string>('all');
@@ -177,16 +183,42 @@ export const NhanSuTab: React.FC = () => {
     return Array.from(set).sort();
   }, [staffList]);
 
+  // Ngày tham chiếu thâm niên tự động lấy theo ngày dữ liệu hợp lệ mới nhất trong dataset
+  const referenceDateStr = useMemo(() => {
+    let maxKey = 0;
+    let maxStr = '';
+    const checkDate = (dStr?: string) => {
+      if (!dStr) return;
+      const parts = dStr.split('/');
+      if (parts.length === 3) {
+        const d = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const y = parseInt(parts[2], 10);
+        if (d > 0 && m > 0 && y >= 2000) {
+          const key = y * 10000 + m * 100 + d;
+          if (key > maxKey) {
+            maxKey = key;
+            maxStr = dStr;
+          }
+        }
+      }
+    };
+    staffList.forEach(r => checkDate(r.ngayVaoLam));
+    (dataset.gtcBuuCuc || []).forEach(r => checkDate(r.ngay));
+    (dataset.gtcNhanVien || []).forEach(r => checkDate(r.ngay));
+    return maxStr;
+  }, [staffList, dataset.gtcBuuCuc, dataset.gtcNhanVien]);
+
   // Enriched staff with calculated seniority days
   const enrichedStaff = useMemo(() => {
     return staffList.map(r => {
-      const days = calcSeniorityDays(r.ngayVaoLam);
+      const days = calcSeniorityDays(r.ngayVaoLam, referenceDateStr);
       return {
         ...r,
         thamNienNgay: days
       };
     });
-  }, [staffList]);
+  }, [staffList, referenceDateStr]);
 
   // Scoped staff based on selected post office for KPIs
   const activeStaffScope = useMemo(() => {
@@ -345,10 +377,10 @@ export const NhanSuTab: React.FC = () => {
     ];
   }, [kpis]);
 
-  // Chart 3: Seniority Group Breakdown Bar Chart (G01 to G10)
+  // Chart 3: Seniority Group Breakdown Bar Chart (G01 to G10) — tuân thủ bộ lọc Bưu cục
   const chartSeniorityData = useMemo(() => {
     return SENIORITY_GROUPS_DEF.map(g => {
-      const count = enrichedStaff.filter(r => r.nhomThamNien.startsWith(g.code)).length;
+      const count = activeEnrichedScope.filter(r => r.nhomThamNien.startsWith(g.code)).length;
       return {
         code: g.code,
         name: g.code,
@@ -359,7 +391,7 @@ export const NhanSuTab: React.FC = () => {
         risk: g.risk
       };
     });
-  }, [enrichedStaff]);
+  }, [activeEnrichedScope]);
 
   // Excel Export Handler
   const handleExport = () => {
@@ -416,21 +448,23 @@ export const NhanSuTab: React.FC = () => {
 
             {/* Post Office Tab Pills */}
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-              <button
-                onClick={() => setSelectedBuuCuc('all')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  selectedBuuCuc === 'all'
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <span>Tất cả</span>
-                <span className={`px-1 py-0.2 text-[10px] rounded-md font-extrabold ${
-                  selectedBuuCuc === 'all' ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                }`}>
-                  {staffList.length}
-                </span>
-              </button>
+              {!isStaff && (
+                <button
+                  onClick={() => setSelectedBuuCuc('all')}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    selectedBuuCuc === 'all'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>Tất cả</span>
+                  <span className={`px-1 py-0.2 text-[10px] rounded-md font-extrabold ${
+                    selectedBuuCuc === 'all' ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}>
+                    {staffList.length}
+                  </span>
+                </button>
+              )}
 
               {postOfficesList.map(po => {
                 const count = staffList.filter(r => r.buuCuc === po).length;
@@ -438,7 +472,9 @@ export const NhanSuTab: React.FC = () => {
                 return (
                   <button
                     key={po}
-                    onClick={() => setSelectedBuuCuc(po)}
+                    onClick={() => {
+                      if (!isStaff) setSelectedBuuCuc(po);
+                    }}
                     className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-400'
@@ -743,6 +779,8 @@ export const NhanSuTab: React.FC = () => {
       <NhanSuOperationalAlertsCard 
         dataset={dataset}
         defaultBuuCuc={selectedBuuCuc}
+        isStaff={isStaff}
+        assignedPo={assignedPo}
         onNavigateToEmployeeGtc={(_maNV, buuCuc) => {
           navigateToTab('gtc_nhan_vien', { buuCuc });
         }}
@@ -885,7 +923,7 @@ export const NhanSuTab: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg">
-              {selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc}
+              {isStaff ? (assignedPo || selectedBuuCuc) : (selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc)}
             </span>
           </div>
         </div>
@@ -1020,7 +1058,7 @@ export const NhanSuTab: React.FC = () => {
                                     </span>
                                   </h4>
                                   <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Khung thâm niên: <b>{g.range}</b> &bull; Mức độ ổn định: <b className="text-purple-600 dark:text-purple-400">{g.risk}</b> &bull; Phạm vi: <b>{selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc}</b>
+                                    Khung thâm niên: <b>{g.range}</b> &bull; Mức độ ổn định: <b className="text-purple-600 dark:text-purple-400">{g.risk}</b> &bull; Phạm vi: <b>{isStaff ? (assignedPo || selectedBuuCuc) : (selectedBuuCuc === 'all' ? 'Toàn bộ 5 bưu cục Long An' : selectedBuuCuc)}</b>
                                   </p>
                                 </div>
                               </div>
@@ -1196,7 +1234,7 @@ export const NhanSuTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-                Bảng Kê Chi Tiết Nhân Sự {selectedBuuCuc === 'all' ? 'Toàn Khu Vực' : selectedBuuCuc}
+                Bảng Kê Chi Tiết Nhân Sự {isStaff ? (assignedPo || selectedBuuCuc) : (selectedBuuCuc === 'all' ? 'Toàn Khu Vực' : selectedBuuCuc)}
               </h2>
               <span className="px-2 py-0.5 text-xs font-black bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-full">
                 {filteredStaff.length} Nhân Sự
@@ -1743,4 +1781,4 @@ export const NhanSuTab: React.FC = () => {
   );
 };
 
-export default NhanSuTab;
+export default React.memo(NhanSuTab);

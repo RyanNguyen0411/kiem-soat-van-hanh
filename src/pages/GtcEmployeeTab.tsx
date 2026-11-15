@@ -35,6 +35,7 @@ import {
   ReferenceLine
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import { RegionalInfluenceWidget } from '../components/gtc-employee/RegionalInfluenceWidget';
 import { Ca2OperationsWidget } from '../components/gtc-employee/Ca2OperationsWidget';
 import type { GtcEmployeeRecord, DailySalaryRecord } from '../types/dashboard';
@@ -44,12 +45,24 @@ import { IndividualFilterDropdown } from '../components/common/IndividualFilterD
 import type { Column } from '../components/common/DataTable';
 import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
-import { sortDatesDesc, extractMonths, extractWeeks } from '../utils/dateEngine';
+import { sortDatesDesc, extractMonths, extractWeeks, getCurrentMonthKey } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 import { safeFormatPercent, safeFormatNumber } from '../utils';
 
 export const GtcEmployeeTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { 
+    dataset, 
+    selectedBuuCucGlobal, 
+    selectedDateGlobal, 
+    setSelectedBuuCucGlobal, 
+    setSelectedDateGlobal 
+  } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
+
+  const lastPushedBcRef = React.useRef<string>(isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
+  const lastPushedDateRef = React.useRef<string>(selectedDateGlobal || 'all');
 
   // 1. All unique dates desc (cột J sheet GTC Nhân viên & GTC Bưu cục)
   const allUniqueDatesDesc = useMemo(() => {
@@ -62,45 +75,73 @@ export const GtcEmployeeTab: React.FC = () => {
 
   // Available Months & Weeks
   const availableMonths = useMemo(() => extractMonths(allUniqueDatesDesc), [allUniqueDatesDesc]);
+  const currentMonthKey = useMemo(() => getCurrentMonthKey(availableMonths), [availableMonths]);
   const availableWeeks = useMemo(() => extractWeeks(allUniqueDatesDesc), [allUniqueDatesDesc]);
 
-  // Global Quick Tab Filter
+  // Global Quick Tab Filter - Mặc định ngày theo tháng hiện tại
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
-    buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
+    buuCuc: isStaff && assignedPo ? [assignedPo] : (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []),
     nhanVien: [],
-    ngay: []
+    ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
   }));
 
+  // Tự động gán ngày của Tháng hiện tại nếu chưa chọn ngày cụ thể
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (currentMonthKey && (!filterValues.ngay || filterValues.ngay.length === 0) && (!selectedDateGlobal || selectedDateGlobal === 'all')) {
+      const targetMonth = availableMonths.find(m => m.key === currentMonthKey);
+      if (targetMonth) {
+        setFilterValues(prev => ({ ...prev, ngay: targetMonth.dates }));
+      }
+    }
+  }, [currentMonthKey, availableMonths, selectedDateGlobal]);
+
+  React.useEffect(() => {
+    if (isStaff && assignedPo) {
+      setFilterValues(prev => ({ ...prev, buuCuc: [assignedPo] }));
+      return;
+    }
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        buuCuc: [selectedBuuCucGlobal]
+        buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
-  }, [selectedBuuCucGlobal]);
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
+
+  React.useEffect(() => {
+    if (selectedDateGlobal !== lastPushedDateRef.current) {
+      lastPushedDateRef.current = selectedDateGlobal || 'all';
+      setFilterValues(prev => ({
+        ...prev,
+        ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
+      }));
+    }
+  }, [selectedDateGlobal]);
 
   // Filter options
   const buuCucOptions = useMemo(() => {
+    if (isStaff && assignedPo) return [{ label: assignedPo, value: assignedPo }];
     return [...new Set(dataset.gtcNhanVien.map(r => r.buuCuc))].filter(Boolean).sort().map(b => ({ label: b, value: b }));
-  }, [dataset.gtcNhanVien]);
+  }, [dataset.gtcNhanVien, isStaff, assignedPo]);
 
   const nhanVienOptions = useMemo(() => {
     const map = new Map<string, string>();
     dataset.gtcNhanVien.forEach(r => {
+      if (isStaff && assignedPo && r.buuCuc !== assignedPo) return;
       if (r.maNV && !map.has(r.maNV)) {
         map.set(r.maNV, `${r.tenNV} (${r.maNV})`);
       }
     });
     return Array.from(map.entries()).map(([val, lbl]) => ({ label: lbl, value: val }));
-  }, [dataset.gtcNhanVien]);
+  }, [dataset.gtcNhanVien, isStaff, assignedPo]);
 
   const ngayOptions = useMemo(() => {
     return allUniqueDatesDesc.map(n => ({ label: n, value: n }));
   }, [allUniqueDatesDesc]);
 
   const filterFields: FilterFieldConfig[] = [
-    { key: 'buuCuc', label: 'Bưu cục', options: buuCucOptions },
+    ...(!isStaff ? [{ key: 'buuCuc', label: 'Bưu cục', options: buuCucOptions }] : []),
     { key: 'nhanVien', label: 'Nhân viên', options: nhanVienOptions },
     { key: 'ngay', label: 'Ngày', options: ngayOptions }
   ];
@@ -115,10 +156,13 @@ export const GtcEmployeeTab: React.FC = () => {
     });
   }, [dataset.gtcNhanVien, filterValues]);
 
-  // Tab KPIs strictly according to SUM(GTC) / SUM(Tổng đơn)
+  // Tab KPIs strictly according to SUM(GTC) / SUM(Tổng đơn) & Tồn giao trong ca = Tổng đơn - Tổng đơn GTC
   const tabKPIs = useMemo(() => {
     const totalDon = filteredData.reduce((acc, r) => acc + (r.tongDon || 0), 0);
     const totalDonGTC = filteredData.reduce((acc, r) => acc + (r.tongDonGTC || 0), 0);
+    const tonGiaoTrongCa = totalDon - totalDonGTC;
+    const anomalyRowCount = filteredData.filter(r => (r.tongDonGTC || 0) > (r.tongDon || 0)).length;
+    const hasGtcExceedsVolumeAnomaly = totalDonGTC > totalDon || anomalyRowCount > 0;
     const gtcRate = totalDon > 0 ? (totalDonGTC / totalDon) * 100 : 0;
     const totalChuyenDi = filteredData.reduce((acc, r) => acc + (r.chuyenDi || 0), 0);
     const weightedLt = filteredData.reduce((acc, r) => acc + (r.leadtime || 0) * (r.tongDon || 0), 0);
@@ -128,6 +172,9 @@ export const GtcEmployeeTab: React.FC = () => {
     return {
       totalDon,
       totalDonGTC,
+      tonGiaoTrongCa,
+      hasGtcExceedsVolumeAnomaly,
+      anomalyRowCount,
       gtcRate,
       totalChuyenDi,
       avgLeadtime,
@@ -137,10 +184,16 @@ export const GtcEmployeeTab: React.FC = () => {
 
   // =========================================================================
   // REQUIREMENT 2: SỨC ẢNH HƯỞNG BƯU CỤC VS KHU VỰC (BỘ LỌC RIÊNG: NGÀY, TUẦN, THÁNG)
+  // Mặc định luôn là 'current' (tháng hiện tại)
   // =========================================================================
-  const [impactFilterMonth, setImpactFilterMonth] = useState<string>('all');
+  const [impactFilterMonth, setImpactFilterMonth] = useState<string>('current');
   const [impactFilterWeek, setImpactFilterWeek] = useState<string>('all');
   const [impactFilterDate, setImpactFilterDate] = useState<string>('all');
+
+  const activeImpactMonthKey = useMemo(() => {
+    if (impactFilterMonth === 'current') return currentMonthKey;
+    return impactFilterMonth;
+  }, [impactFilterMonth, currentMonthKey]);
 
   // Nguồn dữ liệu phân tích: Mặc định lấy Chuẩn Bưu Cục (Sheet GTC Bưu cục: 269k đơn) hoặc Theo Bưu Tá (Sheet GTC Nhân viên: 184k đơn)
   const [impactDataSource, setImpactDataSource] = useState<'gtc_buu_cuc' | 'gtc_nhan_vien'>('gtc_buu_cuc');
@@ -154,7 +207,7 @@ export const GtcEmployeeTab: React.FC = () => {
   const [isAdviceCollapsed, setIsAdviceCollapsed] = useState<boolean>(false);
 
   const handleResetImpactFilter = () => {
-    setImpactFilterMonth('all');
+    setImpactFilterMonth('current');
     setImpactFilterWeek('all');
     setImpactFilterDate('all');
   };
@@ -166,12 +219,12 @@ export const GtcEmployeeTab: React.FC = () => {
       const w = availableWeeks.find(item => item.key === impactFilterWeek);
       return w ? w.label : `Tuần ${impactFilterWeek}`;
     }
-    if (impactFilterMonth !== 'all') {
-      const m = availableMonths.find(item => item.key === impactFilterMonth);
-      return m ? m.label : `Tháng ${impactFilterMonth}`;
+    if (activeImpactMonthKey !== 'all') {
+      const m = availableMonths.find(item => item.key === activeImpactMonthKey);
+      return m ? m.label : `Tháng ${activeImpactMonthKey}`;
     }
     return 'Toàn Bộ Dữ Liệu';
-  }, [impactFilterDate, impactFilterWeek, impactFilterMonth, availableWeeks, availableMonths]);
+  }, [impactFilterDate, impactFilterWeek, activeImpactMonthKey, availableWeeks, availableMonths]);
 
   // Map số lượng bưu tá theo bưu cục từ Sheet GTC Nhân viên
   const staffByPoMap = useMemo(() => {
@@ -228,8 +281,8 @@ export const GtcEmployeeTab: React.FC = () => {
     if (impactDataSource === 'gtc_buu_cuc') {
       // NGUỒN 1: Dữ liệu Bưu Cục chính thức (Sheet GTC Bưu cục: Tổng 269.744 đơn)
       const filteredBcRecords = dataset.gtcBuuCuc.filter(r => {
-        if (impactFilterMonth !== 'all') {
-          const targetMonth = availableMonths.find(m => m.key === impactFilterMonth);
+        if (activeImpactMonthKey !== 'all') {
+          const targetMonth = availableMonths.find(m => m.key === activeImpactMonthKey);
           if (targetMonth && !targetMonth.dates.includes(r.ngay)) return false;
         }
         if (impactFilterWeek !== 'all') {
@@ -258,30 +311,31 @@ export const GtcEmployeeTab: React.FC = () => {
         const v = r.volume || 0;
         const gtc = r.sldGTC || 0;
         const gan = r.sldGan || 0;
-        const ton = r.tonDong || 0;
         const lt = r.leadtime || 0;
 
         poAgg[po].totalDon += v;
         poAgg[po].totalDonGTC += gtc;
         poAgg[po].sldGan += gan;
-        poAgg[po].tonDong += ton;
+        poAgg[po].tonDong = poAgg[po].totalDon - poAgg[po].totalDonGTC;
         poAgg[po].ltWeighted += lt * v;
 
         regionTotalDon += v;
         regionTotalGtc += gtc;
         regionTotalGan += gan;
-        regionTotalTon += ton;
+        regionTotalTon = regionTotalDon - regionTotalGtc;
         regionWeightedLt += lt * v;
       });
     } else {
       // NGUỒN 2: Dữ liệu Tổng hợp từ 73 bưu tá (Sheet GTC Nhân viên: Tổng 184.130 đơn)
       const filteredNvRecords = dataset.gtcNhanVien.filter(r => {
-        if (impactFilterMonth !== 'all') {
-          const targetMonth = availableMonths.find(m => m.key === impactFilterMonth);
+        if (activeImpactMonthKey !== 'all') {
+          const targetMonth = availableMonths.find(m => m.key === activeImpactMonthKey);
           if (targetMonth && !targetMonth.dates.includes(r.ngay)) return false;
         }
         if (impactFilterWeek !== 'all') {
-          const targetWeek = availableWeeks.find(w => w.key === impactFilterWeek);
+          const targetWeek = availableWeeks.find(w => {
+            return w.key === impactFilterWeek;
+          });
           if (targetWeek && !targetWeek.dates.includes(r.ngay)) return false;
         }
         if (impactFilterDate !== 'all' && r.ngay !== impactFilterDate) return false;
@@ -305,19 +359,18 @@ export const GtcEmployeeTab: React.FC = () => {
         }
         const v = r.tongDon || 0;
         const gtc = r.tongDonGTC || 0;
-        const ton = r.tonDong || 0;
         const lt = r.leadtime || 0;
 
         poAgg[po].totalDon += v;
         poAgg[po].totalDonGTC += gtc;
         poAgg[po].sldGan += v;
-        poAgg[po].tonDong += ton;
+        poAgg[po].tonDong = poAgg[po].totalDon - poAgg[po].totalDonGTC;
         poAgg[po].ltWeighted += lt * v;
 
         regionTotalDon += v;
         regionTotalGtc += gtc;
         regionTotalGan += v;
-        regionTotalTon += ton;
+        regionTotalTon = regionTotalDon - regionTotalGtc;
         regionWeightedLt += lt * v;
       });
     }
@@ -368,7 +421,7 @@ export const GtcEmployeeTab: React.FC = () => {
     dataset.gtcBuuCuc, 
     dataset.gtcNhanVien, 
     impactDataSource, 
-    impactFilterMonth, 
+    activeImpactMonthKey, 
     impactFilterWeek, 
     impactFilterDate, 
     availableMonths, 
@@ -380,9 +433,9 @@ export const GtcEmployeeTab: React.FC = () => {
   const filterScope: 'DAY' | 'WEEK' | 'MONTH' | 'ALL' = useMemo(() => {
     if (impactFilterDate !== 'all') return 'DAY';
     if (impactFilterWeek !== 'all') return 'WEEK';
-    if (impactFilterMonth !== 'all') return 'MONTH';
+    if (activeImpactMonthKey !== 'all') return 'MONTH';
     return 'ALL';
-  }, [impactFilterDate, impactFilterWeek, impactFilterMonth]);
+  }, [impactFilterDate, impactFilterWeek, activeImpactMonthKey]);
 
   // Đánh giá động cấp Toàn Khu Vực theo đúng bộ lọc của người dùng với TƯ DUY LOGIC VẬN HÀNH GHN THỰC CHIẾN
   const regionDynamicAssessment = useMemo(() => {
@@ -777,7 +830,7 @@ export const GtcEmployeeTab: React.FC = () => {
       }
       emp.daily[r.ngay].tongDon += r.tongDon || 0;
       emp.daily[r.ngay].tongDonGTC += r.tongDonGTC || 0;
-      emp.daily[r.ngay].tonDong += r.tonDong || 0;
+      emp.daily[r.ngay].tonDong = emp.daily[r.ngay].tongDon - emp.daily[r.ngay].tongDonGTC;
       emp.daily[r.ngay].gtcRate = emp.daily[r.ngay].tongDon > 0
         ? (emp.daily[r.ngay].tongDonGTC / emp.daily[r.ngay].tongDon) * 100
         : 0;
@@ -1019,16 +1072,31 @@ export const GtcEmployeeTab: React.FC = () => {
   // REQUIREMENT 3: BẢNG CHI TIẾT GTC NHÂN VIÊN THEO NGÀY (CÓ BỘ LỌC ĐỘC LẬP)
   // (Tạo bộ lọc riêng cho bảng: Ngày, Tuần, Tháng, Bưu cục dạng tick chọn)
   // =========================================================================
-  const [tableFilterBuuCuc, setTableFilterBuuCuc] = useState<string>('all');
+  const [tableFilterBuuCuc, setTableFilterBuuCuc] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [tableFilterEmployees, setTableFilterEmployees] = useState<string[]>([]);
-  const [tableFilterMonths, setTableFilterMonths] = useState<string[]>([]);
+  const [tableFilterMonths, setTableFilterMonths] = useState<string[]>(() => {
+    return currentMonthKey ? [currentMonthKey] : [];
+  });
   const [tableFilterWeeks, setTableFilterWeeks] = useState<string[]>([]);
   const [tableFilterDates, setTableFilterDates] = useState<string[]>([]);
 
+  // Tự động gán tháng hiện tại cho bảng chi tiết bưu tá nếu ban đầu chưa có
+  React.useEffect(() => {
+    if (currentMonthKey && tableFilterMonths.length === 0) {
+      setTableFilterMonths([currentMonthKey]);
+    }
+  }, [currentMonthKey]);
+
+  React.useEffect(() => {
+    if (isStaff && assignedPo) {
+      setTableFilterBuuCuc(assignedPo);
+    }
+  }, [isStaff, assignedPo]);
+
   const handleResetTableFilter = () => {
-    setTableFilterBuuCuc('all');
+    setTableFilterBuuCuc(isStaff && assignedPo ? assignedPo : 'all');
     setTableFilterEmployees([]);
-    setTableFilterMonths([]);
+    setTableFilterMonths(currentMonthKey ? [currentMonthKey] : []);
     setTableFilterWeeks([]);
     setTableFilterDates([]);
   };
@@ -1098,6 +1166,7 @@ export const GtcEmployeeTab: React.FC = () => {
       const tiLeLTC = ganLay > 0 ? `${((layTC / ganLay) * 100).toFixed(1)}%` : '0%';
       return {
         ...r,
+        tonDong: (r.tongDon || 0) - (r.tongDonGTC || 0),
         ganLay,
         layTC,
         tiLeLTC
@@ -1239,11 +1308,11 @@ export const GtcEmployeeTab: React.FC = () => {
     },
     {
       key: 'tonDong',
-      header: 'Tồn Đọng',
+      header: 'Tồn Giao Ca',
       width: '75px',
       align: 'center',
       sortable: true,
-      render: r => <span className="text-rose-600 dark:text-rose-400 font-bold">{r.tonDong}</span>
+      render: r => <span className="text-rose-600 dark:text-rose-400 font-bold">{((r.tongDon || 0) - (r.tongDonGTC || 0)).toLocaleString('vi-VN')}</span>
     }
   ];
 
@@ -1266,13 +1335,40 @@ export const GtcEmployeeTab: React.FC = () => {
           </p>
         </div>
 
-        <IndependentFilter
-          title="Lọc Toàn Bộ Tab"
-          fields={filterFields}
-          selectedValues={filterValues}
-          onApply={val => setFilterValues(val)}
-          onReset={() => setFilterValues({ buuCuc: [], nhanVien: [], ngay: [] })}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          {isStaff && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-xl text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+              <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+              <span>{assignedPo || filterValues.buuCuc?.[0]}</span>
+            </div>
+          )}
+          <IndependentFilter
+            title="Lọc Toàn Bộ Tab"
+            fields={filterFields}
+            selectedValues={filterValues}
+            onApply={val => {
+              setFilterValues(val);
+              const bcs = val.buuCuc || [];
+              const targetBc = bcs.length === 1 ? bcs[0] : 'all';
+              lastPushedBcRef.current = targetBc;
+              setSelectedBuuCucGlobal(targetBc);
+
+              const dates = val.ngay || [];
+              const targetDate = dates.length === 1 ? dates[0] : 'all';
+              lastPushedDateRef.current = targetDate;
+              setSelectedDateGlobal(targetDate);
+            }}
+            onReset={() => {
+              setFilterValues({ buuCuc: isStaff && assignedPo ? [assignedPo] : [], nhanVien: [], ngay: [] });
+              if (!isStaff) {
+                lastPushedBcRef.current = 'all';
+                setSelectedBuuCucGlobal('all');
+              }
+              lastPushedDateRef.current = 'all';
+              setSelectedDateGlobal('all');
+            }}
+          />
+        </div>
       </div>
 
       {/* KPI Cards Section */}
@@ -1382,7 +1478,7 @@ export const GtcEmployeeTab: React.FC = () => {
                 <Calendar className="w-3 h-3 text-emerald-500" /> Tháng:
               </label>
               <select
-                value={impactFilterMonth}
+                value={activeImpactMonthKey}
                 onChange={e => {
                   setImpactFilterMonth(e.target.value);
                   setImpactFilterWeek('all');
@@ -2389,24 +2485,30 @@ export const GtcEmployeeTab: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs items-end">
-              {/* 1. Bưu Cục */}
+              {/* 1. Bưu Cục (Chặn không cho chọn bưu cục khác nếu là nhân viên) */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-orange-500" /> Bưu Cục:
                 </label>
-                <select
-                  value={tableFilterBuuCuc}
-                  onChange={e => {
-                    setTableFilterBuuCuc(e.target.value);
-                    setTableFilterEmployees([]);
-                  }}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
-                >
-                  <option value="all">Tất cả bưu cục (5 BC)</option>
-                  {buuCucOptions.map(b => (
-                    <option key={b.value} value={b.value}>{b.label}</option>
-                  ))}
-                </select>
+                {!isStaff ? (
+                  <select
+                    value={tableFilterBuuCuc}
+                    onChange={e => {
+                      setTableFilterBuuCuc(e.target.value);
+                      setTableFilterEmployees([]);
+                    }}
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs cursor-pointer"
+                  >
+                    <option value="all">Tất cả bưu cục (5 BC)</option>
+                    {buuCucOptions.map(b => (
+                      <option key={b.value} value={b.value}>{b.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg px-2.5 py-1.5 text-orange-700 dark:text-orange-300 font-bold text-xs shadow-2xs">
+                    {assignedPo || tableFilterBuuCuc}
+                  </div>
+                )}
               </div>
 
               {/* 2. Bộ Lọc Tick Chọn Nhân Viên */}
@@ -2506,7 +2608,7 @@ return (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shrink-0" />
                   <strong className="text-slate-900 dark:text-white uppercase tracking-wide">
-                    Chi Tiết Ca Vận Hành & Thu Nhập: {row.tenNV}
+                    {isStaff ? 'Chi Tiết Ca Vận Hành: ' : 'Chi Tiết Ca Vận Hành & Thu Nhập: '}{row.tenNV}
                   </strong>
                   <span className="font-mono text-slate-500 dark:text-slate-400 font-bold">
                     (Mã: {row.maNV})
@@ -2527,8 +2629,8 @@ return (
                 </div>
               </div>
 
-              {/* 3 Cột Thông Tin Tinh Gọn - Chiều cao vừa vặn */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {/* Các Cột Thông Tin Tinh Gọn - Chiều cao vừa vặn (Ẩn Thu Nhập đối với tài khoản phân hệ) */}
+              <div className={`grid grid-cols-1 ${isStaff ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-2`}>
                 {/* Cột 1: Giao Hàng (GTC) */}
                 <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700 space-y-1">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700 text-[11px]">
@@ -2599,39 +2701,41 @@ return (
                   )}
                 </div>
 
-                {/* Cột 3: Thu Nhập Tạm Tính Ngày (Sheet Hoa Hồng Ngày) */}
-                <div className="p-2 rounded-lg bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 space-y-1">
-                  <div className="flex items-center justify-between pb-1 border-b border-orange-200 dark:border-orange-800 text-[11px]">
-                    <span className="font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" /> Thu Nhập Tạm Tính
-                    </span>
-                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/60 px-1 py-0.2 rounded">
-                      {hh?.soNgayDiLam ? `${hh.soNgayDiLam} công` : '1 công'}
-                    </span>
+                {/* Cột 3: Thu Nhập Tạm Tính Ngày (Ẩn hoàn toàn đối với tài khoản phân hệ nhân viên) */}
+                {!isStaff && (
+                  <div className="p-2 rounded-lg bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 space-y-1">
+                    <div className="flex items-center justify-between pb-1 border-b border-orange-200 dark:border-orange-800 text-[11px]">
+                      <span className="font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1">
+                        <DollarSign className="w-3 h-3" /> Thu Nhập Tạm Tính
+                      </span>
+                      <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/60 px-1 py-0.2 rounded">
+                        {hh?.soNgayDiLam ? `${hh.soNgayDiLam} công` : '1 công'}
+                      </span>
+                    </div>
+                    {hh ? (
+                      <div className="space-y-1 text-[10.5px]">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-slate-400">Tổng lương ngày:</span>
+                          <strong className="text-orange-600 dark:text-orange-400 text-xs font-black">
+                            {Math.round(hh.tongLuong).toLocaleString('vi-VN')} đ
+                          </strong>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-600 dark:text-slate-300">
+                          <div>
+                            Lương HH: <strong>{Math.round(hh.luongHHNgay).toLocaleString('vi-VN')} đ</strong>
+                          </div>
+                          <div className="text-right">
+                            Đơn tính lương: <strong>{hh.donGiaoTinhLuong + hh.donLayTinhLuong}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-2 text-center text-slate-400 italic text-[10px]">
+                        Chưa có dữ liệu lương hoa hồng ngày này
+                      </div>
+                    )}
                   </div>
-                  {hh ? (
-                    <div className="space-y-1 text-[10.5px]">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 dark:text-slate-400">Tổng lương ngày:</span>
-                        <strong className="text-orange-600 dark:text-orange-400 text-xs font-black">
-                          {Math.round(hh.tongLuong).toLocaleString('vi-VN')} đ
-                        </strong>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-600 dark:text-slate-300">
-                        <div>
-                          Lương HH: <strong>{Math.round(hh.luongHHNgay).toLocaleString('vi-VN')} đ</strong>
-                        </div>
-                        <div className="text-right">
-                          Đơn tính lương: <strong>{hh.donGiaoTinhLuong + hh.donLayTinhLuong}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-2 text-center text-slate-400 italic text-[10px]">
-                      Chưa có dữ liệu lương hoa hồng ngày này
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           );
@@ -2652,4 +2756,4 @@ return (
   );
 };
 
-export default GtcEmployeeTab;
+export default React.memo(GtcEmployeeTab);

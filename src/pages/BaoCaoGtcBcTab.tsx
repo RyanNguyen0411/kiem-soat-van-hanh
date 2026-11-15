@@ -20,6 +20,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import { sortDatesDesc } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 import { normalizePostOfficeName, normalizeDate } from '../utils/normalizationEngine';
@@ -36,7 +37,19 @@ import {
 } from '../services/telegramService';
 
 export const BaoCaoGtcBcTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { 
+    dataset, 
+    selectedBuuCucGlobal, 
+    selectedDateGlobal, 
+    setSelectedBuuCucGlobal, 
+    setSelectedDateGlobal 
+  } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
+
+  const lastPushedBcRef = React.useRef<string>(isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
+  const lastPushedDateRef = React.useRef<string>(selectedDateGlobal || 'all');
 
   // Extract all available operational dates sorted from newest to oldest (Gần nhất -> Xa nhất)
   const allUniqueDatesDesc = useMemo(() => {
@@ -48,28 +61,44 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     return sortDatesDesc([...new Set(rawDates)]);
   }, [dataset.gtcNhanVien, dataset.gtcBuuCuc, dataset.hoaHongNgay]);
 
-  // Luôn mặc định và tự động chuyển về ngày mới nhất khi hiển thị
-  const latestDate = allUniqueDatesDesc[0] || '04/11/2026';
-  const [selectedDate, setSelectedDate] = useState<string>(() => latestDate);
+  // Luôn mặc định và tự động chuyển về ngày mới nhất khi hiển thị (hoặc ngày điều hướng toàn cục nếu có)
+  const latestDate = allUniqueDatesDesc[0] || '';
+  const [selectedDate, setSelectedDate] = useState<string>(() =>
+    selectedDateGlobal && selectedDateGlobal !== 'all' ? selectedDateGlobal : latestDate
+  );
   const prevLatestRef = React.useRef<string>(latestDate);
 
-  // Khi hiển thị hoặc khi dataset cập nhật -> luôn nạp data ở ngày mới nhất
+  // Khi hiển thị hoặc khi dataset cập nhật -> luôn nạp data ở ngày mới nhất nếu chưa có ngày lọc toàn cục
   React.useEffect(() => {
+    if (selectedDateGlobal !== lastPushedDateRef.current) {
+      lastPushedDateRef.current = selectedDateGlobal || 'all';
+      if (selectedDateGlobal && selectedDateGlobal !== 'all' && allUniqueDatesDesc.includes(selectedDateGlobal)) {
+        setSelectedDate(selectedDateGlobal);
+        return;
+      }
+    }
     if (allUniqueDatesDesc.length > 0 && allUniqueDatesDesc[0] !== prevLatestRef.current) {
       prevLatestRef.current = allUniqueDatesDesc[0];
       setSelectedDate(allUniqueDatesDesc[0]);
     }
-  }, [allUniqueDatesDesc]);
+  }, [allUniqueDatesDesc, selectedDateGlobal]);
 
-  // Filters
-  const [selectedBuuCuc, setSelectedBuuCuc] = useState<string>(() => selectedBuuCucGlobal || 'all');
+  // Filters - Nhân viên bưu cục tự động khóa chặt bưu cục của mình
+  const [selectedBuuCuc, setSelectedBuuCuc] = useState<string>(() =>
+    isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all')
+  );
 
   // Đồng bộ với bộ lọc điều hướng toàn hệ thống
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
-      setSelectedBuuCuc(selectedBuuCucGlobal);
+    if (isStaff && assignedPo) {
+      setSelectedBuuCuc(assignedPo);
+      return;
     }
-  }, [selectedBuuCucGlobal]);
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
+      setSelectedBuuCuc(selectedBuuCucGlobal || 'all');
+    }
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'alert_only' | 'off_only'>('all');
   const [showKpis, setShowKpis] = useState<boolean>(true);
@@ -194,10 +223,11 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
   // Official list of post offices in the region (aligned with Task "Nhân sự")
   const postOfficesList = useMemo(() => {
+    if (isStaff && assignedPo) return [assignedPo];
     const fromNs = [...new Set(effectiveNhanSu.map(r => normalizePostOfficeName(r.buuCuc)))].filter(Boolean);
     if (fromNs.length > 0) return fromNs.sort();
     return ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
-  }, [effectiveNhanSu]);
+  }, [effectiveNhanSu, isStaff, assignedPo]);
 
   // Active delivery workforce (NVPTTT / Bưu tá giao nhận) in Task "Nhân sự" (Real-time roster)
   const activeDeliveryStaffInNs = useMemo(() => {
@@ -223,6 +253,33 @@ export const BaoCaoGtcBcTab: React.FC = () => {
   // Build structured data for each post office on selectedDate
   const postOfficeReportData = useMemo(() => {
     const targetMs = parseDateMs(selectedDate);
+
+    // Pre-indexed Maps for O(1) instantaneous lookups (eliminates millions of linear find iterations)
+    const hhDateMap = new Map<string, typeof dataset.hoaHongNgay[0]>();
+    dataset.hoaHongNgay.forEach(r => {
+      const id = (r.maNV || '').trim();
+      const d = (r.ngay || '').trim();
+      if (id && d) {
+        hhDateMap.set(`${id}_${d}`, r);
+        const norm = normalizeDate(d).standard;
+        if (norm && norm !== d) {
+          hhDateMap.set(`${id}_${norm}`, r);
+        }
+      }
+    });
+
+    const gtcDateMap = new Map<string, typeof dataset.gtcNhanVien[0]>();
+    dataset.gtcNhanVien.forEach(r => {
+      const id = (r.maNV || '').trim();
+      const d = (r.ngay || '').trim();
+      if (id && d) {
+        gtcDateMap.set(`${id}_${d}`, r);
+        const norm = normalizeDate(d).standard;
+        if (norm && norm !== d) {
+          gtcDateMap.set(`${id}_${norm}`, r);
+        }
+      }
+    });
 
     return postOfficesList.map(po => {
       // 1. All active NVPTTT belonging to this post office in Task "Nhân sự" (Real-time roster)
@@ -331,8 +388,10 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         // Nếu là ngày được chọn và có trong danh sách giao hàng thực tế -> Đang đi làm, KHÔNG OFF
         if (isDateMatch(dateStr, selectedDate) && activeMap.has(cleanId)) return false;
 
-        const hh = dataset.hoaHongNgay.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
-        const gtc = dataset.gtcNhanVien.find(r => isMaNvMatch(r.maNV, cleanId) && isDateMatch(r.ngay, dateStr));
+        const normDate = normalizeDate(dateStr).standard || dateStr;
+        const key = `${cleanId}_${normDate}`;
+        const hh = hhDateMap.get(key) || hhDateMap.get(`${cleanId}_${dateStr}`);
+        const gtc = gtcDateMap.get(key) || gtcDateMap.get(`${cleanId}_${dateStr}`);
 
         const hasDelivery = (gtc?.tongDon || 0) > 0 || 
                             (hh?.soDonGanGiao || 0) > 0 || 
@@ -414,13 +473,19 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           };
         }).sort((a, b) => b.offDaysInMonth - a.offDaysInMonth);
 
-      // 6. Post office summary metrics from gtcBuuCuc or aggregated
+      // 6. Tách bạch tuyệt đối KPI cấp Bưu cục (từ gtcBuuCuc) và KPI cấp Bưu tá (từ gtcNhanVien)
       const bcRecords = dataset.gtcBuuCuc.filter(r => normalizePostOfficeName(r.buuCuc) === po && isDateMatch(r.ngay, selectedDate));
-      const totalVolume = bcRecords.reduce((acc, r) => acc + (r.volume || 0), 0) || 
-        activeStaff.reduce((acc, r) => acc + (r.tongDon || 0), 0);
+      const totalVolume = bcRecords.reduce((acc, r) => acc + (r.volume || 0), 0);
+      const bcSldGan = bcRecords.reduce((acc, r) => acc + (r.sldGan || 0), 0);
+      const bcSldGtc = bcRecords.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
+      const bcTonDong = totalVolume - bcSldGtc;
+      const bcGanRate = totalVolume > 0 ? (bcSldGan / totalVolume) * 100 : 0;
+      const bcGtcRate = totalVolume > 0 ? (bcSldGtc / totalVolume) * 100 : 0;
+
+      // Chỉ số cấp Bưu tá (từ activeStaff thuộc sheet GTC Nhân viên)
       const totalSldGan = activeStaff.reduce((acc, r) => acc + (r.tongDon || 0), 0);
       const totalSldGtc = activeStaff.reduce((acc, r) => acc + (r.tongDonGTC || 0), 0);
-      const totalTonDong = activeStaff.reduce((acc, r) => acc + (r.tonDong || 0), 0);
+      const totalTonDong = totalSldGan - totalSldGtc;
       const gtcRate = totalSldGan > 0 ? (totalSldGtc / totalSldGan) * 100 : 0;
 
       const alertCount = activeStaff.filter(r => r.isHighlighted).length;
@@ -437,6 +502,11 @@ export const BaoCaoGtcBcTab: React.FC = () => {
         activeStaff,
         offStaff,
         totalVolume,
+        bcSldGan,
+        bcSldGtc,
+        bcTonDong,
+        bcGanRate,
+        bcGtcRate,
         totalSldGan,
         totalSldGtc,
         totalTonDong,
@@ -446,9 +516,11 @@ export const BaoCaoGtcBcTab: React.FC = () => {
     });
   }, [postOfficesList, activeDeliveryStaffInNs, nhanSuActiveMap, dataset.gtcNhanVien, dataset.gtcBuuCuc, dataset.hoaHongNgay, selectedDate, currentMonthKey, totalMonthDaysSoFar, monthOperatingDates]);
 
-  // Overall regional metrics for selected date
+  // Overall regional metrics for selected date (Tách rõ nguồn GTC Bưu cục và GTC Nhân viên)
   const regionalSummary = useMemo(() => {
     let totalVolume = 0;
+    let totalBcGan = 0;
+    let totalBcGtc = 0;
     let totalGan = 0;
     let totalGtc = 0;
     let totalActive = 0;
@@ -458,6 +530,8 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
     postOfficeReportData.forEach(po => {
       totalVolume += po.totalVolume;
+      totalBcGan += po.bcSldGan;
+      totalBcGtc += po.bcSldGtc;
       totalGan += po.totalSldGan;
       totalGtc += po.totalSldGtc;
       totalActive += po.activeStaff.length;
@@ -466,10 +540,16 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       totalRoster += po.totalMembers;
     });
 
+    const bcGanRate = totalVolume > 0 ? (totalBcGan / totalVolume) * 100 : 0;
+    const bcGtcRate = totalVolume > 0 ? (totalBcGtc / totalVolume) * 100 : 0;
     const gtcRate = totalGan > 0 ? (totalGtc / totalGan) * 100 : 0;
 
     return {
       totalVolume,
+      totalBcGan,
+      totalBcGtc,
+      bcGanRate,
+      bcGtcRate,
       totalGan,
       totalGtc,
       gtcRate,
@@ -673,8 +753,8 @@ export const BaoCaoGtcBcTab: React.FC = () => {
       `🚚 <b>Nhân viên làm việc:</b> ${po.activeStaff.length} NV | <b>Nghỉ OFF:</b> ${po.offStaff.length} NV\n` +
       pickupLines +
       `${divider}\n` +
-      `📦 <b>Volume:</b> ${po.totalVolume.toLocaleString('vi-VN')} đơn | <b>%GTC:</b> ${po.gtcRate.toFixed(2)}%\n` +
-      `🎯 <b>Đã Gán:</b> ${po.totalSldGan.toLocaleString('vi-VN')} | <b>Đã GTC:</b> ${po.totalSldGtc.toLocaleString('vi-VN')} | <b>Tồn:</b> ${po.totalTonDong.toLocaleString('vi-VN')}\n` +
+      `📦 <b>Volume BC:</b> ${po.totalVolume.toLocaleString('vi-VN')} đơn | <b>%GTC BC:</b> ${po.bcGtcRate.toFixed(2)}%\n` +
+      `🎯 <b>Đơn Bưu tá:</b> ${po.totalSldGan.toLocaleString('vi-VN')} | <b>GTC Bưu tá:</b> ${po.totalSldGtc.toLocaleString('vi-VN')} (${po.gtcRate.toFixed(2)}%) | <b>Tồn ca BT:</b> ${po.totalTonDong.toLocaleString('vi-VN')}\n` +
       `${divider}\n` +
       alertSection;
   };
@@ -907,7 +987,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                 <FileSpreadsheet className="w-4 h-4" />
               </div>
               <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider whitespace-nowrap">
-                GTC BƯU CỤC
+                BÁO CÁO NGÀY
               </span>
               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 hidden xl:inline">
                 {selectedDate === allUniqueDatesDesc[0] ? 'Ngày Gần Nhất' : 'Lịch Sử'}
@@ -923,7 +1003,12 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               <label className="text-slate-500 text-[11px] font-semibold hidden sm:inline">Ngày:</label>
               <select
                 value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedDate(val);
+                  lastPushedDateRef.current = val;
+                  setSelectedDateGlobal(val);
+                }}
                 className="bg-transparent font-bold text-slate-800 dark:text-slate-200 text-xs focus:outline-none cursor-pointer"
               >
                 {allUniqueDatesDesc.map((d, idx) => (
@@ -934,19 +1019,31 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               </select>
             </div>
 
-            {/* BỘ LỌC 2: Chọn Bưu Cục */}
-            <select
-              value={selectedBuuCuc}
-              onChange={e => setSelectedBuuCuc(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer"
-            >
-              <option value="all">Tất cả {postOfficesList.length} bưu cục ({regionalSummary.totalRoster} NVPTTT)</option>
-              {postOfficeReportData.map(po => (
-                <option key={po.buuCuc} value={po.buuCuc}>
-                  {po.buuCuc.replace('(LAN) ', '')} ({po.totalMembers} NVPTTT)
-                </option>
-              ))}
-            </select>
+            {/* BỘ LỌC 2: Chọn Bưu Cục (Chặn không cho đổi bưu cục khác nếu là tài khoản nhân viên) */}
+            {!isStaff ? (
+              <select
+                value={selectedBuuCuc}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedBuuCuc(val);
+                  lastPushedBcRef.current = val;
+                  setSelectedBuuCucGlobal(val);
+                }}
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer"
+              >
+                <option value="all">Tất cả {postOfficesList.length} bưu cục ({regionalSummary.totalRoster} NVPTTT)</option>
+                {postOfficeReportData.map(po => (
+                  <option key={po.buuCuc} value={po.buuCuc}>
+                    {po.buuCuc.replace('(LAN) ', '')} ({po.totalMembers} NVPTTT)
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <span>{assignedPo || selectedBuuCuc}</span>
+              </div>
+            )}
 
             {/* Phân cách nhẹ */}
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-0.5" />
@@ -1018,16 +1115,18 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               )}
             </div>
 
-            {/* NÚT GỬI ẢNH TELEGRAM */}
-            <button
-              type="button"
-              onClick={() => setShowTelegramModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-              title="Gửi báo cáo danh sách nhân viên từng bưu cục dạng hình ảnh qua Bot Telegram"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Gửi Telegram</span>
-            </button>
+            {/* NÚT GỬI ẢNH TELEGRAM (Ẩn đối với tài khoản nhân viên) */}
+            {!isStaff && (
+              <button
+                type="button"
+                onClick={() => setShowTelegramModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                title="Gửi báo cáo danh sách nhân viên từng bưu cục dạng hình ảnh qua Bot Telegram"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Gửi Telegram</span>
+              </button>
+            )}
 
             {/* NÚT XUẤT EXCEL */}
             <button
@@ -1068,43 +1167,45 @@ export const BaoCaoGtcBcTab: React.FC = () => {
           ========================================================================= */}
       {showKpis && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* KPI 1: Tổng Volume */}
+          {/* KPI 1: Tổng Volume Bưu Cục */}
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
             <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
-              <span>Volume Ngày {selectedDate}</span>
+              <span>Volume BC ({selectedDate})</span>
               <Building2 className="w-4 h-4 text-orange-600" />
             </div>
             <div className="text-xl font-black text-slate-900 dark:text-white my-0.5 text-center">
               {regionalSummary.totalVolume.toLocaleString('vi-VN')}
             </div>
-            <div className="text-[10px] text-slate-400 text-center">Đơn toàn khu vực</div>
+            <div className="text-[10px] text-slate-400 text-center">
+              %Gán BC: {regionalSummary.bcGanRate.toFixed(2)}% &bull; %GTC BC: {regionalSummary.bcGtcRate.toFixed(2)}%
+            </div>
           </div>
 
-          {/* KPI 2: Tổng Gán & Tỷ lệ */}
+          {/* KPI 2: Tổng Đơn Giao Bưu Tá (Nguồn GTC Nhân viên) */}
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
             <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
-              <span>SLĐ Đã Gán</span>
+              <span>Tổng Đơn Bưu Tá</span>
               <Users className="w-4 h-4 text-blue-600" />
             </div>
             <div className="text-xl font-black text-blue-600 dark:text-blue-400 my-0.5 text-center">
               {regionalSummary.totalGan.toLocaleString('vi-VN')}
             </div>
             <div className="text-[10px] text-slate-400 text-center">
-              {regionalSummary.totalVolume > 0 ? ((regionalSummary.totalGan / regionalSummary.totalVolume) * 100).toFixed(1) : 0}% Volume
+              Nguồn GTC Nhân viên (Cấp bưu tá)
             </div>
           </div>
 
-          {/* KPI 3: Tổng GTC */}
+          {/* KPI 3: Tổng GTC Bưu Tá (Nguồn GTC Nhân viên) */}
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
             <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
-              <span>Giao Thành Công</span>
+              <span>GTC Bưu Tá</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 my-0.5 text-center">
               {regionalSummary.totalGtc.toLocaleString('vi-VN')}
             </div>
             <div className="text-[10px] text-emerald-600 font-bold text-center">
-              Đạt {regionalSummary.gtcRate.toFixed(2)}% GTC
+              Đạt {regionalSummary.gtcRate.toFixed(2)}% GTC Bưu tá
             </div>
           </div>
 
@@ -1185,7 +1286,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
             </span>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -1343,25 +1444,27 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   <div className="text-right text-xs">
                     <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      Volume: <strong>{po.totalVolume.toLocaleString('vi-VN')} đơn</strong> &bull; %GTC: <strong>{po.gtcRate.toFixed(2)}%</strong>
+                      Volume BC: <strong>{po.totalVolume.toLocaleString('vi-VN')} đơn</strong> &bull; %GTC BC: <strong>{po.bcGtcRate.toFixed(2)}%</strong>
                     </span>
                     <div className="text-[10px] text-slate-400 mt-0.5">
-                      Đã Gán: {po.totalSldGan.toLocaleString('vi-VN')} &bull; Đã GTC: {po.totalSldGtc.toLocaleString('vi-VN')} &bull; Tồn: {po.totalTonDong.toLocaleString('vi-VN')}
+                      Đơn Bưu tá: {po.totalSldGan.toLocaleString('vi-VN')} &bull; GTC Bưu tá: {po.totalSldGtc.toLocaleString('vi-VN')} ({po.gtcRate.toFixed(2)}%) &bull; Tồn ca BT: {po.totalTonDong.toLocaleString('vi-VN')}
                     </div>
                   </div>
 
                   {/* Nút tác vụ nhanh riêng bưu cục này (tự động ẩn khi xuất ảnh) */}
                   <div className="flex items-center gap-1.5 shrink-0" data-no-capture="true">
-                    <button
-                      type="button"
-                      onClick={() => handleSendSinglePoToTelegram(po)}
-                      disabled={sendingSinglePo === po.buuCuc}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                      title={`Gửi riêng tấm ảnh bưu cục ${po.buuCuc} qua Telegram Bot`}
-                    >
-                      <Send className="w-3 h-3" />
-                      <span>{sendingSinglePo === po.buuCuc ? 'Đang gửi...' : 'Gửi Bot'}</span>
-                    </button>
+                    {!isStaff && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendSinglePoToTelegram(po)}
+                        disabled={sendingSinglePo === po.buuCuc}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        title={`Gửi riêng tấm ảnh bưu cục ${po.buuCuc} qua Telegram Bot`}
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>{sendingSinglePo === po.buuCuc ? 'Đang gửi...' : 'Gửi Bot'}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDownloadSinglePoImage(po)}
@@ -1377,7 +1480,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
               {/* BẢNG CHI TIẾT NHÂN VIÊN HOẠT ĐỘNG (ĐI GIAO TRONG NGÀY) */}
               {statusFilter !== 'off_only' && (
-                <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+                <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="bg-slate-100/95 dark:bg-slate-800 backdrop-blur-xs text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                       <tr>
@@ -1497,7 +1600,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
 
                     {/* Hàng Tổng Cộng Bưu Cục */}
                     {finalActiveStaff.length > 0 && (
-                      <tfoot className="bg-slate-50/95 dark:bg-slate-750/95 backdrop-blur-xs font-bold border-t border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white sticky bottom-0 z-10 shadow-2xs">
+                      <tfoot className="bg-slate-50/95 dark:bg-slate-750/95 backdrop-blur-xs font-bold border-t border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white shadow-2xs">
                         <tr>
                           <td colSpan={3} className="py-3 px-4 text-left font-black uppercase text-xs text-orange-600 whitespace-nowrap align-middle">
                             Tổng {finalActiveStaff.length} Nhân Viên Làm Việc:
@@ -1560,7 +1663,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 shadow-2xs">
+                  <div className="overflow-x-auto rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 shadow-2xs">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-blue-50/95 dark:bg-blue-950/80 backdrop-blur-xs text-blue-900 dark:text-blue-200 font-bold border-b border-blue-100 dark:border-blue-800 sticky top-0 z-10 shadow-2xs">
                         <tr>
@@ -1612,7 +1715,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                                 📦 Chuyên Lấy Hàng
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap align-middle">
+                            <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-400 font-medium align-middle">
                               Chỉ phụ trách lấy hàng, không phát sinh đơn giao
                             </td>
                           </tr>
@@ -1653,7 +1756,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                     </span>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                         <tr>
@@ -1960,7 +2063,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                           <div>
                             <span className="font-bold text-slate-800 dark:text-slate-200">{po.buuCuc}</span>
                             <span className="text-[10px] text-slate-400 ml-1.5">
-                              ({po.totalMembers} NV &bull; {po.totalVolume.toLocaleString('vi-VN')} đơn &bull; {po.gtcRate.toFixed(1)}% GTC)
+                              ({po.totalMembers} NV &bull; Vol BC: {po.totalVolume.toLocaleString('vi-VN')} đơn [{po.bcGtcRate.toFixed(1)}% GTC BC] &bull; GTC BT: {po.gtcRate.toFixed(1)}%)
                             </span>
                           </div>
                         </div>
@@ -2098,4 +2201,4 @@ export const BaoCaoGtcBcTab: React.FC = () => {
   );
 };
 
-export default BaoCaoGtcBcTab;
+export default React.memo(BaoCaoGtcBcTab);

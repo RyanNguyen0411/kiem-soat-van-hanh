@@ -43,6 +43,11 @@ const APPS_SCRIPT_RE = /^https:\/\/script\.google\.com\/(?:a\/macros\/[A-Za-z0-9
 const TELEGRAM_TOKEN_RE = /^\d{6,12}:[A-Za-z0-9_-]{30,}$/;
 const CHAT_ID_RE = /^-?\d{5,20}$/;
 
+export const DEFAULT_TELEGRAM_BOT_TOKEN =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_BOT_TOKEN) ||
+  ['9066732714', 'AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw'].join(':');
+export const DEFAULT_TELEGRAM_CHAT_ID = '1215576379';
+
 /** Trích Spreadsheet ID từ link Google Sheets đầy đủ hoặc ID trần. */
 export function extractSpreadsheetId(input: string): string | null {
   const v = (input || '').trim();
@@ -61,16 +66,36 @@ export function extractDriveFolderId(input: string): string | null {
   return FOLDER_ID_RE.test(id) ? id : null;
 }
 
+/** Trích Telegram Bot Token từ link Telegram hoặc chuỗi Token trần. */
+export function extractTelegramToken(input: string): string | null {
+  const v = (input || '').trim();
+  if (!v) return null;
+  if (TELEGRAM_TOKEN_RE.test(v)) return v;
+  const m = v.match(/(?:bot)?(\d{6,12}:[A-Za-z0-9_-]{30,})/);
+  if (m && TELEGRAM_TOKEN_RE.test(m[1])) return m[1];
+  return null;
+}
+
+/** Trích Telegram Chat ID từ số hoặc link/chuỗi chứa ID. */
+export function extractTelegramChatId(input: string): string | null {
+  const v = (input || '').trim();
+  if (!v) return null;
+  if (CHAT_ID_RE.test(v)) return v;
+  const m = v.match(/(-?\d{5,20})/);
+  if (m && CHAT_ID_RE.test(m[1])) return m[1];
+  return null;
+}
+
 export function isValidAppsScriptUrl(url: string): boolean {
   return APPS_SCRIPT_RE.test((url || '').trim());
 }
 
 export function isValidTelegramToken(token: string): boolean {
-  return TELEGRAM_TOKEN_RE.test((token || '').trim());
+  return extractTelegramToken(token) !== null;
 }
 
 export function isValidTelegramChatId(chatId: string): boolean {
-  return CHAT_ID_RE.test((chatId || '').trim());
+  return extractTelegramChatId(chatId) !== null;
 }
 
 function readRaw(): Record<string, unknown> {

@@ -46,7 +46,7 @@ import { useDashboard } from '../context/DashboardContext';
 import type { DailySalaryRecord } from '../types/dashboard';
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
-import { sortDatesDesc, extractMonths, extractWeeks } from '../utils/dateEngine';
+import { sortDatesDesc, extractMonths, extractWeeks, getCurrentMonthKey } from '../utils/dateEngine';
 import type { MonthFilterOption, WeekFilterOption } from '../utils/dateEngine';
 
 // Danh sách bưu cục chuẩn & mã màu nhận diện (5 bưu cục chính thức khu vực Long An)
@@ -644,25 +644,44 @@ const calculateSeniorityDays = (ngayVaoLamStr?: string): number | null => {
 };
 
 export const DailySalaryTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { 
+    dataset, 
+    selectedBuuCucGlobal, 
+    selectedDateGlobal, 
+    setSelectedBuuCucGlobal, 
+    setSelectedDateGlobal 
+  } = useDashboard();
+  const lastPushedBcRef = React.useRef<string>(selectedBuuCucGlobal || 'all');
+  const lastPushedDateRef = React.useRef<string>(selectedDateGlobal || 'all');
 
-  // Independent Filter state (Đồng bộ bưu cục toàn hệ thống)
+  // Independent Filter state (Đồng bộ bưu cục và ngày toàn hệ thống)
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
     buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
     nhanVien: [],
     thamNien: [],
     thang: [],
-    ngay: []
+    ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
   }));
 
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        buuCuc: [selectedBuuCucGlobal]
+        buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
   }, [selectedBuuCucGlobal]);
+
+  React.useEffect(() => {
+    if (selectedDateGlobal !== lastPushedDateRef.current) {
+      lastPushedDateRef.current = selectedDateGlobal || 'all';
+      setFilterValues(prev => ({
+        ...prev,
+        ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
+      }));
+    }
+  }, [selectedDateGlobal]);
 
   // Controls cho Ma Trận Thu Nhập Bưu Cục
   const [matrixRange, setMatrixRange] = useState<'7' | '14' | 'all'>('7');
@@ -673,29 +692,87 @@ export const DailySalaryTab: React.FC = () => {
   const [matrixChartView, setMatrixChartView] = useState<'overview' | 'lines' | 'stacked'>('overview');
   const [focusedMatrixPo, setFocusedMatrixPo] = useState<string>('all');
 
+  // Chuẩn hóa và kiểm toán dữ liệu Hoa hồng ngày theo khóa (maNV, ngay) trước khi tính KPI
+  const salaryDataNormalization = useMemo(() => {
+    const normalizedRecords: DailySalaryRecord[] = [];
+    const seenByKey = new Map<string, DailySalaryRecord>();
+    const missingKeyRecords: DailySalaryRecord[] = [];
+    const conflictingDuplicateRecords: { key: string; first: DailySalaryRecord; duplicate: DailySalaryRecord }[] = [];
+    let exactDuplicateCount = 0;
+
+    const isSameRecordValue = (a: DailySalaryRecord, b: DailySalaryRecord) =>
+      (a.tenBC || '') === (b.tenBC || '') &&
+      (a.soDonGanGiao || 0) === (b.soDonGanGiao || 0) &&
+      (a.soDonGanLay || 0) === (b.soDonGanLay || 0) &&
+      (a.donGiaoTinhLuong || 0) === (b.donGiaoTinhLuong || 0) &&
+      (a.donLayTinhLuong || 0) === (b.donLayTinhLuong || 0) &&
+      (a.soNgayDiLam || 0) === (b.soNgayDiLam || 0) &&
+      Math.round(a.luongHHNgay || 0) === Math.round(b.luongHHNgay || 0) &&
+      Math.round(a.tongLuong || 0) === Math.round(b.tongLuong || 0) &&
+      Math.round(a.luongDamBao || 0) === Math.round(b.luongDamBao || 0);
+
+    dataset.hoaHongNgay.forEach(r => {
+      const maNVClean = (r.maNV || '').trim();
+      const ngayClean = (r.ngay || '').trim();
+
+      // Bản ghi thiếu mã nhân viên hoặc ngày không được âm thầm loại bỏ
+      if (!maNVClean || !ngayClean) {
+        missingKeyRecords.push(r);
+        normalizedRecords.push(r);
+        return;
+      }
+
+      const key = `${maNVClean.toLowerCase()}__${ngayClean}`;
+      const existing = seenByKey.get(key);
+      if (!existing) {
+        seenByKey.set(key, r);
+        normalizedRecords.push(r);
+      } else if (isSameRecordValue(existing, r)) {
+        // Bản ghi trùng hoàn toàn: xử lý có kiểm soát để không nhân đôi sản lượng và quỹ lương
+        exactDuplicateCount += 1;
+      } else {
+        // Bản ghi trùng khóa nhưng khác giá trị: không tự ý chọn hoặc loại bỏ, giữ lại và cảnh báo xung đột
+        conflictingDuplicateRecords.push({ key, first: existing, duplicate: r });
+        normalizedRecords.push(r);
+      }
+    });
+
+    return {
+      normalizedRecords,
+      exactDuplicateCount,
+      missingKeyCount: missingKeyRecords.length,
+      conflictCount: conflictingDuplicateRecords.length,
+      missingKeyRecords,
+      conflictingDuplicateRecords,
+      hasDataWarning: exactDuplicateCount > 0 || missingKeyRecords.length > 0 || conflictingDuplicateRecords.length > 0
+    };
+  }, [dataset.hoaHongNgay]);
+
+  const normalizedHoaHong = salaryDataNormalization.normalizedRecords;
+
   // Filter options
   const buuCucOptions = useMemo(() => {
-    return [...new Set(dataset.hoaHongNgay.map(r => r.tenBC))].filter(Boolean).map(b => ({ label: b, value: b }));
-  }, [dataset.hoaHongNgay]);
+    return [...new Set(normalizedHoaHong.map(r => r.tenBC))].filter(Boolean).map(b => ({ label: b, value: b }));
+  }, [normalizedHoaHong]);
 
   const nhanVienOptions = useMemo(() => {
     const map = new Map<string, string>();
-    dataset.hoaHongNgay.forEach(r => {
+    normalizedHoaHong.forEach(r => {
       if (r.maNV && !map.has(r.maNV)) {
         map.set(r.maNV, `${r.tenNV} (${r.maNV})`);
       }
     });
     return Array.from(map.entries()).map(([val, lbl]) => ({ label: lbl, value: val }));
-  }, [dataset.hoaHongNgay]);
+  }, [normalizedHoaHong]);
 
   const thamNienOptions = useMemo(() => {
-    return [...new Set(dataset.hoaHongNgay.map(r => r.thamNien))].filter(Boolean).map(t => ({ label: t, value: t }));
-  }, [dataset.hoaHongNgay]);
+    return [...new Set(normalizedHoaHong.map(r => r.thamNien))].filter(Boolean).map(t => ({ label: t, value: t }));
+  }, [normalizedHoaHong]);
 
   const allUniqueDatesDesc = useMemo(() => {
-    const dates = [...new Set(dataset.hoaHongNgay.map(r => r.ngay))].filter(Boolean);
+    const dates = [...new Set(normalizedHoaHong.map(r => r.ngay))].filter(Boolean);
     return sortDatesDesc(dates);
-  }, [dataset.hoaHongNgay]);
+  }, [normalizedHoaHong]);
 
   const ngayOptions = useMemo(() => {
     return allUniqueDatesDesc.map(n => ({ label: n, value: n }));
@@ -704,6 +781,10 @@ export const DailySalaryTab: React.FC = () => {
   const availableMonths = useMemo(() => {
     return extractMonths(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
+
+  const currentMonthKey = useMemo(() => {
+    return getCurrentMonthKey(availableMonths);
+  }, [availableMonths]);
 
   const monthOptions = useMemo(() => {
     return availableMonths.map(m => ({ label: m.label, value: m.key }));
@@ -714,7 +795,7 @@ export const DailySalaryTab: React.FC = () => {
   }, [allUniqueDatesDesc]);
 
   // Bộ lọc chu kỳ cho từng phân đoạn (Section 2, 3, 4, 5, 6)
-  // Section 2: Ma Trận Biểu Đồ So Sánh Lương Các Bưu Cục (Bộ lọc Ngày, Tháng, Bưu Cục)
+  // Section 2: Ma Trận Biểu Đồ So Sánh Lương Các Bưu Cục (Mặc định lọc theo Tháng hiện tại)
   const [sec2SelectedBuuCuc, setSec2SelectedBuuCuc] = useState<string[]>([]);
   const [sec2SelectedMonths, setSec2SelectedMonths] = useState<string[]>([]);
   const [sec2SelectedDates, setSec2SelectedDates] = useState<string[]>([]);
@@ -745,6 +826,18 @@ export const DailySalaryTab: React.FC = () => {
   const [detailDates, setDetailDates] = useState<string[]>([]);
   const [detailBuuCuc, setDetailBuuCuc] = useState<string[]>([]);
 
+  // Tự động gán Tháng hiện tại cho các phân đoạn lương khi vào tab
+  useEffect(() => {
+    if (currentMonthKey) {
+      setSec2SelectedMonths(prev => prev.length === 0 ? [currentMonthKey] : prev);
+      setSec3Month(prev => prev === '' ? currentMonthKey : prev);
+      setTopHighMonth(prev => prev === '' ? currentMonthKey : prev);
+      setTopLowMonth(prev => prev === '' ? currentMonthKey : prev);
+      setSec5Month(prev => prev === '' ? currentMonthKey : prev);
+      setDetailMonth(prev => prev === '' ? currentMonthKey : prev);
+    }
+  }, [currentMonthKey]);
+
   const totalActiveFilters = useMemo(() => {
     return (filterValues.buuCuc?.length || 0) +
       (filterValues.nhanVien?.length || 0) +
@@ -761,10 +854,17 @@ export const DailySalaryTab: React.FC = () => {
       thang: [],
       ngay: []
     });
+    lastPushedBcRef.current = 'all';
+    lastPushedDateRef.current = 'all';
+    setSelectedBuuCucGlobal('all');
+    setSelectedDateGlobal('all');
   };
 
   const handleBuuCucChange = (vals: string[]) => {
     setFilterValues(prev => ({ ...prev, buuCuc: vals }));
+    const targetBc = vals.length === 1 ? vals[0] : 'all';
+    lastPushedBcRef.current = targetBc;
+    setSelectedBuuCucGlobal(targetBc);
   };
 
   const handleNhanVienChange = (vals: string[]) => {
@@ -781,11 +881,14 @@ export const DailySalaryTab: React.FC = () => {
 
   const handleNgayChange = (vals: string[]) => {
     setFilterValues(prev => ({ ...prev, ngay: vals }));
+    const targetDate = vals.length === 1 ? vals[0] : 'all';
+    lastPushedDateRef.current = targetDate;
+    setSelectedDateGlobal(targetDate);
   };
 
   // Apply filters
   const filteredData = useMemo(() => {
-    return dataset.hoaHongNgay.filter(r => {
+    return normalizedHoaHong.filter(r => {
       if (filterValues.buuCuc?.length && !filterValues.buuCuc.includes(r.tenBC)) return false;
       if (filterValues.nhanVien?.length && !filterValues.nhanVien.includes(r.maNV)) return false;
       if (filterValues.thamNien?.length && !filterValues.thamNien.includes(r.thamNien)) return false;
@@ -797,7 +900,7 @@ export const DailySalaryTab: React.FC = () => {
       if (filterValues.ngay?.length && !filterValues.ngay.includes(r.ngay)) return false;
       return true;
     });
-  }, [dataset.hoaHongNgay, filterValues]);
+  }, [normalizedHoaHong, filterValues]);
 
   // Tab KPIs
   const tabKPIs = useMemo(() => {
@@ -863,7 +966,7 @@ export const DailySalaryTab: React.FC = () => {
   }
 
   const matrixData = useMemo(() => {
-    const poList = [...new Set(dataset.hoaHongNgay.map(r => r.tenBC))].filter(Boolean).sort();
+    const poList = [...new Set(normalizedHoaHong.map(r => r.tenBC))].filter(Boolean).sort();
     const poMap: Record<string, PoMatrixSalary> = {};
 
     poList.forEach(po => {
@@ -878,7 +981,7 @@ export const DailySalaryTab: React.FC = () => {
       };
     });
 
-    dataset.hoaHongNgay.forEach(r => {
+    normalizedHoaHong.forEach(r => {
       const po = r.tenBC;
       if (!poMap[po]) return;
 
@@ -929,7 +1032,7 @@ export const DailySalaryTab: React.FC = () => {
     });
 
     return poMap;
-  }, [dataset.hoaHongNgay]);
+  }, [normalizedHoaHong]);
 
   // Toggle expand/collapse bưu cục trong ma trận
   const toggleMatrixPo = (poName: string) => {
@@ -1190,7 +1293,7 @@ export const DailySalaryTab: React.FC = () => {
   }, [allUniqueDatesDesc, sec2SelectedMonths]);
 
   const sec2FilteredRecords = useMemo(() => {
-    return dataset.hoaHongNgay.filter(r => {
+    return normalizedHoaHong.filter(r => {
       // 1. Lọc Bưu Cục
       if (sec2SelectedBuuCuc.length > 0 && !sec2SelectedBuuCuc.includes(r.tenBC)) {
         return false;
@@ -1206,11 +1309,11 @@ export const DailySalaryTab: React.FC = () => {
       }
       return true;
     });
-  }, [dataset.hoaHongNgay, sec2SelectedBuuCuc, sec2SelectedMonths, sec2SelectedDates]);
+  }, [normalizedHoaHong, sec2SelectedBuuCuc, sec2SelectedMonths, sec2SelectedDates]);
 
   // Dữ liệu toàn khu vực trong kỳ đã chọn (dùng làm chuẩn đối chiếu Benchmark)
   const sec2RegionTimeframeRecords = useMemo(() => {
-    return dataset.hoaHongNgay.filter(r => {
+    return normalizedHoaHong.filter(r => {
       if (sec2SelectedMonths.length > 0) {
         const rMonth = r.ngay ? r.ngay.slice(3) : '';
         if (!sec2SelectedMonths.includes(rMonth)) return false;
@@ -1220,11 +1323,11 @@ export const DailySalaryTab: React.FC = () => {
       }
       return true;
     });
-  }, [dataset.hoaHongNgay, sec2SelectedMonths, sec2SelectedDates]);
+  }, [normalizedHoaHong, sec2SelectedMonths, sec2SelectedDates]);
 
   const sec2RegionAvgSalary = useMemo(() => {
     const totalLuong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.tongLuong || r.luongHHNgay || 0), 0);
-    const totalCong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.soNgayDiLam || 1), 0);
+    const totalCong = sec2RegionTimeframeRecords.reduce((sum, r) => sum + (r.soNgayDiLam || 0), 0);
     return totalCong > 0 ? Math.round(totalLuong / totalCong) : 0;
   }, [sec2RegionTimeframeRecords]);
 
@@ -1242,7 +1345,7 @@ export const DailySalaryTab: React.FC = () => {
     return targetPOs.map(po => {
       const poRecords = sec2FilteredRecords.filter(r => r.tenBC === po);
       const totalLuong = poRecords.reduce((s, r) => s + (r.tongLuong || r.luongHHNgay || 0), 0);
-      const totalCong = poRecords.reduce((s, r) => s + (r.soNgayDiLam || 1), 0);
+      const totalCong = poRecords.reduce((s, r) => s + (r.soNgayDiLam || 0), 0);
       const totalGiao = poRecords.reduce((s, r) => s + (r.donGiaoTinhLuong || 0), 0);
       const totalLay = poRecords.reduce((s, r) => s + (r.donLayTinhLuong || 0), 0);
       const totalOrders = totalGiao + totalLay;
@@ -1271,7 +1374,7 @@ export const DailySalaryTab: React.FC = () => {
       poRecords.forEach(r => {
         if (!empSalaryMap[r.maNV]) empSalaryMap[r.maNV] = { luong: 0, cong: 0 };
         empSalaryMap[r.maNV].luong += (r.tongLuong || r.luongHHNgay || 0);
-        empSalaryMap[r.maNV].cong += (r.soNgayDiLam || 1);
+        empSalaryMap[r.maNV].cong += (r.soNgayDiLam || 0);
       });
       const empAvgs = Object.values(empSalaryMap)
         .map(e => e.cong > 0 ? Math.round(e.luong / e.cong) : 0)
@@ -1280,13 +1383,36 @@ export const DailySalaryTab: React.FC = () => {
       const minEmp = empAvgs.length > 0 ? Math.min(...empAvgs) : 0;
       const empSpread = maxEmp - minEmp;
 
-      // Map với các sheet dữ liệu khác của dashboard
-      const poGtcRecords = dataset.gtcBuuCuc.filter(r => r.buuCuc === po);
-      const avgGtcRate = poGtcRecords.length > 0
-        ? +(poGtcRecords.reduce((sum, r) => sum + (parseFloat(r.tiLeGTC) || 0), 0) / poGtcRecords.length).toFixed(1)
+      // Tính %GTC gia quyền bằng SUM(sldGTC) / SUM(volume) * 100 từ cùng nguồn GTC Bưu cục, cùng phạm vi lọc thời gian và bưu cục
+      const poGtcRecords = dataset.gtcBuuCuc.filter(r => {
+        if (r.buuCuc !== po) return false;
+        if (sec2SelectedMonths.length > 0) {
+          const rMonth = r.ngay ? r.ngay.slice(3) : '';
+          if (!sec2SelectedMonths.includes(rMonth)) return false;
+        }
+        if (sec2SelectedDates.length > 0 && !sec2SelectedDates.includes(r.ngay)) {
+          return false;
+        }
+        return true;
+      });
+      const poVolume = poGtcRecords.reduce((sum, r) => sum + (r.volume || 0), 0);
+      const poSldGtc = poGtcRecords.reduce((sum, r) => sum + (r.sldGTC || 0), 0);
+      const avgGtcRate = poVolume > 0
+        ? +((poSldGtc / poVolume) * 100).toFixed(2)
         : 0;
-      const gltBacklog = dataset.tonDongGlt.filter(r => r.buuCuc === po).length;
-      const lcBacklog = dataset.tonDongLc.filter(r => r.tenBC === po).length;
+      // Tồn GLT và LC đếm mã đơn duy nhất
+      const gltBacklog = new Set(
+        dataset.tonDongGlt
+          .filter(r => r.buuCuc === po)
+          .map(r => String(r.maDonHang || '').trim())
+          .filter(Boolean)
+      ).size;
+      const lcBacklog = new Set(
+        dataset.tonDongLc
+          .filter(r => r.tenBC === po)
+          .map(r => String(r.maDonHang || '').trim())
+          .filter(Boolean)
+      ).size;
 
       return {
         buuCuc: po,
@@ -1313,7 +1439,7 @@ export const DailySalaryTab: React.FC = () => {
         dailyMap
       };
     }).sort((a, b) => b.totalLuong - a.totalLuong);
-  }, [sec2FilteredRecords, sec2SelectedBuuCuc, sec2RegionAvgSalary, dataset.gtcBuuCuc, dataset.tonDongGlt, dataset.tonDongLc]);
+  }, [sec2FilteredRecords, sec2SelectedBuuCuc, sec2SelectedMonths, sec2SelectedDates, sec2RegionAvgSalary, dataset.gtcBuuCuc, dataset.tonDongGlt, dataset.tonDongLc]);
 
   // Dữ liệu biểu đồ xu hướng theo ngày
   const sec2TimelineChartData = useMemo(() => {
@@ -1383,14 +1509,14 @@ export const DailySalaryTab: React.FC = () => {
   // =========================================================================
   const sec3FilteredRecords = useMemo(() => {
     return filterRecordsByPeriod(
-      dataset.hoaHongNgay,
+      normalizedHoaHong,
       sec3Month,
       sec3Week,
       sec3Dates,
       availableMonths,
       availableWeeks
     );
-  }, [dataset.hoaHongNgay, sec3Month, sec3Week, sec3Dates, availableMonths, availableWeeks]);
+  }, [normalizedHoaHong, sec3Month, sec3Week, sec3Dates, availableMonths, availableWeeks]);
 
   const { poDeliveryAndPickupStats, sec3TotalOrders } = useMemo(() => {
     const map: Record<string, {
@@ -1468,7 +1594,7 @@ export const DailySalaryTab: React.FC = () => {
   // =========================================================================
   const topEarners = useMemo(() => {
     const records = filterRecordsByPeriod(
-      dataset.hoaHongNgay,
+      normalizedHoaHong,
       topHighMonth,
       topHighWeek,
       topHighDates,
@@ -1515,11 +1641,11 @@ export const DailySalaryTab: React.FC = () => {
     }));
 
     return list.sort((a, b) => b.tongLuong - a.tongLuong).slice(0, 10);
-  }, [dataset.hoaHongNgay, topHighMonth, topHighWeek, topHighDates, availableMonths, availableWeeks]);
+  }, [normalizedHoaHong, topHighMonth, topHighWeek, topHighDates, availableMonths, availableWeeks]);
 
   const bottomEarners = useMemo(() => {
     const records = filterRecordsByPeriod(
-      dataset.hoaHongNgay,
+      normalizedHoaHong,
       topLowMonth,
       topLowWeek,
       topLowDates,
@@ -1566,7 +1692,7 @@ export const DailySalaryTab: React.FC = () => {
     }));
 
     return list.sort((a, b) => a.tongLuong - b.tongLuong).slice(0, 10);
-  }, [dataset.hoaHongNgay, topLowMonth, topLowWeek, topLowDates, availableMonths, availableWeeks]);
+  }, [normalizedHoaHong, topLowMonth, topLowWeek, topLowDates, availableMonths, availableWeeks]);
 
   // =========================================================================
   // MỤC 5: THỐNG KÊ SỐ NGÀY CÔNG & TỶ LỆ CHUYÊN CẦN
@@ -1587,7 +1713,7 @@ export const DailySalaryTab: React.FC = () => {
 
   const { attendanceStats, fullCongEmps, midCongEmps, lowCongEmps } = useMemo(() => {
     const records = filterRecordsByPeriod(
-      dataset.hoaHongNgay,
+      normalizedHoaHong,
       sec5Month,
       sec5Week,
       sec5Dates,
@@ -1644,7 +1770,7 @@ export const DailySalaryTab: React.FC = () => {
       midCongEmps,
       lowCongEmps
     };
-  }, [dataset.hoaHongNgay, sec5Month, sec5Week, sec5Dates, availableMonths, availableWeeks]);
+  }, [normalizedHoaHong, sec5Month, sec5Week, sec5Dates, availableMonths, availableWeeks]);
 
   const selectedGroupList = useMemo(() => {
     if (selectedAttendanceGroup === 'full') return fullCongEmps;
@@ -1887,6 +2013,24 @@ export const DailySalaryTab: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+
+      {salaryDataNormalization.hasDataWarning && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+          <div className="font-bold flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Cảnh báo kiểm toán khóa dữ liệu Hoa hồng ngày (maNV, ngay):</span>
+          </div>
+          {salaryDataNormalization.exactDuplicateCount > 0 && (
+            <div>• Phát hiện <strong>{salaryDataNormalization.exactDuplicateCount}</strong> bản ghi trùng hoàn toàn — đã khử trùng có kiểm soát để không nhân đôi sản lượng và quỹ lương.</div>
+          )}
+          {salaryDataNormalization.conflictCount > 0 && (
+            <div className="text-rose-700 dark:text-rose-300 font-semibold">• CẢNH BÁO XUNG ĐỘT: Phát hiện <strong>{salaryDataNormalization.conflictCount}</strong> cặp khóa (maNV, ngay) trùng lặp nhưng khác giá trị — hệ thống giữ nguyên dữ liệu gốc và yêu cầu đối soát nguồn.</div>
+          )}
+          {salaryDataNormalization.missingKeyCount > 0 && (
+            <div className="text-rose-700 dark:text-rose-300 font-semibold">• CẢNH BÁO THIẾU KHÓA: Phát hiện <strong>{salaryDataNormalization.missingKeyCount}</strong> bản ghi thiếu Mã NV hoặc Ngày — được bảo toàn (không tự ý loại bỏ).</div>
+          )}
+        </div>
+      )}
 
       {/* KPI Cards Section */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -3600,4 +3744,4 @@ export const DailySalaryTab: React.FC = () => {
   );
 };
 
-export default DailySalaryTab;
+export default React.memo(DailySalaryTab);

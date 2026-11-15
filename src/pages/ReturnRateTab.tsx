@@ -12,28 +12,67 @@ import {
 import { useDashboard } from '../context/DashboardContext';
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
+import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import { IndependentFilter } from '../components/common/IndependentFilter';
 import type { FilterFieldConfig } from '../components/common/IndependentFilter';
-import { sortDatesDesc } from '../utils/dateEngine';
+import { sortDatesDesc, extractMonths, getCurrentMonthKey } from '../utils/dateEngine';
 
 export const ReturnRateTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { 
+    dataset, 
+    selectedBuuCucGlobal, 
+    selectedDateGlobal, 
+    setSelectedBuuCucGlobal, 
+    setSelectedDateGlobal 
+  } = useDashboard();
+  const lastPushedBcRef = React.useRef<string>(selectedBuuCucGlobal || 'all');
+  const lastPushedDateRef = React.useRef<string>(selectedDateGlobal || 'all');
 
-  // Independent Filter state (Đồng bộ bưu cục toàn hệ thống)
+  const availableMonths = useMemo(() => {
+    const dates = [...new Set(dataset.gtcBuuCuc.map(r => r.ngay))].filter(Boolean);
+    return extractMonths(dates);
+  }, [dataset.gtcBuuCuc]);
+
+  const currentMonthKey = useMemo(() => {
+    return getCurrentMonthKey(availableMonths);
+  }, [availableMonths]);
+
+  // Independent Filter state (Đồng bộ bưu cục & ngày toàn hệ thống, mặc định ngày tháng hiện tại)
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
     buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
-    ngay: [],
+    ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : [],
     loaiHang: []
   }));
 
+  // Tự động gán ngày của Tháng hiện tại nếu chưa chọn ngày cụ thể
   React.useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (currentMonthKey && (!filterValues.ngay || filterValues.ngay.length === 0) && (!selectedDateGlobal || selectedDateGlobal === 'all')) {
+      const targetMonth = availableMonths.find(m => m.key === currentMonthKey);
+      if (targetMonth) {
+        setFilterValues(prev => ({ ...prev, ngay: targetMonth.dates }));
+      }
+    }
+  }, [currentMonthKey, availableMonths, selectedDateGlobal]);
+
+  React.useEffect(() => {
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        buuCuc: [selectedBuuCucGlobal]
+        buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
   }, [selectedBuuCucGlobal]);
+
+  React.useEffect(() => {
+    if (selectedDateGlobal !== lastPushedDateRef.current) {
+      lastPushedDateRef.current = selectedDateGlobal || 'all';
+      setFilterValues(prev => ({
+        ...prev,
+        ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
+      }));
+    }
+  }, [selectedDateGlobal]);
 
   const buuCucOptions = useMemo(() => {
     return [...new Set(dataset.gtcBuuCuc.map(r => r.buuCuc))].filter(Boolean).map(b => ({ label: b, value: b }));
@@ -146,9 +185,12 @@ export const ReturnRateTab: React.FC = () => {
     },
     {
       key: 'tonDong',
-      header: 'Tồn Đọng Ca',
+      header: 'Tồn Giao Trong Ca',
       align: 'right',
-      render: r => <span className="text-rose-600 font-medium">{r.tonDong}</span>
+      render: r => {
+        const inShiftBacklog = (r.volume || 0) - (r.sldGTC || 0);
+        return <span className="text-rose-600 font-medium">{inShiftBacklog.toLocaleString('vi-VN')}</span>;
+      }
     }
   ];
 
@@ -192,8 +234,26 @@ export const ReturnRateTab: React.FC = () => {
           title="Lọc Tỷ Lệ Trả"
           fields={filterFields}
           selectedValues={filterValues}
-          onApply={val => setFilterValues(val)}
-          onReset={() => setFilterValues({ buuCuc: [], ngay: [], loaiHang: [] })}
+          onApply={val => {
+            setFilterValues(val);
+            const bcs = val.buuCuc || [];
+            const targetBc = bcs.length === 1 ? bcs[0] : 'all';
+            lastPushedBcRef.current = targetBc;
+            setSelectedBuuCucGlobal(targetBc);
+
+            const dates = val.ngay || [];
+            const targetDate = dates.length === 1 ? dates[0] : 'all';
+            lastPushedDateRef.current = targetDate;
+            setSelectedDateGlobal(targetDate);
+          }}
+          onReset={() => {
+            const targetMonth = availableMonths.find(m => m.key === currentMonthKey);
+            setFilterValues({ buuCuc: [], ngay: targetMonth ? targetMonth.dates : [], loaiHang: [] });
+            lastPushedBcRef.current = 'all';
+            lastPushedDateRef.current = 'all';
+            setSelectedBuuCucGlobal('all');
+            setSelectedDateGlobal('all');
+          }}
         />
       </div>
 
@@ -220,7 +280,10 @@ export const ReturnRateTab: React.FC = () => {
           <div className="text-3xl font-black mt-1">
             {returnMetrics.returnRateTotal.toFixed(2)}%
           </div>
-          <div className="text-[11px] text-amber-100 mt-0.5">Toàn khu vực tháng 10/2026</div>
+          <div className="text-[11px] text-amber-100 mt-0.5">
+            {filterValues.buuCuc?.length ? filterValues.buuCuc.join(', ') : 'Toàn khu vực'}
+            {filterValues.ngay?.length ? ` • ${filterValues.ngay.length} ngày` : ` • ${ngayOptions.length} ngày vận hành`}
+          </div>
         </div>
       </div>
 
@@ -229,21 +292,33 @@ export const ReturnRateTab: React.FC = () => {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              So Sánh Tỷ Lệ Chuyển Trả Giữa 5 Bưu Cục
+              So Sánh Tỷ Lệ Chuyển Trả Theo Bưu Cục
             </h3>
-            <p className="text-[11px] text-slate-400">Xếp hạng bưu cục theo tỷ lệ hoàn hàng</p>
+            <p className="text-[11px] text-slate-400">Xếp hạng bưu cục theo tỷ lệ hoàn hàng trong phạm vi lọc</p>
           </div>
         </div>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={poReturnData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
-              <XAxis dataKey="buuCuc" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 4]} tick={{ fontSize: 10 }} tickFormatter={v => `${v}%`} />
-              <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Tỷ lệ chuyển trả']} />
-              <Bar dataKey="returnRate" name="% Chuyển trả" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {poReturnData.length === 0 ? (
+            <ChartEmptyState
+              title="Không có dữ liệu tỷ lệ chuyển trả"
+              subtitle="Không tìm thấy bản ghi phù hợp với bộ lọc hiện tại"
+              heightClass="h-64"
+            />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={poReturnData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
+                <XAxis dataKey="buuCuc" tick={{ fontSize: 11 }} />
+                <YAxis
+                  domain={[0, (dataMax: number) => Math.max(4, Math.ceil((dataMax || 0) + 0.5))]}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={v => `${v}%`}
+                />
+                <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Tỷ lệ chuyển trả']} />
+                <Bar dataKey="returnRate" name="% Chuyển trả" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -261,4 +336,4 @@ export const ReturnRateTab: React.FC = () => {
   );
 };
 
-export default ReturnRateTab;
+export default React.memo(ReturnRateTab);

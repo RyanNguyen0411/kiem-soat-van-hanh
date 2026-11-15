@@ -261,16 +261,18 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
     let volumeCa2 = 0;
     let sldGanCa2 = 0;
     let sldGtcCa2 = 0;
-    let tonDongCa2 = 0;
 
     bcRecords.forEach((r: GtcPostOfficeRecord) => {
       volumeCa2 += (r.volume || 0);
       sldGanCa2 += (r.sldGan || 0);
       sldGtcCa2 += (r.sldGTC || 0);
-      tonDongCa2 += (r.tonDong || 0);
     });
 
-    const overallRateGtcCa2 = sldGanCa2 > 0 ? (sldGtcCa2 / sldGanCa2) * 100 : (volumeCa2 > 0 ? (sldGtcCa2 / volumeCa2) * 100 : 0);
+    // Tồn giao trong ca Ca 2 = Volume Ca 2 - SLĐ GTC Ca 2 (Không dùng Math.max(0, ...) hay cộng dồn r.tonDong)
+    const tonDongCa2 = volumeCa2 - sldGtcCa2;
+    // Tách rõ %GTC Ca 2 / Volume (12,51%) và %GTC Ca 2 / Gán (66,17%)
+    const overallRateGtcCa2 = volumeCa2 > 0 ? (sldGtcCa2 / volumeCa2) * 100 : 0;
+    const overallRateGtcOnGanCa2 = sldGanCa2 > 0 ? (sldGtcCa2 / sldGanCa2) * 100 : 0;
 
     const nvRecords = dataset.gtcNhanVien.filter((r: GtcEmployeeRecord) => {
       if (ca2FilterBuuCuc.length > 0 && !ca2FilterBuuCuc.includes(r.buuCuc)) return false;
@@ -288,6 +290,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       sldGtcCa2,
       tonDongCa2,
       overallRateGtcCa2,
+      overallRateGtcOnGanCa2,
       totalShifts,
       ca2Shifts,
       ca1Shifts,
@@ -350,10 +353,10 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       if (!opByBuuCuc[r.buuCuc]) {
         opByBuuCuc[r.buuCuc] = { volume: 0, sldGan: 0, sldGTC: 0, tonDong: 0 };
       }
-      opByBuuCuc[r.buuCuc].volume += r.volume;
-      opByBuuCuc[r.buuCuc].sldGan += r.sldGan;
-      opByBuuCuc[r.buuCuc].sldGTC += r.sldGTC;
-      opByBuuCuc[r.buuCuc].tonDong += r.tonDong;
+      opByBuuCuc[r.buuCuc].volume += (r.volume || 0);
+      opByBuuCuc[r.buuCuc].sldGan += (r.sldGan || 0);
+      opByBuuCuc[r.buuCuc].sldGTC += (r.sldGTC || 0);
+      opByBuuCuc[r.buuCuc].tonDong = opByBuuCuc[r.buuCuc].volume - opByBuuCuc[r.buuCuc].sldGTC;
     });
 
     const nvRecords = dataset.gtcNhanVien.filter((r: GtcEmployeeRecord) => {
@@ -398,7 +401,9 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
 
       const rateCa2 = nv.totalShifts > 0 ? (nv.ca2Shifts / nv.totalShifts) * 100 : 0;
       const rateGan = op.volume > 0 ? (op.sldGan / op.volume) * 100 : 0;
-      const rateGtc = op.sldGan > 0 ? (op.sldGTC / op.sldGan) * 100 : 0;
+      // Tách rõ %GTC Ca 2 / Volume và %GTC Ca 2 / Gán
+      const rateGtc = op.volume > 0 ? (op.sldGTC / op.volume) * 100 : 0;
+      const rateGtcOnGan = op.sldGan > 0 ? (op.sldGTC / op.sldGan) * 100 : 0;
 
       const isPassCoverage = rateCa2 >= 70;
       const isPassGan = rateGan >= 50;
@@ -423,7 +428,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       } else {
         statusLevel = 'good';
         evalBadge = '[ĐẠT CHUẨN MỤC TIÊU VẬN HÀNH CA]';
-        recommendation = `Xuất sắc đạt cả 2 chỉ tiêu: Độ phủ NV ${rateCa2.toFixed(1)}% (≥ 70%) & Tỷ lệ gán ${rateGan.toFixed(1)}% (≥ 50%). Tồn sàn kiểm soát tốt (${op.tonDong.toLocaleString('vi-VN')} đơn). Tiếp tục duy trì và thúc đẩy % GTC đạt trên 85% trước 19h00.`;
+        recommendation = `Xuất sắc đạt cả 2 chỉ tiêu: Độ phủ NV ${rateCa2.toFixed(1)}% (≥ 70%) & Tỷ lệ gán ${rateGan.toFixed(1)}% (≥ 50%). Tồn sàn kiểm soát tốt (${op.tonDong.toLocaleString('vi-VN')} đơn). Tiếp tục duy trì và thúc đẩy % GTC/Gán đạt trên 85% trước 19h00.`;
       }
 
       return {
@@ -438,6 +443,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
         tonDongCa2: op.tonDong,
         rateGanCa2: rateGan,
         rateGtcCa2: rateGtc,
+        rateGtcOnGanCa2: rateGtcOnGan,
         statusLevel,
         evalBadge,
         recommendation
@@ -459,7 +465,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       acc.volumeCa2 += r.volumeCa2;
       acc.sldGanCa2 += r.sldGanCa2;
       acc.sldGtcCa2 += r.sldGtcCa2;
-      acc.tonDongCa2 += r.tonDongCa2;
+      acc.tonDongCa2 = acc.volumeCa2 - acc.sldGtcCa2;
       return acc;
     }, {
       totalShifts: 0,
@@ -472,14 +478,16 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
     });
 
     const overallRateCa2 = totalAll.totalShifts > 0 ? (totalAll.ca2Shifts / totalAll.totalShifts) * 100 : 0;
-    const overallRateGtcCa2 = totalAll.sldGanCa2 > 0 ? (totalAll.sldGtcCa2 / totalAll.sldGanCa2) * 100 : 0;
+    const overallRateGtcCa2 = totalAll.volumeCa2 > 0 ? (totalAll.sldGtcCa2 / totalAll.volumeCa2) * 100 : 0;
+    const overallRateGtcOnGanCa2 = totalAll.sldGanCa2 > 0 ? (totalAll.sldGtcCa2 / totalAll.sldGanCa2) * 100 : 0;
 
     return {
       rows: sortedRows,
       totalAll: {
         ...totalAll,
         overallRateCa2,
-        overallRateGtcCa2
+        overallRateGtcCa2,
+        overallRateGtcOnGanCa2
       }
     };
   }, [dataset.gtcBuuCuc, dataset.gtcNhanVien, tableCa2FilterBuuCuc, tableCa2FilterMonths, tableCa2FilterWeeks, tableCa2FilterDates, activeCa2KpiFocus, availableMonths, availableWeeks]);
@@ -535,16 +543,17 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       byDateMap[d].volume += (r.volume || 0);
       byDateMap[d].sldGan += (r.sldGan || 0);
       byDateMap[d].sldGTC += (r.sldGTC || 0);
-      byDateMap[d].tonDong += (r.tonDong || 0);
+      byDateMap[d].tonDong = byDateMap[d].volume - byDateMap[d].sldGTC;
     });
 
     const dateList = Object.values(byDateMap).map(item => {
-      const gapDon = Math.max(0, item.volume - item.sldGan);
-      const rateGan = item.volume > 0 ? parseFloat(((item.sldGan / item.volume) * 100).toFixed(1)) : 0;
-      const rateGap = item.volume > 0 ? parseFloat(((gapDon / item.volume) * 100).toFixed(1)) : 0;
-      const rateGtc = item.sldGan > 0 ? parseFloat(((item.sldGTC / item.sldGan) * 100).toFixed(1)) : 0;
+      const gapDon = item.volume - item.sldGan;
+      const rateGan = item.volume > 0 ? parseFloat(((item.sldGan / item.volume) * 100).toFixed(2)) : 0;
+      const rateGap = item.volume > 0 ? parseFloat(((gapDon / item.volume) * 100).toFixed(2)) : 0;
+      const rateGtc = item.volume > 0 ? parseFloat(((item.sldGTC / item.volume) * 100).toFixed(2)) : 0;
+      const rateGtcOnGan = item.sldGan > 0 ? parseFloat(((item.sldGTC / item.sldGan) * 100).toFixed(2)) : 0;
       const nv = dailyNvCoverage[item.ngay] || { total: 0, ca2: 0 };
-      const rateCoverage = nv.total > 0 ? parseFloat(((nv.ca2 / nv.total) * 100).toFixed(1)) : 0;
+      const rateCoverage = nv.total > 0 ? parseFloat(((nv.ca2 / nv.total) * 100).toFixed(2)) : 0;
 
       return {
         ...item,
@@ -556,6 +565,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
         rateGan,
         rateGap,
         rateGtc,
+        rateGtcOnGan,
         rateCoverage
       };
     }).sort((a, b) => {
@@ -588,16 +598,17 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       byBcMap[bc].volume += (r.volume || 0);
       byBcMap[bc].sldGan += (r.sldGan || 0);
       byBcMap[bc].sldGTC += (r.sldGTC || 0);
-      byBcMap[bc].tonDong += (r.tonDong || 0);
+      byBcMap[bc].tonDong = byBcMap[bc].volume - byBcMap[bc].sldGTC;
     });
 
     const buuCucList = Object.values(byBcMap).map(item => {
-      const gapDon = Math.max(0, item.volume - item.sldGan);
-      const rateGan = item.volume > 0 ? parseFloat(((item.sldGan / item.volume) * 100).toFixed(1)) : 0;
-      const rateGap = item.volume > 0 ? parseFloat(((gapDon / item.volume) * 100).toFixed(1)) : 0;
-      const rateGtc = item.sldGan > 0 ? parseFloat(((item.sldGTC / item.sldGan) * 100).toFixed(1)) : 0;
+      const gapDon = item.volume - item.sldGan;
+      const rateGan = item.volume > 0 ? parseFloat(((item.sldGan / item.volume) * 100).toFixed(2)) : 0;
+      const rateGap = item.volume > 0 ? parseFloat(((gapDon / item.volume) * 100).toFixed(2)) : 0;
+      const rateGtc = item.volume > 0 ? parseFloat(((item.sldGTC / item.volume) * 100).toFixed(2)) : 0;
+      const rateGtcOnGan = item.sldGan > 0 ? parseFloat(((item.sldGTC / item.sldGan) * 100).toFixed(2)) : 0;
       const nv = bcNvCoverage[item.buuCuc] || { total: 0, ca2: 0 };
-      const rateCoverage = nv.total > 0 ? parseFloat(((nv.ca2 / nv.total) * 100).toFixed(1)) : 0;
+      const rateCoverage = nv.total > 0 ? parseFloat(((nv.ca2 / nv.total) * 100).toFixed(2)) : 0;
 
       return {
         ...item,
@@ -610,6 +621,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
         rateGan,
         rateGap,
         rateGtc,
+        rateGtcOnGan,
         rateCoverage
       };
     }).sort((a, b) => b.volume - a.volume);
@@ -617,15 +629,16 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
     const totalVol = ca2Records.reduce((s: number, r: GtcPostOfficeRecord) => s + (r.volume || 0), 0);
     const totalGan = ca2Records.reduce((s: number, r: GtcPostOfficeRecord) => s + (r.sldGan || 0), 0);
     const totalGtc = ca2Records.reduce((s: number, r: GtcPostOfficeRecord) => s + (r.sldGTC || 0), 0);
-    const totalTon = ca2Records.reduce((s: number, r: GtcPostOfficeRecord) => s + (r.tonDong || 0), 0);
-    const totalGap = Math.max(0, totalVol - totalGan);
-    const avgRateGan = totalVol > 0 ? parseFloat(((totalGan / totalVol) * 100).toFixed(1)) : 0;
-    const avgRateGap = totalVol > 0 ? parseFloat(((totalGap / totalVol) * 100).toFixed(1)) : 0;
-    const avgRateGtc = totalGan > 0 ? parseFloat(((totalGtc / totalGan) * 100).toFixed(1)) : 0;
+    const totalTon = totalVol - totalGtc;
+    const totalGap = totalVol - totalGan;
+    const avgRateGan = totalVol > 0 ? parseFloat(((totalGan / totalVol) * 100).toFixed(2)) : 0;
+    const avgRateGap = totalVol > 0 ? parseFloat(((totalGap / totalVol) * 100).toFixed(2)) : 0;
+    const avgRateGtc = totalVol > 0 ? parseFloat(((totalGtc / totalVol) * 100).toFixed(2)) : 0;
+    const avgRateGtcOnGan = totalGan > 0 ? parseFloat(((totalGtc / totalGan) * 100).toFixed(2)) : 0;
 
     const totalNvShifts = Object.values(dailyNvCoverage).reduce((s, x) => s + x.total, 0);
     const totalNvCa2Shifts = Object.values(dailyNvCoverage).reduce((s, x) => s + x.ca2, 0);
-    const avgRateCoverage = totalNvShifts > 0 ? parseFloat(((totalNvCa2Shifts / totalNvShifts) * 100).toFixed(1)) : 0;
+    const avgRateCoverage = totalNvShifts > 0 ? parseFloat(((totalNvCa2Shifts / totalNvShifts) * 100).toFixed(2)) : 0;
 
     const worstDate = [...dateList].sort((a, b) => b.gapDon - a.gapDon)[0];
     const worstBc = [...buuCucList].sort((a, b) => b.gapDon - a.gapDon)[0];
@@ -641,6 +654,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       avgRateGan,
       avgRateGap,
       avgRateGtc,
+      avgRateGtcOnGan,
       avgRateCoverage,
       worstDate,
       worstBc,
@@ -698,17 +712,18 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
       if (!dailyBC[key]) {
         dailyBC[key] = { volume: 0, sldGan: 0, sldGTC: 0, tonDong: 0 };
       }
-      dailyBC[key].volume += r.volume;
-      dailyBC[key].sldGan += r.sldGan;
-      dailyBC[key].sldGTC += r.sldGTC;
-      dailyBC[key].tonDong += r.tonDong;
+      dailyBC[key].volume += (r.volume || 0);
+      dailyBC[key].sldGan += (r.sldGan || 0);
+      dailyBC[key].sldGTC += (r.sldGTC || 0);
+      dailyBC[key].tonDong = dailyBC[key].volume - dailyBC[key].sldGTC;
     });
 
     return Object.values(dailyNV).map(row => {
       const bc = dailyBC[row.key] || { volume: 0, sldGan: 0, sldGTC: 0, tonDong: 0 };
       const rateCa2 = row.totalNV > 0 ? (row.ca2NV / row.totalNV) * 100 : 0;
       const rateCa1 = row.totalNV > 0 ? (row.ca1NV / row.totalNV) * 100 : 0;
-      const rateGtc = bc.sldGan > 0 ? (bc.sldGTC / bc.sldGan) * 100 : 0;
+      const rateGtc = bc.volume > 0 ? (bc.sldGTC / bc.volume) * 100 : 0;
+      const rateGtcOnGan = bc.sldGan > 0 ? (bc.sldGTC / bc.sldGan) * 100 : 0;
 
       let status: 'good' | 'warning' | 'alert' = 'good';
       if (rateCa2 < 60) status = 'alert';
@@ -723,6 +738,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
         sldGtcCa2: bc.sldGTC,
         tonDongCa2: bc.tonDong,
         rateGtcCa2: rateGtc,
+        rateGtcOnGanCa2: rateGtcOnGan,
         status
       };
     }).sort((a, b) => {
@@ -1029,7 +1045,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
             <span>Gán: <strong className="text-slate-700 dark:text-slate-200">{ca2TopKpiStats.sldGanCa2.toLocaleString('vi-VN')}</strong></span>
-            <span>GTC: <strong className="text-purple-700 dark:text-purple-300 font-black">{ca2TopKpiStats.overallRateGtcCa2.toFixed(1)}%</strong> ({ca2TopKpiStats.sldGtcCa2.toLocaleString('vi-VN')} đ)</span>
+            <span>GTC/Vol: <strong className="text-purple-700 dark:text-purple-300 font-black">{ca2TopKpiStats.overallRateGtcCa2.toFixed(2)}%</strong> &bull; GTC/Gán: <strong className="text-emerald-600 dark:text-emerald-400 font-black">{ca2TopKpiStats.overallRateGtcOnGanCa2.toFixed(2)}%</strong></span>
           </div>
         </div>
 
@@ -1402,7 +1418,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
               {matrixCa2Data.totalGtc.toLocaleString('vi-VN')}
             </div>
             <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] text-emerald-700 dark:text-emerald-400 font-bold mt-0.2">
-              <span>Đạt {matrixCa2Data.avgRateGtc}% trên gán</span>
+              <span>%Vol: {matrixCa2Data.avgRateGtc.toFixed(2)}% &bull; %Gán: {matrixCa2Data.avgRateGtcOnGan.toFixed(2)}%</span>
               <span className="flex items-center gap-0.5">
                 {activeCa2KpiFocus === 'gtc' ? 'Đang xem ↓' : 'Xem bảng →'}
               </span>
@@ -1531,10 +1547,19 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
                             <div className="flex justify-between items-center">
                               <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                % GTC / Đơn Gán:
+                                % GTC / Volume:
                               </span>
                               <strong className="font-mono text-emerald-600 dark:text-emerald-400 font-black">
                                 {d.rateGtc}%
+                              </strong>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-teal-500" />
+                                % GTC / Đơn Gán:
+                              </span>
+                              <strong className="font-mono text-teal-600 dark:text-teal-400 font-black">
+                                {d.rateGtcOnGan}%
                               </strong>
                             </div>
                           </div>
@@ -1921,13 +1946,16 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
                   </td>
                   <td className="py-1.5 px-2 text-center bg-emerald-50/90 dark:bg-emerald-950/40 border-x border-emerald-100 dark:border-emerald-900/50">
                     <span className={`inline-block px-2 py-0.5 rounded font-black text-[11px] shadow-2xs ${
-                      row.rateGtcCa2 >= 85
+                      row.rateGtcOnGanCa2 >= 85
                         ? 'bg-emerald-600 text-white'
-                        : row.rateGtcCa2 >= 70
+                        : row.rateGtcOnGanCa2 >= 70
                         ? 'bg-emerald-500 text-white'
                         : 'bg-amber-500 text-white'
                     }`}>
-                      {row.rateGtcCa2.toFixed(1)}%
+                      {row.rateGtcCa2.toFixed(2)}% Vol
+                    </span>
+                    <span className="block text-[9.5px] text-emerald-700 dark:text-emerald-300 font-bold mt-0.5">
+                      ({row.rateGtcOnGanCa2.toFixed(2)}% Gán)
                     </span>
                   </td>
                   <td className={`py-1.5 px-1.5 text-center font-black transition-colors ${
@@ -2000,7 +2028,10 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
                 </td>
                 <td className="py-2 px-2 text-center font-black bg-emerald-600 text-white border-x border-emerald-700">
                   <span className="bg-white/20 px-1.5 py-0.2 rounded text-[10.5px]">
-                    {ca2SummaryByBuuCuc.totalAll.overallRateGtcCa2.toFixed(1)}%
+                    {ca2SummaryByBuuCuc.totalAll.overallRateGtcCa2.toFixed(2)}% Vol
+                  </span>
+                  <span className="block text-[9.5px] text-emerald-100 font-bold mt-0.5">
+                    ({ca2SummaryByBuuCuc.totalAll.overallRateGtcOnGanCa2.toFixed(2)}% Gán)
                   </span>
                 </td>
                 <td className="py-2.5 px-2 text-center font-black text-rose-600 dark:text-rose-400 bg-orange-100/70 dark:bg-orange-950/40">
@@ -2223,13 +2254,16 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
                   </td>
                   <td className="py-2 px-2 text-center bg-emerald-50/90 dark:bg-emerald-950/40 border-x border-emerald-100 dark:border-emerald-900/50">
                     <span className={`inline-block px-2 py-0.5 rounded font-black text-[11px] shadow-2xs ${
-                      row.rateGtcCa2 >= 85
+                      row.rateGtcOnGanCa2 >= 85
                         ? 'bg-emerald-600 text-white'
-                        : row.rateGtcCa2 >= 70
+                        : row.rateGtcOnGanCa2 >= 70
                         ? 'bg-emerald-500 text-white'
                         : 'bg-amber-500 text-white'
                     }`}>
-                      {row.rateGtcCa2.toFixed(1)}%
+                      {row.rateGtcCa2.toFixed(2)}% Vol
+                    </span>
+                    <span className="block text-[9.5px] text-emerald-700 dark:text-emerald-300 font-bold mt-0.5">
+                      ({row.rateGtcOnGanCa2.toFixed(2)}% Gán)
                     </span>
                   </td>
                   <td className="py-2 px-2 text-center font-bold text-rose-600 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">

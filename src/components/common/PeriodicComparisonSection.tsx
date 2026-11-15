@@ -262,7 +262,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
     const volume = bcRows.reduce((acc, r) => acc + (r.volume || 0), 0);
     const sldGan = bcRows.reduce((acc, r) => acc + (r.sldGan || 0), 0);
     const sldGTC = bcRows.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
-    const tonDong = bcRows.reduce((acc, r) => acc + (r.tonDong || 0), 0);
+    const tonDong = volume - sldGTC;
 
     const assignedRate = volume > 0 ? (sldGan / volume) * 100 : 0;
     const gtcRate = volume > 0 ? (sldGTC / volume) * 100 : 0;
@@ -308,7 +308,7 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
       const volume = bcRows.reduce((acc, r) => acc + (r.volume || 0), 0);
       const sldGan = bcRows.reduce((acc, r) => acc + (r.sldGan || 0), 0);
       const sldGTC = bcRows.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
-      const tonDong = bcRows.reduce((acc, r) => acc + (r.tonDong || 0), 0);
+      const tonDong = volume - sldGTC;
 
       const assignedRate = volume > 0 ? (sldGan / volume) * 100 : 0;
       const gtcRate = volume > 0 ? (sldGTC / volume) * 100 : 0;

@@ -151,7 +151,7 @@ export const LoginScreen: React.FC = () => {
             GHN Control Center
           </h1>
           <p className="text-xs text-slate-400 font-medium">
-            Hệ thống Quản Trị Vận Hành Khu Vực &bull; AM Long An
+            Hệ thống Quản Trị Vận Hành Khu Vực &bull; AM Long An & 5 Bưu Cục
           </p>
         </div>
 
@@ -196,7 +196,7 @@ export const LoginScreen: React.FC = () => {
           <form onSubmit={handleNormalLogin} className="space-y-4">
             <div className="space-y-1">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Tài khoản quản trị
+                Tài khoản (AM hoặc Nhân viên Bưu Cục)
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -210,7 +210,7 @@ export const LoginScreen: React.FC = () => {
                     if (errorMessage) setErrorMessage(null);
                   }}
                   disabled={lockoutRemaining > 0 || isSending}
-                  placeholder="Nhập tài khoản quản trị..."
+                  placeholder="Nhập tài khoản AM hoặc Mã BC / Mã NV..."
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:opacity-50"
                 />
               </div>
@@ -265,16 +265,16 @@ export const LoginScreen: React.FC = () => {
           </form>
         )}
 
-        {/* FORM 2: EMAIL RECOVERY */}
+        {/* FORM 2: GMAIL BACKUP */}
         {recoveryMode === 'email' && (
           <form onSubmit={handleEmailRecovery} className="space-y-4">
             <div className="p-3 bg-blue-950/40 border border-blue-900/60 rounded-xl text-blue-200 text-xs leading-relaxed">
-              Nhập địa chỉ Email quản trị viên đã đăng ký trong hệ thống để xác thực quyền đăng nhập.
+              Phương thức dự phòng: Nhập địa chỉ Gmail quản trị viên đã đăng ký để khởi tạo quy trình xác thực.
             </div>
 
             <div className="space-y-1">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Email Quản Trị Viên
+                Gmail Quản Trị Viên
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -288,7 +288,7 @@ export const LoginScreen: React.FC = () => {
                     if (errorMessage) setErrorMessage(null);
                   }}
                   disabled={isSending}
-                  placeholder="Nhập địa chỉ email quản trị..."
+                  placeholder="Nhập địa chỉ Gmail quản trị..."
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
                 />
               </div>
@@ -316,7 +316,7 @@ export const LoginScreen: React.FC = () => {
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Xác Thực Qua Email</span>
+                    <span>Xác Thực Qua Gmail</span>
                   </>
                 )}
               </button>
@@ -324,18 +324,18 @@ export const LoginScreen: React.FC = () => {
           </form>
         )}
 
-        {/* FORM 3: PHONE OTP */}
+        {/* FORM 3: TELEGRAM OTP BACKUP */}
         {recoveryMode === 'zalo' && (
           <div className="space-y-4">
             <div className="p-3 bg-emerald-950/40 border border-emerald-900/60 rounded-xl text-emerald-200 text-xs leading-relaxed">
-              Mã OTP bảo mật sẽ được hệ thống máy chủ phát lệnh gửi tự động đến thiết bị của AM Huy.
+              Phương thức dự phòng: Mã OTP 6 chữ số sẽ được phát lệnh gửi tự động qua Telegram Bot đến tài khoản của AM Huy.
             </div>
 
             {!zaloSent ? (
               <form onSubmit={handleSendZaloOtp} className="space-y-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                    Số Điện Thoại Quản Trị
+                    Số Điện Thoại Liên Kết Telegram
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -349,7 +349,7 @@ export const LoginScreen: React.FC = () => {
                         if (errorMessage) setErrorMessage(null);
                       }}
                       disabled={isSending}
-                      placeholder="Nhập số điện thoại quản trị..."
+                      placeholder="Nhập số điện thoại nhận OTP..."
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
                     />
                   </div>
@@ -377,7 +377,7 @@ export const LoginScreen: React.FC = () => {
                     ) : (
                       <>
                         <Phone className="w-3.5 h-3.5" />
-                        <span>Gửi Mã OTP Xác Thực</span>
+                        <span>Gửi Mã OTP Telegram</span>
                       </>
                     )}
                   </button>
@@ -387,7 +387,7 @@ export const LoginScreen: React.FC = () => {
               <form onSubmit={handleVerifyZaloOtp} className="space-y-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                    Nhập Mã OTP 6 Chữ Số
+                    Nhập Mã OTP Telegram (6 Chữ Số)
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -448,7 +448,7 @@ export const LoginScreen: React.FC = () => {
         {recoveryMode === null && (
           <div className="pt-4 border-t border-slate-800/80 space-y-2">
             <p className="text-[11px] text-slate-500 text-center uppercase tracking-wider font-semibold">
-              Phương thức xác thực thay thế
+              Phương thức đăng nhập dự phòng
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -457,7 +457,7 @@ export const LoginScreen: React.FC = () => {
                 className="py-2 px-3 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 text-slate-300 hover:text-white transition-all text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5 text-blue-400" />
-                <span>Qua Email</span>
+                <span>Đăng nhập Gmail</span>
               </button>
               <button
                 type="button"
@@ -465,7 +465,7 @@ export const LoginScreen: React.FC = () => {
                 className="py-2 px-3 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 text-slate-300 hover:text-white transition-all text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Qua Mã OTP</span>
+                <span>Telegram OTP</span>
               </button>
             </div>
           </div>

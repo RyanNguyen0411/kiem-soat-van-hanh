@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   UserMinus, 
@@ -35,7 +35,9 @@ import {
   Line 
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import { exportToCSV } from '../services/excelExportService';
+import { getCurrentMonthMMYYYY } from '../utils/dateEngine';
 
 // 5 Bưu cục chuẩn xác của Khu vực Long An (ĐNB)
 const OFFICIAL_POST_OFFICES = [
@@ -93,16 +95,60 @@ type ActiveKpiType = 'all' | 'early' | 'days' | 'cod' | 'hotspot' | null;
 type MatrixGranularity = 'month' | 'week' | 'day';
 type MatrixViewMode = 'volume' | 'impact';
 
-export default function NghiViecTab() {
-  const { dataset, setActiveTab } = useDashboard();
+export function NghiViecTab() {
+  const { dataset, setActiveTab, selectedBuuCucGlobal } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
   const rawList = dataset.nghiViec || [];
 
+  // Danh sách bưu cục hữu hiệu: Nếu là tài khoản phân hệ nhân viên thì CHỈ hiển thị đúng 1 bưu cục được cấp quyền
+  const effectivePostOffices = useMemo(() => {
+    if (isStaff && assignedPo) return [assignedPo];
+    return OFFICIAL_POST_OFFICES;
+  }, [isStaff, assignedPo]);
+
   // =========================================================================
-  // STATE: BỘ LỌC ĐIỀU HÀNH
+  // STATE: BỘ LỌC ĐIỀU HÀNH (ĐỒNG BỘ TOÀN HỆ THỐNG, KHÓA CHẶT NẾU LÀ NHÂN VIÊN)
   // =========================================================================
-  const [selectedPostOffice, setSelectedPostOffice] = useState<string>('all');
-  const [timeFilterMode, setTimeFilterMode] = useState<TimeFilterMode>('all');
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedPostOffice, setSelectedPostOffice] = useState<string>(() => isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
+
+  useEffect(() => {
+    if (isStaff && assignedPo) {
+      setSelectedPostOffice(assignedPo);
+      return;
+    }
+    setSelectedPostOffice(selectedBuuCucGlobal || 'all');
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
+
+  // =========================================================================
+  // DANH SÁCH LỰA CHỌN DROPDOWNS
+  // =========================================================================
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    rawList.forEach(r => {
+      if (r.thangNghiViec) set.add(r.thangNghiViec);
+    });
+    return Array.from(set).sort((a, b) => {
+      const [m1, y1] = a.split('/').map(Number);
+      const [m2, y2] = b.split('/').map(Number);
+      return y2 !== y1 ? y2 - y1 : m2 - m1;
+    });
+  }, [rawList]);
+
+  const currentMonthKey = useMemo(() => {
+    return getCurrentMonthMMYYYY(availableMonths);
+  }, [availableMonths]);
+
+  // Mặc định luôn lọc theo Tháng hiện tại
+  const [timeFilterMode, setTimeFilterMode] = useState<TimeFilterMode>('month');
+  const [selectedMonth, setSelectedMonth] = useState<string>('current');
+
+  const activeMonth = useMemo(() => {
+    if (selectedMonth === 'current') return currentMonthKey;
+    return selectedMonth;
+  }, [selectedMonth, currentMonthKey]);
+
   const [selectedWeek, setSelectedWeek] = useState<string>('all');
   const [selectedTenure, setSelectedTenure] = useState<string>('all');
   const [selectedReasonGroup, setSelectedReasonGroup] = useState<string>('all');
@@ -112,11 +158,18 @@ export default function NghiViecTab() {
   // STATE: BỘ LỌC RIÊNG CỦA MA TRẬN THỜI GIAN & SỨC ẢNH HƯỞNG BƯU CỤC
   // =========================================================================
   const [matrixGranularity, setMatrixGranularity] = useState<MatrixGranularity>('month');
-  const [matrixSelectedPos, setMatrixSelectedPos] = useState<string[]>(OFFICIAL_POST_OFFICES);
+  const [matrixSelectedPos, setMatrixSelectedPos] = useState<string[]>(() => isStaff && assignedPo ? [assignedPo] : OFFICIAL_POST_OFFICES);
   const [matrixViewMode, setMatrixViewMode] = useState<MatrixViewMode>('volume');
   const [matrixExpandedPeriod, setMatrixExpandedPeriod] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isStaff && assignedPo) {
+      setMatrixSelectedPos([assignedPo]);
+    }
+  }, [isStaff, assignedPo]);
+
   const toggleMatrixPo = (po: string) => {
+    if (isStaff) return;
     setMatrixSelectedPos(prev => {
       if (prev.includes(po)) {
         if (prev.length === 1) return prev; // Giữ tối thiểu 1 bưu cục
@@ -128,6 +181,7 @@ export default function NghiViecTab() {
   };
 
   const toggleAllMatrixPos = () => {
+    if (isStaff) return;
     if (matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length) {
       setMatrixSelectedPos([OFFICIAL_POST_OFFICES[0]]);
     } else {
@@ -144,21 +198,6 @@ export default function NghiViecTab() {
   // Phân trang bảng chi tiết
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 15;
-
-  // =========================================================================
-  // DANH SÁCH LỰA CHỌN DROPDOWNS
-  // =========================================================================
-  const availableMonths = useMemo(() => {
-    const set = new Set<string>();
-    rawList.forEach(r => {
-      if (r.thangNghiViec) set.add(r.thangNghiViec);
-    });
-    return Array.from(set).sort((a, b) => {
-      const [m1, y1] = a.split('/').map(Number);
-      const [m2, y2] = b.split('/').map(Number);
-      return y2 !== y1 ? y2 - y1 : m2 - m1;
-    });
-  }, [rawList]);
 
   const availableWeeks = useMemo(() => {
     const set = new Set<string>();
@@ -178,7 +217,7 @@ export default function NghiViecTab() {
   const filteredList = useMemo(() => {
     const list = rawList.filter(r => {
       if (selectedPostOffice !== 'all' && r.buuCuc !== selectedPostOffice) return false;
-      if (timeFilterMode === 'month' && selectedMonth !== 'all' && r.thangNghiViec !== selectedMonth) return false;
+      if (timeFilterMode === 'month' && activeMonth !== 'all' && r.thangNghiViec !== activeMonth) return false;
       if (timeFilterMode === 'week' && selectedWeek !== 'all' && r.tuanNghiViec !== selectedWeek) return false;
       if (selectedTenure !== 'all') {
         const code = selectedTenure.split(':')[0].trim();
@@ -267,10 +306,10 @@ export default function NghiViecTab() {
   }, [filteredList]);
 
   // =========================================================================
-  // 1. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ 5 BƯU CỤC
+  // 1. DỮ LIỆU BẢNG KÊ & ĐỒ THỊ BƯU CỤC
   // =========================================================================
   const postOfficeMatrix = useMemo(() => {
-    return OFFICIAL_POST_OFFICES.map(bc => {
+    return effectivePostOffices.map(bc => {
       const items = filteredList.filter(r => r.buuCuc === bc);
       const total = items.length;
       const g01 = items.filter(r => r.nhomThamNien.includes('G01')).length;
@@ -427,7 +466,7 @@ export default function NghiViecTab() {
 
   const cumulativePoImpact = useMemo(() => {
     const total = rawList.length || 1;
-    return OFFICIAL_POST_OFFICES.map(po => {
+    return effectivePostOffices.map(po => {
       const count = rawList.filter(r => r.buuCuc === po).length;
       const share = ((count / total) * 100).toFixed(1);
       let level = 'Rất thấp';
@@ -579,8 +618,8 @@ export default function NghiViecTab() {
 
   const resetFilters = () => {
     setSelectedPostOffice('all');
-    setTimeFilterMode('all');
-    setSelectedMonth('all');
+    setTimeFilterMode('month');
+    setSelectedMonth('current');
     setSelectedWeek('all');
     setSelectedTenure('all');
     setSelectedReasonGroup('all');
@@ -636,7 +675,7 @@ export default function NghiViecTab() {
       'Ngày Nghỉ Việc',
       'Số Ngày Làm Cụ Thể',
       'Sản Lượng TB/Ngày (Đơn)',
-      'Mức Lương TB/Ngày (VNĐ)',
+      ...(!isStaff ? ['Mức Lương TB/Ngày (VNĐ)'] : []),
       'Nhóm Lý Do',
       'Lý Do Nghỉ Việc Chi Tiết',
       'Tháng Nghỉ',
@@ -654,7 +693,7 @@ export default function NghiViecTab() {
       r.ngayNghiViec,
       r.soNgayLam,
       r.sanLuongTb,
-      r.mucLuongTb,
+      ...(!isStaff ? [r.mucLuongTb] : []),
       r.nhomLyDo,
       r.lyDoNghiViec,
       r.thangNghiViec,
@@ -823,22 +862,28 @@ export default function NghiViecTab() {
           {/* 2. Lọc Bưu Cục */}
           <div className="flex items-center gap-1 shrink-0">
             <Building2 className="w-3 h-3 text-orange-600 shrink-0" />
-            <select
-              value={selectedPostOffice}
-              onChange={e => {
-                setSelectedPostOffice(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 font-bold text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
-            >
-              <option value="all">Tất cả 5 bưu cục ({rawList.length} ca)</option>
-              {OFFICIAL_POST_OFFICES.map(bc => {
-                const cnt = rawList.filter(r => r.buuCuc === bc).length;
-                return (
-                  <option key={bc} value={bc}>{bc} ({cnt} ca)</option>
-                );
-              })}
-            </select>
+            {!isStaff ? (
+              <select
+                value={selectedPostOffice}
+                onChange={e => {
+                  setSelectedPostOffice(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-7 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0 font-bold text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
+              >
+                <option value="all">Tất cả 5 bưu cục ({rawList.length} ca)</option>
+                {OFFICIAL_POST_OFFICES.map(bc => {
+                  const cnt = rawList.filter(r => r.buuCuc === bc).length;
+                  return (
+                    <option key={bc} value={bc}>{bc} ({cnt} ca)</option>
+                  );
+                })}
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                <span>{assignedPo || selectedPostOffice}</span>
+              </div>
+            )}
           </div>
 
           {/* 3. Lọc Chu Kỳ */}
@@ -884,7 +929,7 @@ export default function NghiViecTab() {
 
             {timeFilterMode === 'month' && (
               <select
-                value={selectedMonth}
+                value={activeMonth}
                 onChange={e => {
                   setSelectedMonth(e.target.value);
                   setCurrentPage(1);
@@ -1214,40 +1259,53 @@ export default function NghiViecTab() {
                 Tick Bưu Cục:
               </span>
               
-              <button
-                type="button"
-                onClick={toggleAllMatrixPos}
-                className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all cursor-pointer ${
-                  matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length
-                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                }`}
-              >
-                {matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length ? 'Tất Cả 5 BC' : 'Chọn Hết'}
-              </button>
-
-              {OFFICIAL_POST_OFFICES.map(po => {
-                const isChecked = matrixSelectedPos.includes(po);
-                const short = po.replace('(LAN) ', '');
-                return (
+              {!isStaff ? (
+                <>
                   <button
-                    key={po}
                     type="button"
-                    onClick={() => toggleMatrixPo(po)}
-                    className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      isChecked
-                        ? 'bg-white dark:bg-slate-750 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400/40 shadow-2xs'
-                        : 'bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600'
+                    onClick={toggleAllMatrixPos}
+                    className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all cursor-pointer ${
+                      matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length
+                        ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                     }`}
                   >
-                    <span 
-                      className={`w-2 h-2 rounded-full ${isChecked ? '' : 'opacity-30'}`}
-                      style={{ backgroundColor: PO_COLORS[po] }}
-                    />
-                    <span>{short}</span>
+                    {matrixSelectedPos.length === OFFICIAL_POST_OFFICES.length ? 'Tất Cả 5 BC' : 'Chọn Hết'}
                   </button>
-                );
-              })}
+
+                  {OFFICIAL_POST_OFFICES.map(po => {
+                    const isChecked = matrixSelectedPos.includes(po);
+                    const short = po.replace('(LAN) ', '');
+                    return (
+                      <button
+                        key={po}
+                        type="button"
+                        onClick={() => toggleMatrixPo(po)}
+                        className={`px-2 py-0.5 rounded-md border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          isChecked
+                            ? 'bg-white dark:bg-slate-750 border-orange-400 text-slate-900 dark:text-white ring-1 ring-orange-400/40 shadow-2xs'
+                            : 'bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        <span 
+                          className={`w-2 h-2 rounded-full ${isChecked ? '' : 'opacity-30'}`}
+                          style={{ backgroundColor: PO_COLORS[po] }}
+                        />
+                        <span>{short}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              ) : (
+                <div className="px-2.5 py-1 rounded-md bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800 text-[11px] font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
+                  <span 
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: (assignedPo && PO_COLORS[assignedPo]) || '#f97316' }}
+                  />
+                  <span>{(assignedPo || '').replace('(LAN) ', '')}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(Cố định theo tài khoản)</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1679,11 +1737,11 @@ export default function NghiViecTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
                   <tr>
-                    <th className="p-2 w-[34%]">Nhóm Thâm Niên</th>
-                    <th className="p-2 text-right w-[15%]">Số Ca Nghỉ</th>
-                    <th className="p-2 text-right w-[15%]">Tỷ Trọng</th>
-                    <th className="p-2 text-right w-[18%]">Ngày Làm TB</th>
-                    <th className="p-2 text-right w-[18%]">Lương TB/Ngày</th>
+                    <th className={`p-2 ${isStaff ? 'w-[40%]' : 'w-[34%]'}`}>Nhóm Thâm Niên</th>
+                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Số Ca Nghỉ</th>
+                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Tỷ Trọng</th>
+                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[18%]'}`}>Ngày Làm TB</th>
+                    {!isStaff && <th className="p-2 text-right w-[18%]">Lương TB/Ngày</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1722,9 +1780,11 @@ export default function NghiViecTab() {
                         <td className="p-2 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">
                           {t.avgDays} ngày
                         </td>
-                        <td className="p-2 text-right font-mono font-bold text-emerald-600">
-                          {t.avgSalary.toLocaleString('vi-VN')} đ
-                        </td>
+                        {!isStaff && (
+                          <td className="p-2 text-right font-mono font-bold text-emerald-600">
+                            {t.avgSalary.toLocaleString('vi-VN')} đ
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -1963,7 +2023,9 @@ export default function NghiViecTab() {
             )}
           </div>
           <div className="text-[11px] text-slate-400">
-            Hiển thị ngày vào, ngày nghỉ, số ngày làm cụ thể, sản lượng &amp; mức lương TB
+            {isStaff 
+              ? 'Hiển thị ngày vào, ngày nghỉ, số ngày làm cụ thể & sản lượng TB' 
+              : 'Hiển thị ngày vào, ngày nghỉ, số ngày làm cụ thể, sản lượng & mức lương TB'}
           </div>
         </div>
 
@@ -1980,14 +2042,14 @@ export default function NghiViecTab() {
                 <th className="p-2.5 text-center w-[9%]">Ngày Nghỉ</th>
                 <th className="p-2.5 text-right w-[9%]">Số Ngày Làm</th>
                 <th className="p-2.5 text-right w-[8%]">Sản Lượng TB</th>
-                <th className="p-2.5 text-right w-[9%]">Mức Lương TB</th>
+                {!isStaff && <th className="p-2.5 text-right w-[9%]">Mức Lương TB</th>}
                 <th className="p-2.5 w-[16%]">Lý Do Nghỉ Việc</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
               {paginatedList.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-xs text-slate-400 italic">
+                  <td colSpan={isStaff ? 10 : 11} className="text-center py-8 text-xs text-slate-400 italic">
                     Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
@@ -2030,9 +2092,11 @@ export default function NghiViecTab() {
                       <td className="p-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
                         {person.sanLuongTb} <span className="text-[10px] text-slate-400 font-normal">đơn</span>
                       </td>
-                      <td className="p-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {person.mucLuongTb.toLocaleString('vi-VN')} đ
-                      </td>
+                      {!isStaff && (
+                        <td className="p-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {person.mucLuongTb.toLocaleString('vi-VN')} đ
+                        </td>
+                      )}
                       <td className="p-2.5">
                         <div className={`text-[11px] font-medium line-clamp-2 ${
                           isCod ? 'text-red-700 dark:text-red-400 font-bold' : 'text-slate-700 dark:text-slate-300'
@@ -2153,3 +2217,5 @@ export default function NghiViecTab() {
     </div>
   );
 }
+
+export default React.memo(NghiViecTab);

@@ -33,28 +33,38 @@ import type { DatasetState, GtcEmployeeRecord, DailySalaryRecord, NhanSuRecord }
 interface NhanSuOperationalAlertsCardProps {
   dataset: DatasetState;
   defaultBuuCuc?: string;
+  isStaff?: boolean;
+  assignedPo?: string;
   onNavigateToEmployeeGtc?: (maNV: string, buuCuc: string) => void;
 }
 
 export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardProps> = ({
   dataset,
   defaultBuuCuc = 'all',
+  isStaff = false,
+  assignedPo,
   onNavigateToEmployeeGtc
 }) => {
   // Sub-tab: Cảnh báo gán/giao thấp vs Cảnh báo nhân viên OFF
   const [activeSubTab, setActiveSubTab] = useState<'low_assign' | 'off_alert'>('low_assign');
 
-  // Danh sách 5 bưu cục chuẩn hóa của khu vực
-  const standardPostOffices = useMemo(() => [
-    '(LAN) Cần Đước 1',
-    '(LAN) Cần Giuộc',
-    '(LAN) Phước Lý',
-    '(LAN) Rạch Kiến',
-    '(LAN) Tầm Vu'
-  ], []);
+  // Danh sách 5 bưu cục chuẩn hóa của khu vực (hoặc duy nhất bưu cục nếu là nhân viên phân hệ)
+  const standardPostOffices = useMemo(() => {
+    if (isStaff && assignedPo) return [assignedPo];
+    return [
+      '(LAN) Cần Đước 1',
+      '(LAN) Cần Giuộc',
+      '(LAN) Phước Lý',
+      '(LAN) Rạch Kiến',
+      '(LAN) Tầm Vu'
+    ];
+  }, [isStaff, assignedPo]);
 
   // Bộ lọc: Tick chọn bưu cục (Hỗ trợ chọn nhiều hoặc Tất cả)
   const [selectedPos, setSelectedPos] = useState<string[]>(() => {
+    if (isStaff && assignedPo) {
+      return [normalizePostOfficeName(assignedPo)];
+    }
     if (defaultBuuCuc && defaultBuuCuc !== 'all') {
       return [normalizePostOfficeName(defaultBuuCuc)];
     }
@@ -63,12 +73,16 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
   // Đồng bộ khi defaultBuuCuc từ ngoài thay đổi
   React.useEffect(() => {
+    if (isStaff && assignedPo) {
+      setSelectedPos([normalizePostOfficeName(assignedPo)]);
+      return;
+    }
     if (defaultBuuCuc && defaultBuuCuc !== 'all') {
       setSelectedPos([normalizePostOfficeName(defaultBuuCuc)]);
     } else {
       setSelectedPos(['all']);
     }
-  }, [defaultBuuCuc]);
+  }, [defaultBuuCuc, isStaff, assignedPo]);
 
   // Bộ lọc: Tháng & Tuần & Tìm kiếm
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -298,6 +312,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
 
       return {
         ...r,
+        tonDong: (r.tongDon || 0) - (r.tongDonGTC || 0),
         stdDate,
         buuCucStd: normalizePostOfficeName(r.buuCuc),
         soDonGanLay,
@@ -324,7 +339,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
         const totalLayTc = items.reduce((s, v) => s + v.donLayTinhLuong, 0);
         const avgLayTcRate = totalGanLay > 0 ? (totalLayTc / totalGanLay) * 100 : 0;
 
-        const totalTonDong = items.reduce((s, v) => s + (v.tonDong || 0), 0);
+        const totalTonDong = totalGan - totalGtc;
         const avgLeadtime = items.length > 0 
           ? items.reduce((s, v) => s + (v.leadtime || 0), 0) / items.length 
           : 0;
@@ -817,49 +832,57 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
               Bưu Cục:
             </span>
 
-            {/* Nút Tất cả */}
-            <button
-              type="button"
-              onClick={() => handleTogglePo('all')}
-              className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                selectedPos.includes('all')
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {selectedPos.includes('all') ? (
-                <CheckSquare className="w-3 h-3" />
-              ) : (
-                <Square className="w-3 h-3" />
-              )}
-              <span>Tất cả 5 bưu cục</span>
-            </button>
-
-            {/* Các bưu cục chi tiết */}
-            {standardPostOffices.map(po => {
-              const isChecked = selectedPos.includes('all') || selectedPos.includes(po);
-              return (
+            {!isStaff ? (
+              <>
+                {/* Nút Tất cả */}
                 <button
-                  key={po}
                   type="button"
-                  onClick={() => handleTogglePo(po)}
+                  onClick={() => handleTogglePo('all')}
                   className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                    isChecked && !selectedPos.includes('all')
-                      ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-400'
-                      : isChecked
-                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                        : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    selectedPos.includes('all')
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  {isChecked ? (
+                  {selectedPos.includes('all') ? (
                     <CheckSquare className="w-3 h-3" />
                   ) : (
                     <Square className="w-3 h-3" />
                   )}
-                  <span>{po.replace('(LAN) ', '')}</span>
+                  <span>Tất cả 5 bưu cục</span>
                 </button>
-              );
-            })}
+
+                {/* Các bưu cục chi tiết */}
+                {standardPostOffices.map(po => {
+                  const isChecked = selectedPos.includes('all') || selectedPos.includes(po);
+                  return (
+                    <button
+                      key={po}
+                      type="button"
+                      onClick={() => handleTogglePo(po)}
+                      className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        isChecked && !selectedPos.includes('all')
+                          ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-400'
+                          : isChecked
+                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : 'bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {isChecked ? (
+                        <CheckSquare className="w-3 h-3" />
+                      ) : (
+                        <Square className="w-3 h-3" />
+                      )}
+                      <span>{po.replace('(LAN) ', '')}</span>
+                    </button>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-300 dark:border-indigo-500/50 rounded-md text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shadow-2xs">
+                <span>{assignedPo || selectedPos[0]}</span>
+              </div>
+            )}
           </div>
 
           {/* Hàng 2: Tick chọn Tháng, Tick chọn Tuần, Tìm Kiếm & Nút Xuất Excel */}
@@ -1225,8 +1248,12 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                               <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Lấy</th>
                               <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Lấy TC</th>
                               <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">% Lấy TC</th>
-                              <th className="py-2 px-2.5 text-center bg-emerald-50/70 dark:bg-emerald-950/40 whitespace-normal break-words leading-tight align-middle">Lương TB/Ngày</th>
-                              <th className="py-2 px-2.5 text-center bg-purple-50/70 dark:bg-purple-950/40 whitespace-normal break-words leading-tight align-middle">Đơn Giá TB</th>
+                              {!isStaff && (
+                                <>
+                                  <th className="py-2 px-2.5 text-center bg-emerald-50/70 dark:bg-emerald-950/40 whitespace-normal break-words leading-tight align-middle">Lương TB/Ngày</th>
+                                  <th className="py-2 px-2.5 text-center bg-purple-50/70 dark:bg-purple-950/40 whitespace-normal break-words leading-tight align-middle">Đơn Giá TB</th>
+                                </>
+                              )}
                               <th className="py-2 px-2 text-center whitespace-normal break-words leading-tight align-middle">Chi Tiết Ngày</th>
                             </tr>
                           </thead>
@@ -1302,15 +1329,17 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                       {staff.sumGanLay > 0 ? safeFormatPercent(staff.avgLayTcRate, 1) : '-'}
                                     </td>
 
-                                    {/* Lương TB / Ngày */}
-                                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap align-middle">
-                                      {staff.avgSalaryPerDay > 0 ? `${safeFormatNumber(Math.round(staff.avgSalaryPerDay))} đ` : '-'}
-                                    </td>
-
-                                    {/* Đơn giá TB */}
-                                    <td className="py-1.5 px-2.5 text-center font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap align-middle">
-                                      {staff.avgUnitPrice > 0 ? `${safeFormatNumber(Math.round(staff.avgUnitPrice))} đ/đơn` : '-'}
-                                    </td>
+                                    {/* Lương TB / Ngày & Đơn giá (Ẩn đối với phân hệ nhân viên) */}
+                                    {!isStaff && (
+                                      <>
+                                        <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap align-middle">
+                                          {staff.avgSalaryPerDay > 0 ? `${safeFormatNumber(Math.round(staff.avgSalaryPerDay))} đ` : '-'}
+                                        </td>
+                                        <td className="py-1.5 px-2.5 text-center font-bold text-purple-700 dark:text-purple-300 whitespace-nowrap align-middle">
+                                          {staff.avgUnitPrice > 0 ? `${safeFormatNumber(Math.round(staff.avgUnitPrice))} đ/đơn` : '-'}
+                                        </td>
+                                      </>
+                                    )}
 
                                     {/* Nút xem chi tiết từng ngày */}
                                     <td className="py-1.5 px-2 text-center whitespace-nowrap align-middle">
@@ -1332,7 +1361,7 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                   {/* Hàng mở rộng bảng chi tiết từng ngày của nhân viên (STICKY HEADER + DỮ LIỆU CÙNG 1 HÀNG) */}
                                   {isStaffExpanded && (
                                     <tr className="bg-slate-100/90 dark:bg-slate-900/80">
-                                      <td colSpan={15} className="p-2.5">
+                                      <td colSpan={isStaff ? 13 : 15} className="p-2.5">
                                         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 shadow-inner space-y-2">
                                           <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
                                             <span className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -1366,8 +1395,12 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                                   <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">SLĐ Lấy</th>
                                                   <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">Lấy TC</th>
                                                   <th className="py-1 px-2 text-center whitespace-normal break-words leading-tight align-middle">% Lấy TC</th>
-                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Lương Ngày</th>
-                                                  <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Đơn Giá</th>
+                                                  {!isStaff && (
+                                                    <>
+                                                      <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Lương Ngày</th>
+                                                      <th className="py-1 px-2.5 text-center whitespace-normal break-words leading-tight align-middle">Đơn Giá</th>
+                                                    </>
+                                                  )}
                                                 </tr>
                                               </thead>
                                               <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1390,12 +1423,16 @@ export const NhanSuOperationalAlertsCard: React.FC<NhanSuOperationalAlertsCardPr
                                                     <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{safeFormatNumber(day.ganLay)}</td>
                                                     <td className="py-1 px-2 text-center font-bold text-purple-600 whitespace-nowrap align-middle">{safeFormatNumber(day.layTc)}</td>
                                                     <td className="py-1 px-2 text-center whitespace-nowrap align-middle">{day.ganLay > 0 ? safeFormatPercent(day.layTcPct, 1) : '-'}</td>
-                                                    <td className="py-1 px-2.5 text-center font-bold text-emerald-600 whitespace-nowrap align-middle">
-                                                      {day.luong > 0 ? `${safeFormatNumber(Math.round(day.luong))} đ` : '0 đ'}
-                                                    </td>
-                                                    <td className="py-1 px-2.5 text-center font-bold text-purple-600 whitespace-nowrap align-middle">
-                                                      {day.donGiaTb > 0 ? `${safeFormatNumber(Math.round(day.donGiaTb))} đ` : '-'}
-                                                    </td>
+                                                    {!isStaff && (
+                                                      <>
+                                                        <td className="py-1 px-2.5 text-center font-bold text-emerald-600 whitespace-nowrap align-middle">
+                                                          {day.luong > 0 ? `${safeFormatNumber(Math.round(day.luong))} đ` : '0 đ'}
+                                                        </td>
+                                                        <td className="py-1 px-2.5 text-center font-bold text-purple-600 whitespace-nowrap align-middle">
+                                                          {day.donGiaTb > 0 ? `${safeFormatNumber(Math.round(day.donGiaTb))} đ` : '-'}
+                                                        </td>
+                                                      </>
+                                                    )}
                                                   </tr>
                                                 ))}
                                               </tbody>

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getMissingEnvVars, redactSensitive } from '../_lib/env.js';
+import { getMissingSendOtpEnvVars, redactSensitive } from '../_lib/env.js';
 import { HttpValidationError, readValidatedJsonBody, sendJson } from '../_lib/http.js';
 import {
   createSupabaseRateLimitStore,
@@ -9,6 +9,7 @@ import {
   type RateLimitStore
 } from '../_lib/rateLimit.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { normalizePhoneNumber } from '../_lib/telegramDispatcher.js';
 import { sendOtpWithUpstream, type UpstreamOtpSendResult } from '../_lib/upstreamAuth.js';
 
 export interface SendOtpDeps {
@@ -19,8 +20,9 @@ export interface SendOtpDeps {
 }
 
 const defaultDeps: SendOtpDeps = {
-  getMissingEnv: getMissingEnvVars,
+  getMissingEnv: getMissingSendOtpEnvVars,
   getRateLimitStore: () => createSupabaseRateLimitStore(getSupabaseAdmin()),
+  rateLimitSecret: process.env.RATE_LIMIT_HMAC_SECRET,
   sendOtp: sendOtpWithUpstream
 };
 
@@ -54,7 +56,7 @@ export async function processSendOtpRequest(
     return;
   }
 
-  const cleanedPhone = body.phone.trim().replace(/\s+/g, '');
+  const cleanedPhone = normalizePhoneNumber(body.phone);
   if (!cleanedPhone || cleanedPhone.length < 10 || cleanedPhone.length > 20) {
     sendJson(res, 400, {
       success: false,

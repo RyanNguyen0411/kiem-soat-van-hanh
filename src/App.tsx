@@ -6,7 +6,7 @@ import {
   PackageX, 
   Menu 
 } from 'lucide-react';
-import { DashboardProvider, useDashboard } from './context/DashboardContext';
+import { DashboardProvider, useDashboard, useTab } from './context/DashboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/auth/LoginScreen';
 import Header from './components/Header';
@@ -17,6 +17,7 @@ import { OperationalCalendarDrawer } from './components/common/OperationalCalend
 import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryModal';
 import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
 import { TelegramReportModal } from './components/common/TelegramReportModal';
+import { StaffNoticeModal } from './components/auth/StaffNoticeModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
 import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
 import { GoogleDriveLockModal } from './components/common/GoogleDriveLockModal';
@@ -34,22 +35,39 @@ import DailySalaryTab from './pages/DailySalaryTab';
 import ReturnRateTab from './pages/ReturnRateTab';
 import BacklogGltTab from './pages/BacklogGltTab';
 import BacklogLcTab from './pages/BacklogLcTab';
+import PostOfficeManagementTab from './pages/PostOfficeManagementTab';
 
 const DashboardContent: React.FC = () => {
-  const { activeTab, setActiveTab, setIsSidebarOpen } = useDashboard();
+  const { activeTab, setActiveTab } = useTab();
+  const { setIsSidebarOpen } = useDashboard();
+  const { currentUser, isNoticeAcknowledged } = useAuth();
+  const mainScrollRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
+
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const shouldBlockAndBlur = isStaff && !isNoticeAcknowledged;
 
   return (
-    <div className="h-screen bg-slate-100 dark:bg-slate-900 flex flex-col font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-orange-500 selection:text-white overflow-hidden">
+    <div className="h-screen bg-slate-100 dark:bg-slate-900 flex flex-col font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-orange-500 selection:text-white overflow-hidden relative">
       {/* Executive Header */}
-      <Header />
+      <div className={`transition-all duration-300 ${shouldBlockAndBlur ? 'filter blur-xs pointer-events-none select-none' : ''}`}>
+        <Header />
+      </div>
 
       {/* Main Container */}
-      <div className="flex-1 min-h-0 flex overflow-hidden relative">
+      <div className={`flex-1 min-h-0 flex overflow-hidden relative transition-all duration-300 ${
+        shouldBlockAndBlur ? 'filter blur-md pointer-events-none select-none opacity-40' : ''
+      }`}>
         {/* Navigation Sidebar */}
         <Sidebar />
 
-        {/* Content Area with smooth scrolling */}
-        <main className="flex-1 min-h-0 overflow-y-auto bg-slate-100/70 dark:bg-slate-900/90 pb-20 lg:pb-12 scroll-smooth">
+        {/* Content Area */}
+        <main ref={mainScrollRef} className="flex-1 min-h-0 overflow-y-auto bg-slate-100/70 dark:bg-slate-900/90 pb-20 lg:pb-12">
           {/* Executive Breadcrumb & Highlighted Active View Banner (Dành cho các tab chuyên biệt; Tab Tổng quan sử dụng cụm Header điều hành 3 tầng tinh gọn tích hợp) */}
           {activeTab !== 'overview' && <ExecutiveBreadcrumbBar />}
 
@@ -63,26 +81,44 @@ const DashboardContent: React.FC = () => {
           {activeTab === 'ty_le_tra_hang' && <ReturnRateTab />}
           {activeTab === 'ton_dong_glt' && <BacklogGltTab />}
           {activeTab === 'ton_dong_lc' && <BacklogLcTab />}
+          {activeTab === 'quan_ly_buu_cuc' && <PostOfficeManagementTab />}
         </main>
       </div>
 
       {/* Mobile Bottom Navigation Bar (Tối ưu trải nghiệm bấm ngón cái trên Điện Thoại & iPad) */}
       <nav 
         aria-label="Thanh điều hướng di động"
-        className="lg:hidden shrink-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-slate-400 z-30 px-1 py-1 flex items-center justify-around shadow-2xl safe-bottom"
+        className={`lg:hidden shrink-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-slate-400 z-30 px-1 py-1 flex items-center justify-around shadow-2xl safe-bottom transition-all duration-300 ${
+          shouldBlockAndBlur ? 'filter blur-xs pointer-events-none select-none' : ''
+        }`}
       >
-        <button
-          type="button"
-          onClick={() => setActiveTab('overview')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all min-w-[56px] ${
-            activeTab === 'overview' 
-              ? 'text-orange-500 font-bold' 
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <LayoutDashboard className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">Tổng quan</span>
-        </button>
+        {!isStaff ? (
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all min-w-[56px] ${
+              activeTab === 'overview' 
+                ? 'text-orange-500 font-bold' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">Tổng quan</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveTab('gtc_buu_cuc')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all min-w-[56px] ${
+              activeTab === 'gtc_buu_cuc' 
+                ? 'text-orange-500 font-bold' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">GTC Bưu cục</span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -162,8 +198,11 @@ const DashboardContent: React.FC = () => {
       {/* Sơ Đồ Cây Cơ Cấu & Menu Tổng Hợp Dashboard (Ctrl+M) */}
       <ExecutiveDirectoryModal />
 
-      {/* Báo Cáo Telegram Tồn Đọng GLT (120h & 192h) và Tồn LC */}
-      <TelegramReportModal />
+      {/* Báo Cáo Telegram Tồn Đọng GLT (120h & 192h) và Tồn LC (Chỉ dành cho AM Huy) */}
+      {!isStaff && <TelegramReportModal />}
+
+      {/* Thông Báo Hướng Dẫn Sử Dụng Phân Hệ Bưu Cục Cho Nhân Viên (Blur nội dung đến khi Đồng ý) */}
+      <StaffNoticeModal />
 
       {/* Trung Tâm Kiểm Định Dữ Liệu & Đối Chiếu Vận Hành (DQ Audit Center) */}
       <DataQualityModal />

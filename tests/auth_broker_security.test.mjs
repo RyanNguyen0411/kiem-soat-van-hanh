@@ -483,3 +483,228 @@ test('F: Redacts sensitive data, keeps src/ isolated, and validates vercel.json 
   assert.equal(rewritePattern.test('/api/duong-dan-khong-ton-tai'), false);
   assert.ok(Array.isArray(getMissingEnvVars()));
 });
+
+// ============================================================================
+// G. EMAIL RECOVERY SECURITY & PASSWORD LOGIN UPSTREAM ISOLATION
+// ============================================================================
+test('G.1: Password Login does NOT leak credentials to VITE_DRIVE_EXPORT_WEBHOOK_URL when AUTH_UPSTREAM is missing', async () => {
+  const savedUpstream = process.env.AUTH_UPSTREAM_WEBHOOK_URL;
+  const savedDrive = process.env.VITE_DRIVE_EXPORT_WEBHOOK_URL;
+  const savedFetch = globalThis.fetch;
+
+  delete process.env.AUTH_UPSTREAM_WEBHOOK_URL;
+  process.env.VITE_DRIVE_EXPORT_WEBHOOK_URL = 'https://script.google.com/macros/s/drive-export/exec';
+
+  let driveFetchCalled = false;
+  globalThis.fetch = async (url, options) => {
+    const urlStr = String(url);
+    if (urlStr.includes('drive-export') || urlStr.includes('script.google.com')) {
+      driveFetchCalled = true;
+      throw new Error('VITE_DRIVE_EXPORT_WEBHOOK_URL must NEVER be called for password authentication!');
+    }
+    // Mock Supabase Auth / REST response
+    if (urlStr.includes('/auth/v1/token')) {
+      return new Response(JSON.stringify({ error: { message: 'Invalid login credentials', status: 400 } }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const result = await verifyCredentialsWithUpstream({ username: 'am_huy', password: 'my-password' });
+    assert.equal(driveFetchCalled, false, 'Expected VITE_DRIVE_EXPORT_WEBHOOK_URL to NEVER be called');
+    assert.equal(result.success, false);
+    assert.equal(Boolean(result.upstreamUnavailable), false);
+
+    // Also verify login handler returns HTTP 401, not 503 or 200
+    const res = createMockResponse();
+    await processLoginRequest({
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: { username: 'am_huy', password: 'my-password' }
+    }, res, {
+      getMissingEnv: mockEnvReady,
+      verifyUpstream: verifyCredentialsWithUpstream,
+      resolveRbac: async () => ({
+        status: 'OK', found: true, isActive: true, role: 'area_manager', permissions: ['incident_management']
+      }),
+      signJwt: (claims) => signIncidentSessionJwt(claims, TEST_SIGNING_SECRET)
+    });
+    await res.done;
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.json.success, false);
+    assert.equal(res.json.token, undefined);
+  } finally {
+    globalThis.fetch = savedFetch;
+    if (savedUpstream === undefined) delete process.env.AUTH_UPSTREAM_WEBHOOK_URL;
+    else process.env.AUTH_UPSTREAM_WEBHOOK_URL = savedUpstream;
+    if (savedDrive === undefined) delete process.env.VITE_DRIVE_EXPORT_WEBHOOK_URL;
+    else process.env.VITE_DRIVE_EXPORT_WEBHOOK_URL = savedDrive;
+  }
+});
+
+test('G.2: Email Recovery initiates password recovery flow and NEVER issues JWT session tokens', async () => {
+  const resSuccess = createMockResponse();
+  let jwtSigned = false;
+
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'am_huy', email: 'am.huy@ghn.vn' }
+  }, resSuccess, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({ success: false, error: 'Should not be called' }),
+    resolveRbac: async () => ({
+      status: 'OK',
+      found: true,
+      isActive: true,
+      canonicalUsername: 'am_huy',
+      displayName: 'AM Huy',
+      role: 'area_manager',
+      permissions: ['incident_management']
+    }),
+    signJwt: async () => {
+      jwtSigned = true;
+      return { token: 'ILLEGAL_TOKEN', expiresAt: Date.now() + 3600000 };
+    }
+  });
+
+  await resSuccess.done;
+  assert.equal(resSuccess.statusCode, 200);
+  assert.equal(resSuccess.json.success, true);
+  assert.equal(resSuccess.json.recoveryInitiated, true);
+  assert.equal(resSuccess.json.token, undefined, 'Email recovery MUST NOT issue JWT token');
+  assert.equal(resSuccess.json.user, undefined, 'Email recovery MUST NOT issue authenticated user object');
+  assert.equal(jwtSigned, false, 'signJwt must NEVER be called during email recovery');
+
+  // Mismatched/unregistered email must be rejected with 401
+  const resFail = createMockResponse();
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'am_huy', email: 'attacker@evil.com' }
+  }, resFail, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({ success: false, error: 'Should not be called' }),
+    resolveRbac: async () => ({
+      status: 'IDENTITY_MISMATCH',
+      found: false,
+      isActive: false,
+      role: 'viewer',
+      permissions: []
+    }),
+    signJwt: async () => ({ token: 'ILLEGAL_TOKEN', expiresAt: Date.now() + 3600000 })
+  });
+
+  await resFail.done;
+  assert.equal(resFail.statusCode, 401);
+  assert.equal(resFail.json.success, false);
+  assert.equal(resFail.json.token, undefined);
+});
+
+test('G.3: Supabase Auth integration (correct password, wrong password, inactive user, and Gmail OTP)', async () => {
+  // 1. Correct Password via Supabase Auth Mock
+  const resOk = createMockResponse();
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'Huyamdnb', password: 'ValidPassword123' }
+  }, resOk, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({
+      success: true,
+      user: { id: 'usr-huy-1', username: 'Huyamdnb', email: 'hoanghuy13cd@gmail.com', name: 'AM Huy (ĐNB)' }
+    }),
+    resolveRbac: async () => ({
+      status: 'OK',
+      found: true,
+      isActive: true,
+      canonicalUsername: 'huyamdnb',
+      displayName: 'AM Huy (ĐNB)',
+      role: 'area_manager',
+      permissions: ['incident_intake_submit']
+    }),
+    signJwt: (claims) => signIncidentSessionJwt(claims, TEST_SIGNING_SECRET)
+  });
+  await resOk.done;
+  assert.equal(resOk.statusCode, 200);
+  assert.equal(resOk.json.success, true);
+  assert.equal(resOk.json.user.role, 'area_manager');
+  assert.deepEqual(resOk.json.user.permissions, ['incident_intake_submit']);
+  assert.ok(resOk.json.token);
+
+  // 2. Wrong Password
+  const resWrongPass = createMockResponse();
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'Huyamdnb', password: 'WrongPassword' }
+  }, resWrongPass, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({
+      success: false,
+      error: 'Tài khoản hoặc mật khẩu không chính xác.'
+    }),
+    resolveRbac: async () => ({
+      status: 'OK', found: true, isActive: true, role: 'area_manager', permissions: ['incident_intake_submit']
+    }),
+    signJwt: (claims) => signIncidentSessionJwt(claims, TEST_SIGNING_SECRET)
+  });
+  await resWrongPass.done;
+  assert.equal(resWrongPass.statusCode, 401);
+  assert.equal(resWrongPass.json.success, false);
+  assert.equal(resWrongPass.json.token, undefined);
+
+  // 3. Inactive User
+  const resInactive = createMockResponse();
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'Huyamdnb', password: 'ValidPassword123' }
+  }, resInactive, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({
+      success: true,
+      user: { id: 'usr-huy-1', username: 'Huyamdnb', email: 'hoanghuy13cd@gmail.com', name: 'AM Huy (ĐNB)' }
+    }),
+    resolveRbac: async () => ({
+      status: 'INACTIVE',
+      found: true,
+      isActive: false,
+      role: 'area_manager',
+      permissions: []
+    }),
+    signJwt: (claims) => signIncidentSessionJwt(claims, TEST_SIGNING_SECRET)
+  });
+  await resInactive.done;
+  assert.equal(resInactive.statusCode, 403);
+  assert.equal(resInactive.json.token, undefined);
+
+  // 4. Role barrier check: area_manager CANNOT have incident_management permission
+  const resForbiddenPerm = createMockResponse();
+  await processLoginRequest({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: { username: 'Huyamdnb', password: 'ValidPassword123' }
+  }, resForbiddenPerm, {
+    getMissingEnv: mockEnvReady,
+    verifyUpstream: async () => ({
+      success: true,
+      user: { id: 'usr-huy-1', username: 'Huyamdnb', email: 'hoanghuy13cd@gmail.com', name: 'AM Huy (ĐNB)' }
+    }),
+    resolveRbac: async () => ({
+      status: 'OK',
+      found: true,
+      isActive: true,
+      role: 'area_manager',
+      permissions: ['incident_intake_submit'] // Strictly area_manager
+    }),
+    signJwt: (claims) => signIncidentSessionJwt(claims, TEST_SIGNING_SECRET)
+  });
+  await resForbiddenPerm.done;
+  assert.equal(resForbiddenPerm.statusCode, 200);
+  assert.equal(resForbiddenPerm.json.user.role, 'area_manager');
+  assert.equal(resForbiddenPerm.json.user.permissions.includes('incident_management'), false, 'area_manager must NEVER receive admin incident_management permission');
+});

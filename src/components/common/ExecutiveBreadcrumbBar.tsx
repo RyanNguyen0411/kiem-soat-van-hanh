@@ -11,9 +11,12 @@ import {
   UserCheck, 
   UserMinus, 
   Coins,
-  Send
+  Send,
+  ShieldCheck
 } from 'lucide-react';
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard, useTab } from '../../context/DashboardContext';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeOrderId } from '../../services/kpiEngine';
 import type { TabType } from '../../types/dashboard';
 
 interface TabMeta {
@@ -31,7 +34,16 @@ interface TabMeta {
 }
 
 export const ExecutiveBreadcrumbBar: React.FC = () => {
-  const { activeTab, setActiveTab, dataset } = useDashboard();
+  const { activeTab } = useTab();
+  const { setActiveTab, dataset } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+
+  const uniqueCouriers = new Set(dataset.gtcNhanVien.map(r => r.maNV)).size || 72;
+  const uniqueGltCount = new Set(dataset.tonDongGlt.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean)).size;
+  const uniqueLcCount = new Set(dataset.tonDongLc.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean)).size;
+  const activeStaffTotal = dataset.nhanSu.length || 81;
+  const resignedStaffTotal = dataset.nghiViec?.length || 81;
 
   // Tra cứu siêu dữ liệu của tab hiện tại để render Breadcrumb & Highlight Tiêu Đề
   const tabMetaMap: Record<TabType, TabMeta> = {
@@ -48,14 +60,14 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       accentGradient: 'from-orange-500/20 via-amber-500/10 to-transparent border-orange-500/30',
       siblings: [
         { id: 'overview', label: 'Tổng Quan' },
-        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo GTC BC', badge: 'Live' },
+        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo Ngày', badge: 'Live' },
         { id: 'gtc_buu_cuc', label: 'GTC Bưu Cục', badge: '5 BC' },
-        { id: 'gtc_nhan_vien', label: 'GTC Bưu Tá', badge: '74 NV' }
+        { id: 'gtc_nhan_vien', label: 'GTC Bưu Tá', badge: `${uniqueCouriers} NV` }
       ]
     },
     bao_cao_gtc_bc: {
       id: 'bao_cao_gtc_bc',
-      title: 'BÁO CÁO GTC BƯU CỤC NGÀY',
+      title: 'BÁO CÁO NGÀY',
       categoryName: 'VẬN HÀNH & GTC',
       categoryShort: 'Vận Hành',
       categoryIcon: LayoutDashboard,
@@ -66,7 +78,7 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       accentGradient: 'from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-500/30',
       siblings: [
         { id: 'overview', label: 'Tổng Quan' },
-        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo GTC BC' },
+        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo Ngày' },
         { id: 'gtc_buu_cuc', label: 'GTC Bưu Cục' },
         { id: 'gtc_nhan_vien', label: 'GTC Bưu Tá' }
       ]
@@ -78,13 +90,13 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryShort: 'Vận Hành',
       categoryIcon: LayoutDashboard,
       icon: Building2,
-      subTitle: 'So sánh hiệu suất, tỷ lệ đạt Target GTC >= 92% và ngày trũng trong tuần',
+      subTitle: 'So sánh hiệu suất giao thành công, tỷ lệ gán và ngày trũng trong tuần',
       badge: '5 Bưu Cục',
       badgeColor: 'bg-blue-600 text-white',
       accentGradient: 'from-blue-500/20 via-indigo-500/10 to-transparent border-blue-500/30',
       siblings: [
         { id: 'overview', label: 'Tổng Quan' },
-        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo GTC BC' },
+        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo Ngày' },
         { id: 'gtc_buu_cuc', label: 'GTC Bưu Cục' },
         { id: 'gtc_nhan_vien', label: 'GTC Bưu Tá' }
       ]
@@ -96,13 +108,13 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryShort: 'Vận Hành',
       categoryIcon: LayoutDashboard,
       icon: Users,
-      subTitle: 'Bảng xếp hạng 74 bưu tá, khoanh vùng nhóm rủi ro (<60% GTC) và năng suất',
-      badge: `${new Set(dataset.gtcNhanVien.map(r => r.maNV)).size || 74} Bưu Tá`,
+      subTitle: `Bảng xếp hạng ${uniqueCouriers} bưu tá, khoanh vùng nhóm rủi ro (<60% GTC) và năng suất`,
+      badge: `${uniqueCouriers} Bưu Tá`,
       badgeColor: 'bg-indigo-600 text-white',
       accentGradient: 'from-indigo-500/20 via-purple-500/10 to-transparent border-indigo-500/30',
       siblings: [
         { id: 'overview', label: 'Tổng Quan' },
-        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo GTC BC' },
+        { id: 'bao_cao_gtc_bc', label: 'Báo Cáo Ngày' },
         { id: 'gtc_buu_cuc', label: 'GTC Bưu Cục' },
         { id: 'gtc_nhan_vien', label: 'GTC Bưu Tá' }
       ]
@@ -115,12 +127,12 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryIcon: PackageX,
       icon: PackageX,
       subTitle: 'Quản trị và giải phóng tồn kho, cảnh báo khẩn cấp >120h và >192h',
-      badge: `${dataset.tonDongGlt.length.toLocaleString('vi-VN')} Đơn Tồn`,
+      badge: `${uniqueGltCount.toLocaleString('vi-VN')} Đơn Tồn`,
       badgeColor: 'bg-rose-600 text-white',
       accentGradient: 'from-rose-500/20 via-pink-500/10 to-transparent border-rose-500/30',
       siblings: [
-        { id: 'ton_dong_glt', label: 'Tồn Đọng GLT', badge: `${dataset.tonDongGlt.length}` },
-        { id: 'ton_dong_lc', label: 'Tồn Đọng LC', badge: `${dataset.tonDongLc.length}` },
+        { id: 'ton_dong_glt', label: 'Tồn Đọng GLT', badge: `${uniqueGltCount.toLocaleString('vi-VN')}` },
+        { id: 'ton_dong_lc', label: 'Tồn Đọng LC', badge: `${uniqueLcCount.toLocaleString('vi-VN')}` },
         { id: 'ty_le_tra_hang', label: 'Tỷ Lệ Trả Hàng', badge: 'SLA' }
       ]
     },
@@ -131,8 +143,8 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryShort: 'Tồn Đọng & SLA',
       categoryIcon: PackageX,
       icon: Truck,
-      subTitle: 'Giám sát 302 đơn hàng trung chuyển luân chuyển kho & phòng ngừa tắc bưu cục',
-      badge: `${dataset.tonDongLc.length} Đơn LC`,
+      subTitle: `Giám sát ${uniqueLcCount.toLocaleString('vi-VN')} đơn hàng trung chuyển luân chuyển kho & phòng ngừa tắc bưu cục`,
+      badge: `${uniqueLcCount.toLocaleString('vi-VN')} Đơn LC`,
       badgeColor: 'bg-blue-600 text-white',
       accentGradient: 'from-blue-500/20 via-cyan-500/10 to-transparent border-blue-500/30',
       siblings: [
@@ -166,12 +178,12 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryIcon: Users,
       icon: UserCheck,
       subTitle: 'Phân tầng 10 nhóm thâm niên (G01 - G10), chi tiết nhân viên & rủi ro nghỉ việc',
-      badge: `${dataset.nhanSu.length || 81} Nhân Sự`,
+      badge: `${activeStaffTotal} Nhân Sự`,
       badgeColor: 'bg-indigo-600 text-white',
       accentGradient: 'from-indigo-500/20 via-purple-500/10 to-transparent border-indigo-500/30',
       siblings: [
-        { id: 'nhan_su', label: 'Task Nhân Sự', badge: `${dataset.nhanSu.length || 81} NV` },
-        { id: 'ns_nghi_viec', label: 'NS Nghỉ Việc', badge: `${dataset.nghiViec?.length || 81} Đã Nghỉ` },
+        { id: 'nhan_su', label: 'Task Nhân Sự', badge: `${activeStaffTotal} NV` },
+        { id: 'ns_nghi_viec', label: 'NS Nghỉ Việc', badge: `${resignedStaffTotal} Đã Nghỉ` },
         { id: 'hoa_hong_ngay', label: 'Hoa Hồng Ngày', badge: 'Quỹ Lương' }
       ]
     },
@@ -182,13 +194,13 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
       categoryShort: 'Nhân Sự & Lương',
       categoryIcon: Users,
       icon: UserMinus,
-      subTitle: 'Phân tích ma trận thâm niên, cơ cấu lý do thôi việc, bảng kê 81 nhân sự & nhận định điều hành',
-      badge: `${dataset.nghiViec?.length || 81} Đã Nghỉ`,
+      subTitle: `Phân tích ma trận thâm niên, cơ cấu lý do thôi việc, bảng kê ${resignedStaffTotal} nhân sự & nhận định điều hành`,
+      badge: `${resignedStaffTotal} Đã Nghỉ`,
       badgeColor: 'bg-rose-600 text-white',
       accentGradient: 'from-rose-500/20 via-pink-500/10 to-transparent border-rose-500/30',
       siblings: [
-        { id: 'nhan_su', label: 'Task Nhân Sự', badge: `${dataset.nhanSu.length || 81} NV` },
-        { id: 'ns_nghi_viec', label: 'NS Nghỉ Việc', badge: `${dataset.nghiViec?.length || 81} Đã Nghỉ` },
+        { id: 'nhan_su', label: 'Task Nhân Sự', badge: `${activeStaffTotal} NV` },
+        { id: 'ns_nghi_viec', label: 'NS Nghỉ Việc', badge: `${resignedStaffTotal} Đã Nghỉ` },
         { id: 'hoa_hong_ngay', label: 'Hoa Hồng Ngày', badge: 'Quỹ Lương' }
       ]
     },
@@ -207,6 +219,22 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
         { id: 'nhan_su', label: 'Task Nhân Sự' },
         { id: 'ns_nghi_viec', label: 'NS Nghỉ Việc' },
         { id: 'hoa_hong_ngay', label: 'Hoa Hồng Ngày' }
+      ]
+    },
+    quan_ly_buu_cuc: {
+      id: 'quan_ly_buu_cuc',
+      title: 'PHÂN HỆ QUẢN TRỊ & BẢO MẬT BƯU CỤC',
+      categoryName: 'QUẢN TRỊ & PHÂN HỆ',
+      categoryShort: 'Quản Trị Bưu Cục',
+      categoryIcon: ShieldCheck,
+      icon: ShieldCheck,
+      subTitle: 'Quản lý tài khoản 5 bưu cục, khóa 5 lần sai, cấp đổi mật khẩu & cây sơ đồ phân quyền dữ liệu',
+      badge: 'Bảo Mật',
+      badgeColor: 'bg-emerald-600 text-white',
+      accentGradient: 'from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-500/30',
+      siblings: [
+        { id: 'overview', label: 'Tổng Quan' },
+        { id: 'quan_ly_buu_cuc', label: 'Phân Hệ Bưu Cục', badge: '5 BC' }
       ]
     }
   };
@@ -242,9 +270,9 @@ export const ExecutiveBreadcrumbBar: React.FC = () => {
             </span>
           </nav>
 
-          {/* Quick Actions: Telegram Báo Cáo */}
+          {/* Quick Actions: Telegram Báo Cáo (Ẩn hoàn toàn đối với tài khoản phân hệ nhân viên) */}
           <div className="flex items-center gap-1.5">
-            {(activeTab === 'ton_dong_glt' || activeTab === 'ton_dong_lc') && (
+            {!isStaff && (activeTab === 'ton_dong_glt' || activeTab === 'ton_dong_lc') && (
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { 

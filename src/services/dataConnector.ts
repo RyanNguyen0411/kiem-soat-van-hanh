@@ -50,7 +50,10 @@ export const EXCLUDED_STAFF_NAMES = [
   'Huỳnh Tuấn Hải'
 ];
 
-export const EXCLUDED_STAFF_IDS = new Set(['3175777', '3103251', '3183963']);
+export const EXCLUDED_STAFF_IDS = new Set(['3103251', '3183963']);
+
+// Nhân sự xử lý (NVXL) thuộc định biên nhân sự ĐNB nhưng không đưa vào đánh giá hiệu suất giao hàng bưu tá
+export const EXCLUDED_DELIVERY_EVAL_IDS = new Set(['3175777']);
 
 export function normalizePersonName(name?: string): string {
   if (!name) return '';
@@ -67,6 +70,12 @@ export function isExcludedStaff(nameOrRaw?: string, id?: string): boolean {
     if (norm.includes(ex)) return true;
   }
   return false;
+}
+
+export function isExcludedFromDeliveryEval(nameOrRaw?: string, id?: string): boolean {
+  if (id && EXCLUDED_DELIVERY_EVAL_IDS.has(id.trim())) return true;
+  if (!nameOrRaw) return false;
+  return normalizePersonName(nameOrRaw).includes(normalizePersonName('Trần Trọng Phú'));
 }
 
 export const SHEET_NAMES = {
@@ -298,16 +307,130 @@ export interface DatasetLoadResult {
   sheetStatuses: Record<string, SheetSyncDetail>;
 }
 
+export const DATASET_STORAGE_KEY = 'ghn_dataset_cache_v1';
+
+/**
+ * Returns instant initial dataset (from local cache or pre-audited snapshots)
+ * Enables 0ms immediate render upon login without waiting for remote Google Sheets sync.
+ */
+export function getInitialDataset(): DatasetState {
+  try {
+    const cached = localStorage.getItem(DATASET_STORAGE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed.gtcBuuCuc) && parsed.gtcBuuCuc.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return {
+    gtcBuuCuc: (gtcBuuCucSnapshot as GtcPostOfficeRecord[]).map(r => ({
+      ...r,
+      buuCuc: normalizePostOfficeName(r.buuCuc)
+    })),
+    gtcNhanVien: (gtcNhanVienSnapshot as GtcEmployeeRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV) && !isExcludedFromDeliveryEval(r.tenNV || r.nhanVienRaw, r.maNV))
+      .map(r => ({
+        ...r,
+        buuCuc: normalizePostOfficeName(r.buuCuc)
+      })),
+    hoaHongNgay: (hoaHongNgaySnapshot as DailySalaryRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV) && !isExcludedFromDeliveryEval(r.tenNV || r.nhanVienRaw, r.maNV))
+      .map(r => {
+        const postOfficeMeta = lookupPostOffice({ code: r.maBC, name: r.tenBC });
+        const tenBC = postOfficeMeta.standardName;
+        return {
+          ...r,
+          tenBC,
+          maBC: postOfficeMeta.standardCode,
+          buuCucRaw: tenBC === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      }),
+    tyLeTraHang: tyLeTraHangSnapshot as any[],
+    tonDongGlt: (tonDongGltSnapshot as BacklogGltRecord[]).map(r => {
+      const meta = lookupPostOffice({ code: r.maBC, name: r.buuCuc });
+      return {
+        ...r,
+        buuCuc: meta.standardName,
+        maBC: meta.standardCode
+      };
+    }),
+    tonDongLc: (tonDongLcSnapshot as BacklogLcRecord[]).map(r => {
+      const meta = lookupPostOffice({ code: r.maBC, name: r.tenBC });
+      return {
+        ...r,
+        tenBC: meta.standardName,
+        maBC: meta.standardCode
+      };
+    }),
+    nhanSu: (nhanSuSnapshot as NhanSuRecord[])
+      .filter(r => !isExcludedStaff(r.tenNV, r.maNV))
+      .map(r => {
+        const meta = lookupPostOffice(r.buuCuc);
+        return {
+          ...r,
+          buuCuc: meta.standardName,
+          buuCucRaw: meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      }),
+    nghiViec: (nghiViecSnapshot as NghiViecRecord[])
+      .filter(r => !isExcludedStaff(r.ten, r.id))
+      .map(r => {
+        const meta = lookupPostOffice(r.buuCuc);
+        const dStart = parseDateDDMMYYYYHelper(r.ngayVaoLam);
+        const dEnd = parseDateDDMMYYYYHelper(r.ngayNghiViec);
+        const nhomThamNien = normalizeTenureGroup(r.nhomThamNien, dStart, dEnd);
+        let soNgayLam = r.soNgayLam;
+        if ((!soNgayLam || soNgayLam <= 1) && dStart && dEnd) {
+          soNgayLam = Math.max(1, Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+        return {
+          ...r,
+          nhomThamNien,
+          soNgayLam,
+          buuCuc: meta.standardName,
+          maBC: meta.standardCode,
+          buuCucRaw: meta.standardName === '(LAN) Cần Đước 1' ? '23220000 - (LAN) Cần Đước 1' : r.buuCucRaw
+        };
+      })
+  };
+}
+
 export async function loadDataset(): Promise<DatasetLoadResult> {
   const sheetStatuses: Record<string, SheetSyncDetail> = {};
   const nowStr = new Date().toLocaleString('vi-VN');
+
+  // Trigger all 8 CSV fetches concurrently in parallel
+  const [
+    gtcBuuCucFetch,
+    gtcNhanVienFetch,
+    hoaHongNgayFetch,
+    tonDongGltFetch,
+    tonDongLcFetch,
+    tyLeTraHangFetch,
+    nhanSuFetch,
+    nghiViecFetch
+  ] = await Promise.allSettled([
+    fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC),
+    fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN),
+    fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY),
+    fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT),
+    fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC),
+    fetchCsvWithTimeout(SHEET_NAMES.TY_LE_TRA_HANG),
+    fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU),
+    fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC)
+  ]);
 
   // --------------------------------------------------------------------------
   // 1. Sheet: GTC Bưu cục
   // --------------------------------------------------------------------------
   let gtcBuuCuc: GtcPostOfficeRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.GTC_BUU_CUC);
+    if (gtcBuuCucFetch.status === 'rejected') throw gtcBuuCucFetch.reason;
+    const { text, httpStatus, durationMs } = gtcBuuCucFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu GTC Bưu cục trống');
     
@@ -373,7 +496,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let gtcNhanVien: GtcEmployeeRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.GTC_NHAN_VIEN);
+    if (gtcNhanVienFetch.status === 'rejected') throw gtcNhanVienFetch.reason;
+    const { text, httpStatus, durationMs } = gtcNhanVienFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu GTC Nhân viên trống');
 
@@ -396,7 +520,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         if (!validDate) return false;
 
         const staff = normalizeStaffIdentity(nvRaw);
-        if (isExcludedStaff(staff.tenNV, staff.maNV) || staff.tenNV.includes('Trần Trọng Phú')) return false;
+        if (isExcludedStaff(staff.tenNV, staff.maNV) || isExcludedFromDeliveryEval(staff.tenNV, staff.maNV)) return false;
         return true;
       })
       .map(r => {
@@ -446,7 +570,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
     };
   } catch (err: any) {
     gtcNhanVien = (gtcNhanVienSnapshot as GtcEmployeeRecord[])
-      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV) && !isExcludedFromDeliveryEval(r.tenNV || r.nhanVienRaw, r.maNV))
       .map(r => ({
         ...r,
         buuCuc: normalizePostOfficeName(r.buuCuc)
@@ -469,7 +593,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let hoaHongNgay: DailySalaryRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.HOA_HONG_NGAY);
+    if (hoaHongNgayFetch.status === 'rejected') throw hoaHongNgayFetch.reason;
+    const { text, httpStatus, durationMs } = hoaHongNgayFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Hoa hồng ngày trống');
 
@@ -483,7 +608,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
         if (!d.isValid) return false;
 
         const staff = normalizeStaffIdentity(nvRaw);
-        if (isExcludedStaff(staff.tenNV, staff.maNV) || staff.tenNV.includes('Trần Trọng Phú')) return false;
+        if (isExcludedStaff(staff.tenNV, staff.maNV) || isExcludedFromDeliveryEval(staff.tenNV, staff.maNV)) return false;
         return true;
       })
       .map(r => {
@@ -534,7 +659,7 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
     };
   } catch (err: any) {
     hoaHongNgay = (hoaHongNgaySnapshot as DailySalaryRecord[])
-      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV))
+      .filter(r => !isExcludedStaff(r.tenNV || r.nhanVienRaw, r.maNV) && !isExcludedFromDeliveryEval(r.tenNV || r.nhanVienRaw, r.maNV))
       .map(r => {
         const postOfficeMeta = lookupPostOffice({ code: r.maBC, name: r.tenBC });
         const tenBC = postOfficeMeta.standardName;
@@ -563,7 +688,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tonDongGlt: BacklogGltRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_GLT);
+    if (tonDongGltFetch.status === 'rejected') throw tonDongGltFetch.reason;
+    const { text, httpStatus, durationMs } = tonDongGltFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng GLT trống');
 
@@ -627,7 +753,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tonDongLc: BacklogLcRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TON_DONG_LC);
+    if (tonDongLcFetch.status === 'rejected') throw tonDongLcFetch.reason;
+    const { text, httpStatus, durationMs } = tonDongLcFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Dữ liệu Tồn đọng LC trống');
 
@@ -690,7 +817,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let tyLeTraHang: any[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.TY_LE_TRA_HANG);
+    if (tyLeTraHangFetch.status === 'rejected') throw tyLeTraHangFetch.reason;
+    const { text, httpStatus, durationMs } = tyLeTraHangFetch.value;
     const rows = parseCSV(text);
     if (rows.length <= 1) {
       sheetStatuses[SHEET_NAMES.TY_LE_TRA_HANG] = {
@@ -737,7 +865,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let nhanSu: NhanSuRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.NHAN_SU);
+    if (nhanSuFetch.status === 'rejected') throw nhanSuFetch.reason;
+    const { text, httpStatus, durationMs } = nhanSuFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Sheet Nhân sự trống hoặc chỉ có dòng tiêu đề');
 
@@ -928,7 +1057,8 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
   // --------------------------------------------------------------------------
   let nghiViec: NghiViecRecord[] = [];
   try {
-    const { text, httpStatus, durationMs } = await fetchCsvWithTimeout(SHEET_NAMES.NGHI_VIEC);
+    if (nghiViecFetch.status === 'rejected') throw nghiViecFetch.reason;
+    const { text, httpStatus, durationMs } = nghiViecFetch.value;
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('Sheet Nghỉ việc trống');
 

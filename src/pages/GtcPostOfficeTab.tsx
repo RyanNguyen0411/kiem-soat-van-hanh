@@ -34,8 +34,10 @@ import {
   Legend
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import type { GtcPostOfficeRecord } from '../types/dashboard';
 import { GtcDeliveryMatrixWidget } from '../components/gtc-post-office/GtcDeliveryMatrixWidget';
+import { GtcDailyTrendSection } from '../components/gtc-post-office/GtcDailyTrendSection';
 import { DataTable } from '../components/common/DataTable';
 import { ChartEmptyState } from '../components/common/ChartEmptyState';
 import type { Column } from '../components/common/DataTable';
@@ -43,12 +45,25 @@ import { IndividualFilterDropdown } from '../components/common/IndividualFilterD
 import { 
   sortDatesDesc, 
   extractMonths, 
-  extractWeeks
+  extractWeeks,
+  getCurrentMonthKey
 } from '../utils/dateEngine';
 import { exportToCSV } from '../services/excelExportService';
 
 export const GtcPostOfficeTab: React.FC = () => {
-  const { dataset, selectedBuuCucGlobal } = useDashboard();
+  const { 
+    dataset, 
+    selectedBuuCucGlobal, 
+    selectedDateGlobal, 
+    setSelectedBuuCucGlobal, 
+    setSelectedDateGlobal 
+  } = useDashboard();
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
+  const assignedPo = currentUser?.assignedPostOffice;
+
+  const lastPushedBcRef = useRef<string>(isStaff && assignedPo ? assignedPo : (selectedBuuCucGlobal || 'all'));
+  const lastPushedDateRef = useRef<string>(selectedDateGlobal || 'all');
   const comparisonTableRef = useRef<HTMLDivElement>(null);
   const recentDaysTableRef = useRef<HTMLDivElement>(null);
   const detailedTableRef = useRef<HTMLDivElement>(null);
@@ -63,26 +78,41 @@ export const GtcPostOfficeTab: React.FC = () => {
     }
   };
 
-  // Global Quick Time Filter State (Tháng, Tuần)
-  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('all');
+  // Global Quick Time Filter State (Mặc định 'current' = Tháng hiện tại)
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>('all');
 
-  // Global Independent Filter state (Đồng bộ với bưu cục được chọn toàn hệ thống)
+  // Global Independent Filter state (Đồng bộ với bưu cục & ngày được chọn toàn hệ thống)
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(() => ({
-    buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : [],
-    ngay: [],
+    buuCuc: isStaff && assignedPo ? [assignedPo] : (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []),
+    ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : [],
     loaiHang: [],
     thu: []
   }));
 
   useEffect(() => {
-    if (selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all') {
+    if (isStaff && assignedPo) {
+      setFilterValues(prev => ({ ...prev, buuCuc: [assignedPo] }));
+      return;
+    }
+    if (selectedBuuCucGlobal !== lastPushedBcRef.current) {
+      lastPushedBcRef.current = selectedBuuCucGlobal || 'all';
       setFilterValues(prev => ({
         ...prev,
-        buuCuc: [selectedBuuCucGlobal]
+        buuCuc: selectedBuuCucGlobal && selectedBuuCucGlobal !== 'all' ? [selectedBuuCucGlobal] : []
       }));
     }
-  }, [selectedBuuCucGlobal]);
+  }, [selectedBuuCucGlobal, isStaff, assignedPo]);
+
+  useEffect(() => {
+    if (selectedDateGlobal !== lastPushedDateRef.current) {
+      lastPushedDateRef.current = selectedDateGlobal || 'all';
+      setFilterValues(prev => ({
+        ...prev,
+        ngay: selectedDateGlobal && selectedDateGlobal !== 'all' ? [selectedDateGlobal] : []
+      }));
+    }
+  }, [selectedDateGlobal]);
 
   // State sắp xếp cho Bảng Toàn Bộ Nhân Viên Khu Vực (Luôn ưu tiên nhóm theo Bưu Cục)
   const [empSortField, setEmpSortField] = useState<string>('buuCuc');
@@ -98,19 +128,30 @@ export const GtcPostOfficeTab: React.FC = () => {
   };
 
   // State bộ lọc riêng cho Bảng Chi Tiết GTC Bưu Cục (Bưu cục, Loại Hàng, Thời gian)
-  const [dtFilterBuuCuc, setDtFilterBuuCuc] = useState<string>('all');
+  const [dtFilterBuuCuc, setDtFilterBuuCuc] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [dtFilterLoaiHang, setDtFilterLoaiHang] = useState<string>('all');
-  const [dtFilterMonth, setDtFilterMonth] = useState<string>('all');
+  const [dtFilterMonth, setDtFilterMonth] = useState<string>('current');
   const [dtFilterWeek, setDtFilterWeek] = useState<string>('all');
   const [dtFilterDate, setDtFilterDate] = useState<string>('all');
 
   const handleResetDetailedFilter = () => {
-    setDtFilterBuuCuc('all');
+    setDtFilterBuuCuc(isStaff && assignedPo ? assignedPo : 'all');
     setDtFilterLoaiHang('all');
-    setDtFilterMonth('all');
+    setDtFilterMonth('current');
     setDtFilterWeek('all');
     setDtFilterDate('all');
   };
+
+  useEffect(() => {
+    if (isStaff && assignedPo) {
+      setCompFilterBuuCuc(assignedPo);
+      setDtFilterBuuCuc(assignedPo);
+      setPoPeriodSelectedPo(assignedPo);
+      setAlert1Po(assignedPo);
+      setAlert2Po(assignedPo);
+      setAlert3Po(assignedPo);
+    }
+  }, [isStaff, assignedPo]);
 
   // 1. CỘT NGÀY ĐƯỢC LẤY DỮ LIỆU THEO CỘT "J" TRONG LINK DATA GỐC Ở SHEET "GTC NHÂN VIÊN"
   const allUniqueDatesDesc = useMemo(() => {
@@ -123,9 +164,28 @@ export const GtcPostOfficeTab: React.FC = () => {
     return extractMonths(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
 
+  const currentMonthKey = useMemo(() => {
+    return getCurrentMonthKey(availableMonths);
+  }, [availableMonths]);
+
+  const activeMonthKey = useMemo(() => {
+    if (selectedMonthKey === 'current') return currentMonthKey;
+    return selectedMonthKey;
+  }, [selectedMonthKey, currentMonthKey]);
+
   const availableWeeks = useMemo(() => {
     return extractWeeks(allUniqueDatesDesc);
   }, [allUniqueDatesDesc]);
+
+  // Tự động gán ngày của Tháng hiện tại khi vào tab nếu chưa chọn ngày cụ thể
+  useEffect(() => {
+    if (selectedMonthKey === 'current' && currentMonthKey && (!filterValues.ngay || filterValues.ngay.length === 0) && (!selectedDateGlobal || selectedDateGlobal === 'all')) {
+      const targetMonth = availableMonths.find(m => m.key === currentMonthKey);
+      if (targetMonth) {
+        setFilterValues(prev => ({ ...prev, ngay: targetMonth.dates }));
+      }
+    }
+  }, [selectedMonthKey, currentMonthKey, availableMonths, selectedDateGlobal]);
 
   // Handle Global Quick Month Filter
   const handleSelectMonth = (monthKey: string) => {
@@ -135,7 +195,7 @@ export const GtcPostOfficeTab: React.FC = () => {
     if (monthKey === 'all') {
       setFilterValues(prev => ({ ...prev, ngay: [] }));
     } else {
-      const targetMonth = availableMonths.find(m => m.key === monthKey);
+      const targetMonth = availableMonths.find(m => m.key === (monthKey === 'current' ? currentMonthKey : monthKey));
       if (targetMonth) {
         setFilterValues(prev => ({ ...prev, ngay: targetMonth.dates }));
       }
@@ -147,8 +207,8 @@ export const GtcPostOfficeTab: React.FC = () => {
     setSelectedWeekKey(weekKey);
 
     if (weekKey === 'all') {
-      if (selectedMonthKey !== 'all') {
-        const targetMonth = availableMonths.find(m => m.key === selectedMonthKey);
+      if (activeMonthKey !== 'all') {
+        const targetMonth = availableMonths.find(m => m.key === activeMonthKey);
         setFilterValues(prev => ({ ...prev, ngay: targetMonth ? targetMonth.dates : [] }));
       } else {
         setFilterValues(prev => ({ ...prev, ngay: [] }));
@@ -162,9 +222,21 @@ export const GtcPostOfficeTab: React.FC = () => {
   };
 
   const handleResetAllFilters = () => {
-    setSelectedMonthKey('all');
+    setSelectedMonthKey('current');
     setSelectedWeekKey('all');
-    setFilterValues({ buuCuc: [], ngay: [], loaiHang: [], thu: [] });
+    const targetMonth = availableMonths.find(m => m.key === currentMonthKey);
+    setFilterValues({ 
+      buuCuc: isStaff && assignedPo ? [assignedPo] : [], 
+      ngay: targetMonth ? targetMonth.dates : [], 
+      loaiHang: [], 
+      thu: [] 
+    });
+    if (!isStaff) {
+      lastPushedBcRef.current = 'all';
+      setSelectedBuuCucGlobal('all');
+    }
+    lastPushedDateRef.current = 'all';
+    setSelectedDateGlobal('all');
   };
 
   const hasActiveFilters = Boolean(
@@ -178,8 +250,9 @@ export const GtcPostOfficeTab: React.FC = () => {
 
   // Filter options for IndependentFilter
   const buuCucOptions = useMemo(() => {
+    if (isStaff && assignedPo) return [{ label: assignedPo, value: assignedPo }];
     return [...new Set(dataset.gtcBuuCuc.map(r => r.buuCuc))].filter(Boolean).map(b => ({ label: b, value: b }));
-  }, [dataset.gtcBuuCuc]);
+  }, [dataset.gtcBuuCuc, isStaff, assignedPo]);
 
   const ngayOptions = useMemo(() => {
     return allUniqueDatesDesc.map(n => ({ label: n, value: n }));
@@ -205,12 +278,29 @@ export const GtcPostOfficeTab: React.FC = () => {
     });
   }, [dataset.gtcBuuCuc, filterValues]);
 
-  // Tab KPIs strictly according to SUM(GTC) / SUM(Volume)
+  // Tab KPIs strictly according to SUM(GTC) / SUM(Volume) & Tồn giao trong ca = Volume - SLĐ GTC
   const tabKPIs = useMemo(() => {
-    const totalVolume = filteredGtcBc.reduce((acc, r) => acc + (r.volume || 0), 0);
-    const totalSldGTC = filteredGtcBc.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
-    const totalSldGan = filteredGtcBc.reduce((acc, r) => acc + (r.sldGan || 0), 0);
-    const totalTonDong = filteredGtcBc.reduce((acc, r) => acc + (r.tonDong || 0), 0);
+    let totalVolume = 0;
+    let totalSldGTC = 0;
+    let totalSldGan = 0;
+    let anomalyRowCount = 0;
+
+    for (let i = 0; i < filteredGtcBc.length; i++) {
+      const r = filteredGtcBc[i];
+      const vol = r.volume || 0;
+      const gtc = r.sldGTC || 0;
+      const gan = r.sldGan || 0;
+      totalVolume += vol;
+      totalSldGTC += gtc;
+      totalSldGan += gan;
+      if (gtc > vol) {
+        anomalyRowCount += 1;
+      }
+    }
+
+    // Tồn giao trong ca = Volume - SLĐ GTC (Không dùng Math.max(0, ...) để bảo toàn cảnh báo khi SLĐ GTC > Volume)
+    const totalTonDong = totalVolume - totalSldGTC;
+    const hasGtcExceedsVolumeAnomaly = totalSldGTC > totalVolume || anomalyRowCount > 0;
 
     const gtcRate = totalVolume > 0 ? (totalSldGTC / totalVolume) * 100 : 0;
     const assignedRate = totalVolume > 0 ? (totalSldGan / totalVolume) * 100 : 0;
@@ -225,14 +315,16 @@ export const GtcPostOfficeTab: React.FC = () => {
       gtcRate,
       assignedRate,
       avgLeadtime,
-      totalTonDong
+      totalTonDong,
+      hasGtcExceedsVolumeAnomaly,
+      anomalyRowCount
     };
   }, [filteredGtcBc]);
 
   // =========================================================================
   // BẢNG 1: "SO SÁNH SẢN LƯỢNG VOLUME VÀ %GTC THEO BƯU CỤC" (CÓ BỘ LỌC RIÊNG BƯU CỤC & NGÀY TÙY CHỌN)
   // =========================================================================
-  const [compFilterBuuCuc, setCompFilterBuuCuc] = useState<string>('all');
+  const [compFilterBuuCuc, setCompFilterBuuCuc] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [compSelectedDates, setCompSelectedDates] = useState<string[]>([]);
   const [isCompDatePickerOpen, setIsCompDatePickerOpen] = useState<boolean>(false);
   const [compExpandedPoKey, setCompExpandedPoKey] = useState<string | null>(null);
@@ -291,7 +383,9 @@ export const GtcPostOfficeTab: React.FC = () => {
       weightedReturnUnits: number;
     }> = {};
 
-    const allOffices = ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
+    const allOffices = isStaff && assignedPo 
+      ? [assignedPo] 
+      : ['(LAN) Cần Đước 1', '(LAN) Cần Giuộc', '(LAN) Phước Lý', '(LAN) Rạch Kiến', '(LAN) Tầm Vu'];
     allOffices.forEach(b => {
       if (compFilterBuuCuc === 'all' || compFilterBuuCuc === b) {
         map[b] = {
@@ -321,7 +415,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       map[r.buuCuc].volume += r.volume || 0;
       map[r.buuCuc].sldGan += r.sldGan || 0;
       map[r.buuCuc].sldGTC += r.sldGTC || 0;
-      map[r.buuCuc].tonDong += r.tonDong || 0;
+      map[r.buuCuc].tonDong = map[r.buuCuc].volume - map[r.buuCuc].sldGTC;
       map[r.buuCuc].weightedLeadtime += (r.leadtime || 0) * (r.volume || 0);
 
       const returnPct = parseFloat(r.tiLeChuyenTra?.replace('%', '').replace(',', '.') || '0') / 100;
@@ -359,7 +453,7 @@ export const GtcPostOfficeTab: React.FC = () => {
     const volume = poSummaries.reduce((acc, r) => acc + r.volume, 0);
     const sldGan = poSummaries.reduce((acc, r) => acc + r.sldGan, 0);
     const sldGTC = poSummaries.reduce((acc, r) => acc + r.sldGTC, 0);
-    const tonDong = poSummaries.reduce((acc, r) => acc + r.tonDong, 0);
+    const tonDong = volume - sldGTC;
     const gtcRate = volume > 0 ? (sldGTC / volume) * 100 : 0;
     const assignedRate = volume > 0 ? (sldGan / volume) * 100 : 0;
     const weightedLt = poSummaries.reduce((acc, r) => acc + r.leadtime * r.volume, 0);
@@ -417,7 +511,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       map[key].tongDon += r.tongDon || 0;
       map[key].tongDonGTC += r.tongDonGTC || 0;
       map[key].chuyenDi += r.chuyenDi || 0;
-      map[key].tonDong += r.tonDong || 0;
+      map[key].tonDong = map[key].tongDon - map[key].tongDonGTC;
       map[key].weightedLeadtime += (r.leadtime || 0) * (r.tongDon || 0);
     });
 
@@ -458,8 +552,9 @@ export const GtcPostOfficeTab: React.FC = () => {
     return dataset.gtcBuuCuc.filter(r => {
       if (dtFilterBuuCuc !== 'all' && r.buuCuc !== dtFilterBuuCuc) return false;
       if (dtFilterLoaiHang !== 'all' && r.loaiHang !== dtFilterLoaiHang) return false;
-      if (dtFilterMonth !== 'all') {
-        const targetMonth = availableMonths.find(m => m.key === dtFilterMonth);
+      const targetDtMonth = dtFilterMonth === 'current' ? currentMonthKey : dtFilterMonth;
+      if (targetDtMonth !== 'all') {
+        const targetMonth = availableMonths.find(m => m.key === targetDtMonth);
         if (targetMonth && !targetMonth.dates.includes(r.ngay)) return false;
       }
       if (dtFilterWeek !== 'all') {
@@ -532,7 +627,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       map[key].volume += r.volume || 0;
       map[key].sldGan += r.sldGan || 0;
       map[key].sldGTC += r.sldGTC || 0;
-      map[key].tonDong += r.tonDong || 0;
+      map[key].tonDong = map[key].volume - map[key].sldGTC;
       map[key].weightedLeadtime += (r.leadtime || 0) * (r.volume || 0);
     });
 
@@ -559,16 +654,20 @@ export const GtcPostOfficeTab: React.FC = () => {
   const getStaffForDateAndPo = (date: string, poName: string) => {
     return dataset.gtcNhanVien
       .filter(r => r.ngay === date && r.buuCuc === poName)
-      .map(r => ({
-        maNV: r.maNV,
-        tenNV: r.tenNV,
-        tongDon: r.tongDon || 0,
-        tongDonGTC: r.tongDonGTC || 0,
-        gtcRate: r.tongDon > 0 ? ((r.tongDonGTC || 0) / r.tongDon) * 100 : 0,
-        leadtime: r.leadtime || 0,
-        chuyenDi: r.chuyenDi || 0,
-        tonDong: r.tonDong || 0
-      }))
+      .map(r => {
+        const tongDon = r.tongDon || 0;
+        const tongDonGTC = r.tongDonGTC || 0;
+        return {
+          maNV: r.maNV,
+          tenNV: r.tenNV,
+          tongDon,
+          tongDonGTC,
+          gtcRate: tongDon > 0 ? (tongDonGTC / tongDon) * 100 : 0,
+          leadtime: r.leadtime || 0,
+          chuyenDi: r.chuyenDi || 0,
+          tonDong: tongDon - tongDonGTC
+        };
+      })
       .sort((a, b) => b.tongDon - a.tongDon);
   };
 
@@ -576,7 +675,7 @@ export const GtcPostOfficeTab: React.FC = () => {
   // BẢNG 3: "SO SÁNH THEO TUẦN VÀ THÁNG CỦA TỪNG BƯU CỤC" (MỞ RỘNG CHI TIẾT)
   // =========================================================================
   const [poPeriodMode, setPoPeriodMode] = useState<'week' | 'month'>('week');
-  const [poPeriodSelectedPo, setPoPeriodSelectedPo] = useState<string>('(LAN) Tầm Vu');
+  const [poPeriodSelectedPo, setPoPeriodSelectedPo] = useState<string>(() => isStaff && assignedPo ? assignedPo : '(LAN) Tầm Vu');
   const [expandedPoPeriodKey, setExpandedPoPeriodKey] = useState<string | null>(null);
 
   const poPeriodicMetrics = useMemo(() => {
@@ -590,7 +689,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       const volume = rows.reduce((acc, r) => acc + (r.volume || 0), 0);
       const sldGan = rows.reduce((acc, r) => acc + (r.sldGan || 0), 0);
       const sldGTC = rows.reduce((acc, r) => acc + (r.sldGTC || 0), 0);
-      const tonDong = rows.reduce((acc, r) => acc + (r.tonDong || 0), 0);
+      const tonDong = volume - sldGTC;
       const gtcRate = volume > 0 ? (sldGTC / volume) * 100 : 0;
       const assignedRate = volume > 0 ? (sldGan / volume) * 100 : 0;
       const weightedLt = rows.reduce((acc, r) => acc + (r.leadtime || 0) * (r.volume || 0), 0);
@@ -615,7 +714,7 @@ export const GtcPostOfficeTab: React.FC = () => {
   // =========================================================================
   // CẢNH BÁO 1: NHÂN VIÊN PHÁT SINH >= 3 NGÀY KHÔNG CÓ GÁN GIAO TRONG TUẦN
   // =========================================================================
-  const [alert1Po, setAlert1Po] = useState<string>('all');
+  const [alert1Po, setAlert1Po] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [alert1WeekKey, setAlert1WeekKey] = useState<string>(availableWeeks[0]?.key || 'all');
   const [expandedAlert1NvKey, setExpandedAlert1NvKey] = useState<string | null>(null);
 
@@ -688,7 +787,7 @@ export const GtcPostOfficeTab: React.FC = () => {
   // =========================================================================
   // CẢNH BÁO 2: TOP NHÂN VIÊN CÓ SLĐ GÁN < 30 ĐƠN VÀ SLĐ GTC < 20 ĐƠN
   // =========================================================================
-  const [alert2Po, setAlert2Po] = useState<string>('all');
+  const [alert2Po, setAlert2Po] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [alert2WeekKey, setAlert2WeekKey] = useState<string>(availableWeeks[0]?.key || 'all');
   const [expandedAlert2NvKey, setExpandedAlert2NvKey] = useState<string | null>(null);
 
@@ -730,7 +829,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       }
       empMap[key].tongDon += r.tongDon || 0;
       empMap[key].tongDonGTC += r.tongDonGTC || 0;
-      empMap[key].tonDong += r.tonDong || 0;
+      empMap[key].tonDong = empMap[key].tongDon - empMap[key].tongDonGTC;
       empMap[key].daysWorked++;
       empMap[key].dailyRecords.push({
         date: r.ngay,
@@ -748,7 +847,7 @@ export const GtcPostOfficeTab: React.FC = () => {
   // =========================================================================
   // CẢNH BÁO 3: TOP NHÂN VIÊN CÓ TỶ LỆ GTC THẤP THEO TỪNG BƯU CỤC (< 65%)
   // =========================================================================
-  const [alert3Po, setAlert3Po] = useState<string>('all');
+  const [alert3Po, setAlert3Po] = useState<string>(() => isStaff && assignedPo ? assignedPo : 'all');
   const [alert3WeekKey, setAlert3WeekKey] = useState<string>(availableWeeks[0]?.key || 'all');
   const [expandedAlert3NvKey, setExpandedAlert3NvKey] = useState<string | null>(null);
 
@@ -790,7 +889,7 @@ export const GtcPostOfficeTab: React.FC = () => {
       }
       empMap[key].tongDon += r.tongDon || 0;
       empMap[key].tongDonGTC += r.tongDonGTC || 0;
-      empMap[key].tonDong += r.tonDong || 0;
+      empMap[key].tonDong = empMap[key].tongDon - empMap[key].tongDonGTC;
       const rate = (r.tongDon || 0) > 0 ? ((r.tongDonGTC || 0) / r.tongDon) * 100 : 0;
       empMap[key].dailyRecords.push({
         date: r.ngay,
@@ -911,13 +1010,16 @@ export const GtcPostOfficeTab: React.FC = () => {
     },
     {
       key: 'tonDong',
-      header: 'Tồn Đọng',
+      header: 'Tồn Giao Trong Ca',
       align: 'center',
-      render: r => (
-        <span className={`font-bold ${activeKpi === 'tonDong' ? 'text-rose-700 bg-rose-100 dark:bg-rose-900/60 px-1.5 py-0.5 rounded ring-1 ring-rose-400' : 'text-rose-600'}`}>
-          {r.tonDong.toLocaleString('vi-VN')}
-        </span>
-      )
+      render: r => {
+        const inShiftBacklog = (r.volume || 0) - (r.sldGTC || 0);
+        return (
+          <span className={`font-bold ${activeKpi === 'tonDong' ? 'text-rose-700 bg-rose-100 dark:bg-rose-900/60 px-1.5 py-0.5 rounded ring-1 ring-rose-400' : 'text-rose-600'}`}>
+            {inShiftBacklog.toLocaleString('vi-VN')}
+          </span>
+        );
+      }
     }
   ];
 
@@ -1056,11 +1158,11 @@ export const GtcPostOfficeTab: React.FC = () => {
               <div className="text-[9px] text-slate-400 truncate">Thời gian giao TB</div>
             </button>
 
-            {/* 7. Tồn Đọng Ca */}
+            {/* 7. Tồn Giao Trong Ca (Volume - SLĐ GTC) */}
             <button
               type="button"
               onClick={() => handleKpiClick('tonDong')}
-              title="Nhấn để xem cột Tồn Đọng trong Bảng Chi Tiết"
+              title="Tồn giao trong ca = Volume - SLĐ GTC (Chỉ số hiệu suất xử lý theo ca/ngày, không phải tồn kho Snapshot GLT)"
               className={`px-3 py-1.5 rounded-lg border text-left transition-all group ${
                 activeKpi === 'tonDong'
                   ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-500 ring-2 ring-rose-500/40 shadow-sm'
@@ -1068,13 +1170,17 @@ export const GtcPostOfficeTab: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">
-                <span>Tồn Đọng Ca</span>
+                <span>Tồn Giao Trong Ca</span>
                 <span className="text-[9px] text-slate-400 group-hover:text-rose-500 transition-colors">Xem &#8595;</span>
               </div>
               <div className="text-sm lg:text-base font-black text-rose-600 mt-0.5 truncate">
                 {tabKPIs.totalTonDong.toLocaleString('vi-VN')}
               </div>
-              <div className="text-[9px] text-rose-500 truncate">Chưa hoàn tất</div>
+              <div className="text-[9px] text-rose-500 truncate">
+                {tabKPIs.hasGtcExceedsVolumeAnomaly
+                  ? `⚠️ ${tabKPIs.anomalyRowCount} dòng GTC > Vol`
+                  : 'Volume - SLĐ GTC'}
+              </div>
             </button>
           </div>
         </div>
@@ -1104,17 +1210,29 @@ export const GtcPostOfficeTab: React.FC = () => {
 
           {/* CÁC BỘ LỌC ĐÃ ĐƯỢC GỘP GỌN (COMPACT - TIẾT KIỆM KHÔNG GIAN VIEW TỐI ĐA) */}
           <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-            {/* 1. Lọc Bưu Cục (Giữ) */}
-            <IndividualFilterDropdown
-              label="Bưu cục"
-              compact={true}
-              icon={<Building2 className="w-3.5 h-3.5 text-orange-600" />}
-              options={buuCucOptions}
-              selectedValues={filterValues.buuCuc || []}
-              onChange={vals => setFilterValues(prev => ({ ...prev, buuCuc: vals }))}
-              searchPlaceholder="Tìm bưu cục..."
-              minWidth="w-52"
-            />
+            {/* 1. Lọc Bưu Cục (Chặn không cho chọn bưu cục khác nếu là tài khoản nhân viên) */}
+            {!isStaff ? (
+              <IndividualFilterDropdown
+                label="Bưu cục"
+                compact={true}
+                icon={<Building2 className="w-3.5 h-3.5 text-orange-600" />}
+                options={buuCucOptions}
+                selectedValues={filterValues.buuCuc || []}
+                onChange={vals => {
+                  setFilterValues(prev => ({ ...prev, buuCuc: vals }));
+                  const targetBc = vals.length === 1 ? vals[0] : 'all';
+                  lastPushedBcRef.current = targetBc;
+                  setSelectedBuuCucGlobal(targetBc);
+                }}
+                searchPlaceholder="Tìm bưu cục..."
+                minWidth="w-52"
+              />
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <span>{assignedPo || filterValues.buuCuc?.[0]}</span>
+              </div>
+            )}
 
             {/* 2. Lọc Loại Hàng / Ca (Giữ) */}
             <IndividualFilterDropdown
@@ -1146,7 +1264,7 @@ export const GtcPostOfficeTab: React.FC = () => {
             {/* 4. Lọc Tháng (Gộp từ Bộ Lọc Thời Gian) */}
             <div className="relative">
               <select
-                value={selectedMonthKey}
+                value={activeMonthKey}
                 onChange={e => handleSelectMonth(e.target.value)}
                 className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-750 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer appearance-none transition-colors"
                 title="Lọc theo tháng"
@@ -1195,6 +1313,9 @@ export const GtcPostOfficeTab: React.FC = () => {
                   setSelectedMonthKey('all');
                   setSelectedWeekKey('all');
                 }
+                const targetDate = vals.length === 1 ? vals[0] : 'all';
+                lastPushedDateRef.current = targetDate;
+                setSelectedDateGlobal(targetDate);
               }}
               searchPlaceholder="Tìm ngày (Cột J)..."
               minWidth="w-56"
@@ -1266,6 +1387,16 @@ export const GtcPostOfficeTab: React.FC = () => {
         </div>
       </div>
 
+      {/* =========================================================================
+          4. PHÂN KỲ PHÂN TÍCH XU HƯỚNG SẢN LƯỢNG & TỶ LỆ GTC THEO NGÀY (DAILY TREND)
+          Biểu đồ kết hợp (Volume, Tồn đọng, %GTC) bên trái song song Bảng kê chi tiết bên phải
+         ========================================================================= */}
+      <GtcDailyTrendSection
+        dataset={dataset}
+        selectedBuuCucGlobal={selectedBuuCucGlobal}
+        selectedDateGlobal={selectedDateGlobal}
+      />
+
       {/* 5. BẢNG "SO SÁNH SẢN LƯỢNG VOLUME VÀ %GTC THEO BƯU CỤC" (BỘ LỌC RIÊNG: BƯU CỤC & NGÀY TÙY CHỌN TICK CHỌN TỪNG NGÀY) */}
       <div ref={comparisonTableRef} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-visible space-y-3 p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -1308,16 +1439,23 @@ export const GtcPostOfficeTab: React.FC = () => {
               {/* Lọc Bưu Cục */}
               <div className="flex items-center gap-1.5">
                 <label className="text-slate-500 font-medium text-[11px]">Bưu cục:</label>
-                <select
-                  value={compFilterBuuCuc}
-                  onChange={e => setCompFilterBuuCuc(e.target.value)}
-                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none"
-                >
-                  <option value="all">Tất cả 5 bưu cục</option>
-                  {buuCucOptions.map(b => (
-                    <option key={b.value} value={b.value}>{b.label}</option>
-                  ))}
-                </select>
+                {!isStaff ? (
+                  <select
+                    value={compFilterBuuCuc}
+                    onChange={e => setCompFilterBuuCuc(e.target.value)}
+                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                  >
+                    <option value="all">Tất cả 5 bưu cục</option>
+                    {buuCucOptions.map(b => (
+                      <option key={b.value} value={b.value}>{b.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                    <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                    <span>{assignedPo || compFilterBuuCuc}</span>
+                  </div>
+                )}
               </div>
 
               {/* DROPDOWN DẠNG SỔ: TICK CHỌN NGÀY VẬN HÀNH (THU GỌN KHI NHẤN RA NGOÀI) */}
@@ -1437,11 +1575,11 @@ export const GtcPostOfficeTab: React.FC = () => {
                 )}
               </div>
 
-              {(compFilterBuuCuc !== 'all' || compSelectedDates.length > 0) && (
+              {((!isStaff && compFilterBuuCuc !== 'all') || compSelectedDates.length > 0) && (
                 <button
                   type="button"
                   onClick={() => {
-                    setCompFilterBuuCuc('all');
+                    setCompFilterBuuCuc(isStaff && assignedPo ? assignedPo : 'all');
                     setCompSelectedDates([]);
                   }}
                   className="text-rose-600 hover:text-rose-800 dark:text-rose-400 text-[11px] font-semibold flex items-center gap-1"
@@ -2106,15 +2244,22 @@ export const GtcPostOfficeTab: React.FC = () => {
             </div>
 
             {/* Chọn bưu cục */}
-            <select
-              value={poPeriodSelectedPo}
-              onChange={e => setPoPeriodSelectedPo(e.target.value)}
-              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:ring-1 focus:ring-orange-500 focus:outline-none"
-            >
-              {buuCucOptions.map(b => (
-                <option key={b.value} value={b.value}>{b.label}</option>
-              ))}
-            </select>
+            {!isStaff ? (
+              <select
+                value={poPeriodSelectedPo}
+                onChange={e => setPoPeriodSelectedPo(e.target.value)}
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:ring-1 focus:ring-orange-500 focus:outline-none"
+              >
+                {buuCucOptions.map(b => (
+                  <option key={b.value} value={b.value}>{b.label}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <span>{assignedPo || poPeriodSelectedPo}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2234,16 +2379,23 @@ export const GtcPostOfficeTab: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={alert1Po}
-                onChange={e => setAlert1Po(e.target.value)}
-                className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
-              >
-                <option value="all">Tất cả bưu cục</option>
-                {buuCucOptions.map(b => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
-                ))}
-              </select>
+              {!isStaff ? (
+                <select
+                  value={alert1Po}
+                  onChange={e => setAlert1Po(e.target.value)}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
+                >
+                  <option value="all">Tất cả bưu cục</option>
+                  {buuCucOptions.map(b => (
+                    <option key={b.value} value={b.value}>{b.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                  <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>{assignedPo || alert1Po}</span>
+                </div>
+              )}
 
               <select
                 value={alert1WeekKey}
@@ -2352,16 +2504,23 @@ export const GtcPostOfficeTab: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={alert2Po}
-                onChange={e => setAlert2Po(e.target.value)}
-                className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
-              >
-                <option value="all">Tất cả bưu cục</option>
-                {buuCucOptions.map(b => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
-                ))}
-              </select>
+              {!isStaff ? (
+                <select
+                  value={alert2Po}
+                  onChange={e => setAlert2Po(e.target.value)}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
+                >
+                  <option value="all">Tất cả bưu cục</option>
+                  {buuCucOptions.map(b => (
+                    <option key={b.value} value={b.value}>{b.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                  <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>{assignedPo || alert2Po}</span>
+                </div>
+              )}
 
               <select
                 value={alert2WeekKey}
@@ -2462,16 +2621,23 @@ export const GtcPostOfficeTab: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={alert3Po}
-                onChange={e => setAlert3Po(e.target.value)}
-                className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
-              >
-                <option value="all">Tất cả bưu cục</option>
-                {buuCucOptions.map(b => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
-                ))}
-              </select>
+              {!isStaff ? (
+                <select
+                  value={alert3Po}
+                  onChange={e => setAlert3Po(e.target.value)}
+                  className="bg-white dark:bg-slate-800 border border-slate-300 text-xs rounded-lg px-2 py-1 font-semibold"
+                >
+                  <option value="all">Tất cả bưu cục</option>
+                  {buuCucOptions.map(b => (
+                    <option key={b.value} value={b.value}>{b.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg text-xs font-bold text-orange-700 dark:text-orange-300 shadow-2xs">
+                  <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                  <span>{assignedPo || alert3Po}</span>
+                </div>
+              )}
 
               <select
                 value={alert3WeekKey}
@@ -2617,16 +2783,22 @@ export const GtcPostOfficeTab: React.FC = () => {
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
                     <Building2 className="w-3 h-3 text-orange-500" /> Bưu Cục:
                   </label>
-                  <select
-                    value={dtFilterBuuCuc}
-                    onChange={e => setDtFilterBuuCuc(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
-                  >
-                    <option value="all">Tất cả bưu cục (5 BC)</option>
-                    {buuCucOptions.map(b => (
-                      <option key={b.value} value={b.value}>{b.label}</option>
-                    ))}
-                  </select>
+                  {!isStaff ? (
+                    <select
+                      value={dtFilterBuuCuc}
+                      onChange={e => setDtFilterBuuCuc(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 font-semibold focus:ring-1 focus:ring-orange-500 focus:outline-none shadow-2xs"
+                    >
+                      <option value="all">Tất cả bưu cục (5 BC)</option>
+                      {buuCucOptions.map(b => (
+                        <option key={b.value} value={b.value}>{b.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full bg-orange-100 dark:bg-orange-950/60 border border-orange-300 dark:border-orange-500/50 rounded-lg px-2.5 py-1.5 text-orange-700 dark:text-orange-300 font-bold text-xs shadow-2xs">
+                      {assignedPo || dtFilterBuuCuc}
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Loại Hàng */}
@@ -2652,7 +2824,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                     <Calendar className="w-3 h-3 text-emerald-500" /> Thời gian (Tháng):
                   </label>
                   <select
-                    value={dtFilterMonth}
+                    value={dtFilterMonth === 'current' ? currentMonthKey : dtFilterMonth}
                     onChange={e => {
                       setDtFilterMonth(e.target.value);
                       setDtFilterWeek('all');
@@ -2748,4 +2920,4 @@ export const GtcPostOfficeTab: React.FC = () => {
   );
 };
 
-export default GtcPostOfficeTab;
+export default React.memo(GtcPostOfficeTab);

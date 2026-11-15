@@ -25,3 +25,19 @@ export function getSupabaseAdmin(): SupabaseClient {
 
   return cachedClient;
 }
+
+/**
+ * Ephemeral Supabase client specifically for end-user auth operations (signInWithPassword, OTP).
+ * Creating a fresh un-cached instance ensures user sessions NEVER mutate or degrade the service_role client.
+ */
+export function createEphemeralSupabaseClient(): SupabaseClient {
+  const url = readRequiredServerEnv('SUPABASE_URL');
+  const serviceRoleKey = readRequiredServerEnv('SUPABASE_SERVICE_ROLE_KEY');
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+}

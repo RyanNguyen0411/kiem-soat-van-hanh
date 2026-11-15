@@ -14,6 +14,8 @@ import {
   hasRole as checkRole
 } from '../services/authService';
 
+import type { TabType } from '../types/dashboard';
+
 interface AuthContextType {
   isAuthenticated: boolean;
   currentUser: AuthUser | null;
@@ -28,6 +30,9 @@ interface AuthContextType {
   verifyZaloOtp: (phone: string, enteredOtp: string) => Promise<{ success: boolean; error?: string }>;
   logout: (reason?: string) => void;
   hasRole: (roles: UserRole[]) => boolean;
+  canAccessTab: (tabId: TabType) => boolean;
+  isNoticeAcknowledged: boolean;
+  acknowledgeNotice: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +44,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = Boolean(session && isSessionValid(session));
   const currentUser = session?.user || null;
+
+  const [isNoticeAcknowledged, setIsNoticeAcknowledged] = useState<boolean>(() => {
+    const user = session?.user;
+    if (user?.role === 'post_office_staff') {
+      return sessionStorage.getItem(`ghn_staff_notice_ack_${user.username}`) === 'true';
+    }
+    return true;
+  });
+
+  const acknowledgeNotice = useCallback(() => {
+    setIsNoticeAcknowledged(true);
+    if (currentUser?.username) {
+      sessionStorage.setItem(`ghn_staff_notice_ack_${currentUser.username}`, 'true');
+    }
+  }, [currentUser]);
 
   // Countdown timer for 60s lockout
   useEffect(() => {
@@ -60,7 +80,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback((reason?: string) => {
+    setIsNoticeAcknowledged(false);
     clearSession();
+    try {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('ghn_staff_notice_ack_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // ignore
+    }
     setSession(null);
     if (reason) {
       setLogoutReason(reason);
@@ -89,6 +119,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (result.success && result.session) {
+      // Khi nhân viên đăng nhập thành công, bắt buộc hiển thị thông báo trước khi vào dashboard
+      if (result.session.user.role === 'post_office_staff') {
+        setIsNoticeAcknowledged(false);
+        try {
+          sessionStorage.removeItem(`ghn_staff_notice_ack_${result.session.user.username}`);
+        } catch {
+          // ignore
+        }
+      } else {
+        setIsNoticeAcknowledged(true);
+      }
       setSession(result.session);
       setLockoutRemaining(0);
       return { success: true };
@@ -116,9 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: cleaned
     });
 
-    if (result.success && result.session) {
-      setSession(result.session);
-      setLockoutRemaining(0);
+    if (result.success) {
+      // Email recovery only initiates the recovery process, NEVER creates an authenticated session or logs in!
       return { success: true };
     }
 
@@ -154,6 +194,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasRole = useCallback((roles: UserRole[]): boolean => {
     return checkRole(currentUser?.role, roles);
+  }, [currentUser]);
+
+  const canAccessTab = useCallback((tabId: TabType): boolean => {
+    if (!currentUser) return false;
+    // AM Huy và Admin có quyền xem tất cả các tab
+    if (currentUser.role === 'admin' || currentUser.role === 'area_manager' || currentUser.username === 'huyamdnb') {
+      return true;
+    }
+    // Tab quản trị phân hệ bưu cục CHỈ DÀNH RIÊNG cho AM Huy
+    if (tabId === 'quan_ly_buu_cuc') {
+      return false;
+    }
+    // Nhân viên bưu cục chỉ xem các tab được cấp trong allowedTabs
+    if (currentUser.role === 'post_office_staff') {
+      const allowed = currentUser.allowedTabs || [];
+      return allowed.includes(tabId);
+    }
+    return false;
   }, [currentUser]);
 
   // Logic tự động đăng xuất sau 10 phút không thao tác (10-minute Idle Auto-Logout)
@@ -207,7 +265,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sendZaloOtp,
         verifyZaloOtp,
         logout,
-        hasRole
+        hasRole,
+        canAccessTab,
+        isNoticeAcknowledged,
+        acknowledgeNotice
       }}
     >
       {children}

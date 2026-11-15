@@ -5,18 +5,21 @@ import {
   Sun, 
   Moon, 
   Menu, 
-  AlertCircle,
-  Sparkles,
-  FolderTree,
-  FolderOpen,
-  LogOut,
-  Settings
+  AlertCircle, 
+  Sparkles, 
+  FolderTree, 
+  FolderOpen, 
+  LogOut, 
+  Settings,
+  Clock,
+  FileText
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
 
 export const Header: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
   const { 
     syncStatus, 
     refreshData, 
@@ -94,6 +97,31 @@ export const Header: React.FC = () => {
             </span>
           </button>
 
+          {/* Thời Gian AM Cập Nhật Gần Nhất (Cùng hàng với Dữ liệu kiểm toán) */}
+          <div 
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gradient-to-r from-orange-950/60 to-slate-800/90 border border-orange-500/40 text-[11px] transition-colors"
+            title={`Thời gian AM Huy cập nhật dữ liệu nguồn Google Sheets gần nhất: ${syncStatus.lastUpdated}. Chỉ AM mới có quyền cập nhật dữ liệu nguồn.`}
+          >
+            <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span className="font-bold text-orange-400 hidden sm:inline">AM cập nhật:</span>
+            <span className="text-white font-mono font-bold text-[10px] sm:text-[11px] whitespace-nowrap">
+              {syncStatus.lastUpdated || '10:00 hôm nay'}
+            </span>
+          </div>
+
+          {/* Nút Xem Lại Hướng Dẫn Vận Hành cho Phân Hệ Nhân Viên */}
+          {isStaff && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-staff-notice-modal'))}
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-md bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/40 transition-all cursor-pointer"
+              title="Mở lại bảng Thông báo & Hướng dẫn sử dụng Dashboard"
+            >
+              <FileText className="w-3.5 h-3.5 text-orange-400" />
+              <span className="hidden md:inline">Hướng dẫn</span>
+            </button>
+          )}
+
           {/* Sync / Refresh Button */}
           <button
             onClick={() => refreshData()}
@@ -135,37 +163,43 @@ export const Header: React.FC = () => {
           </button>
 
           {/* View Google Sheets Link (Được Khóa Bảo Mật - Cần Nhập Mật Khẩu Dashboard) */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-google-sheets-lock'))}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden lg:flex items-center gap-1 text-[11px] cursor-pointer"
-            title="Mở Google Sheets gốc (Yêu cầu mật khẩu quản trị để bảo vệ dữ liệu)"
-          >
-            <ExternalLink className="w-3 h-3 text-amber-400" />
-            <span>Nguồn Sheets</span>
-          </button>
+          {!isStaff && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-google-sheets-lock'))}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden lg:flex items-center gap-1 text-[11px] cursor-pointer"
+              title="Mở Google Sheets gốc (Yêu cầu mật khẩu quản trị để bảo vệ dữ liệu)"
+            >
+              <ExternalLink className="w-3 h-3 text-amber-400" />
+              <span>Nguồn Sheets</span>
+            </button>
+          )}
 
           {/* Thư mục Drive: yêu cầu xác nhận và kiểm tra vai trò trước khi mở */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-google-drive-lock'))}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden xl:flex items-center gap-1 text-[11px] cursor-pointer"
-            title="Mở thư mục lưu trữ GHN (yêu cầu xác nhận quyền truy cập)"
-          >
-            <FolderOpen className="w-3 h-3 text-emerald-400" />
-            <span>Thư mục Drive</span>
-          </button>
+          {!isStaff && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-google-drive-lock'))}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors hidden xl:flex items-center gap-1 text-[11px] cursor-pointer"
+              title="Mở thư mục lưu trữ GHN (yêu cầu xác nhận quyền truy cập)"
+            >
+              <FolderOpen className="w-3 h-3 text-emerald-400" />
+              <span>Thư mục Drive</span>
+            </button>
+          )}
 
           {/* Cài đặt kết nối: Link nguồn, Drive, Apps Script, ID & Token */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-settings-modal'))}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
-            title="Cài đặt kết nối (Link nguồn, Drive, Apps Script, ID & Token)"
-            aria-label="Mở cài đặt kết nối"
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
+          {!isStaff && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-settings-modal'))}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+              title="Cài đặt kết nối (Link nguồn, Drive, Apps Script, ID & Token)"
+              aria-label="Mở cài đặt kết nối"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Dark Mode Toggle */}
           <button
@@ -179,14 +213,18 @@ export const Header: React.FC = () => {
           {/* User Profile & Logout Button (Gọn & Nhỏ) */}
           <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-700/80">
             <div className="hidden xl:flex flex-col text-right leading-none">
-              <span className="text-[10px] font-bold text-white leading-tight">AM Huy (ĐNB)</span>
-              <span className="text-[8px] text-emerald-400 font-semibold leading-tight">Area Manager &bull; Long An</span>
+              <span className="text-[10px] font-bold text-white leading-tight">
+                {isStaff ? (currentUser?.displayName || currentUser?.assignedPostOffice || 'Bưu Cục') : 'AM Huy (ĐNB)'}
+              </span>
+              <span className="text-[8px] text-emerald-400 font-semibold leading-tight">
+                {isStaff ? `${currentUser?.postOfficeCode || 'Bưu Cục'} • Phân Hệ` : 'Area Manager • Long An'}
+              </span>
             </div>
             <button
               type="button"
               onClick={() => logout()}
               className="p-1 px-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
-              title="Đăng xuất khỏi hệ thống quản trị"
+              title="Đăng xuất khỏi hệ thống"
             >
               <LogOut className="w-3.5 h-3.5 text-red-400" />
               <span className="hidden sm:inline text-[11px] text-slate-300 hover:text-red-300">Đăng xuất</span>

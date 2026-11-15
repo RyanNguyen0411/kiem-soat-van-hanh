@@ -15,9 +15,12 @@ import {
   UserCheck,
   UserMinus,
   ChevronDown,
+  ShieldCheck,
   X
 } from 'lucide-react';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard, useTab } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
+import { normalizeOrderId } from '../services/kpiEngine';
 import type { TabType } from '../types/dashboard';
 
 interface NavItem {
@@ -38,8 +41,10 @@ interface NavCategory {
 }
 
 export const Sidebar: React.FC = () => {
+  const { activeTab } = useTab();
+  const { currentUser, canAccessTab } = useAuth();
+  const isStaff = currentUser?.role === 'post_office_staff';
   const { 
-    activeTab, 
     setActiveTab, 
     isSidebarOpen, 
     setIsSidebarOpen, 
@@ -53,6 +58,7 @@ export const Sidebar: React.FC = () => {
     van_hanh: false,
     ton_kho: false,
     nhan_su: false,
+    quan_tri: false,
   });
 
   const toggleCategory = (catId: string) => {
@@ -71,7 +77,7 @@ export const Sidebar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setIsSidebarCollapsed]);
 
-  // Phân hệ điều hành có cấu trúc 3 cụm nghiệp vụ tối ưu
+  // Phân hệ điều hành có cấu trúc các cụm nghiệp vụ tối ưu
   const categories: NavCategory[] = [
     {
       id: 'van_hanh',
@@ -88,7 +94,7 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'bao_cao_gtc_bc',
-          label: 'Báo Cáo GTC BC',
+          label: 'Báo Cáo Ngày',
           subLabel: 'Chi tiết bưu cục ngày',
           icon: FileSpreadsheet,
           badge: 'Live',
@@ -98,9 +104,9 @@ export const Sidebar: React.FC = () => {
         {
           id: 'gtc_buu_cuc',
           label: 'GTC Bưu Cục',
-          subLabel: 'Hiệu suất 5 bưu cục',
+          subLabel: isStaff ? 'Hiệu suất bưu cục' : 'Hiệu suất 5 bưu cục',
           icon: Building2,
-          badge: '5 BC',
+          badge: isStaff ? '1 BC' : '5 BC',
           badgeColor: 'bg-slate-700 text-slate-200'
         },
         {
@@ -123,7 +129,7 @@ export const Sidebar: React.FC = () => {
           label: 'Tồn Đọng GLT',
           subLabel: 'Giao - Lấy - Trả',
           icon: PackageX,
-          badge: `${dataset.tonDongGlt.length.toLocaleString('vi-VN')}`,
+          badge: `${new Set(dataset.tonDongGlt.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean)).size.toLocaleString('vi-VN')}`,
           badgeColor: 'bg-rose-700 text-white'
         },
         {
@@ -131,7 +137,7 @@ export const Sidebar: React.FC = () => {
           label: 'Tồn Đọng LC',
           subLabel: 'Luân chuyển tồn kho',
           icon: Truck,
-          badge: `${dataset.tonDongLc.length}`,
+          badge: `${new Set(dataset.tonDongLc.map(r => normalizeOrderId(r.maDonHang)).filter(Boolean)).size.toLocaleString('vi-VN')}`,
           badgeColor: 'bg-blue-700 text-white'
         },
         {
@@ -175,8 +181,32 @@ export const Sidebar: React.FC = () => {
           badgeColor: 'bg-emerald-700 text-white'
         }
       ]
-    }
+    },
+    ...(currentUser?.role !== 'post_office_staff' ? [{
+      id: 'quan_tri',
+      title: 'QUẢN TRỊ & PHÂN HỆ',
+      icon: ShieldCheck,
+      items: [
+        {
+          id: 'quan_ly_buu_cuc' as TabType,
+          label: 'Phân Hệ Bưu Cục',
+          subLabel: 'Tài khoản, bảo mật & phân quyền',
+          icon: ShieldCheck,
+          badge: 'MỚI',
+          badgeColor: 'bg-emerald-600 text-white',
+          isHot: true
+        }
+      ]
+    }] : [])
   ];
+
+  // Lọc tab theo quyền hạn người dùng (RBAC Data & Tab Scope)
+  const visibleCategories = categories
+    .map(cat => ({
+      ...cat,
+      items: cat.items.filter(item => canAccessTab ? canAccessTab(item.id) : true)
+    }))
+    .filter(cat => cat.items.length > 0);
 
   // Khi chọn tab trên mobile/ipad thì tự động đóng sidebar drawer
   const handleSelectTab = (tabId: TabType) => {
@@ -211,15 +241,21 @@ export const Sidebar: React.FC = () => {
           {!isSidebarCollapsed ? (
             <>
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white font-black flex items-center justify-center text-xs shadow-md shrink-0 tracking-tight">
-                  AM
+                <div className={`w-8 h-8 rounded-xl font-black flex items-center justify-center text-xs shadow-md shrink-0 tracking-tight ${
+                  currentUser?.role === 'post_office_staff'
+                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white'
+                    : 'bg-gradient-to-tr from-orange-600 to-amber-500 text-white'
+                }`}>
+                  {currentUser?.role === 'post_office_staff' ? 'BC' : 'AM'}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white leading-tight truncate">AM Huy (ĐNB)</div>
+                  <div className="text-xs font-bold text-white leading-tight truncate">
+                    {currentUser?.role === 'post_office_staff' ? (currentUser.displayName || currentUser.assignedPostOffice || 'Bưu Cục') : 'AM Huy (ĐNB)'}
+                  </div>
                   <div className="text-[10px] text-orange-400 font-medium truncate flex items-center gap-1">
-                    <span>Area Manager</span>
+                    <span>{currentUser?.role === 'post_office_staff' ? 'Quản lý Bưu Cục' : 'Area Manager'}</span>
                     <span>&bull;</span>
-                    <span className="text-emerald-400">Long An</span>
+                    <span className="text-emerald-400">{currentUser?.postOfficeCode || 'Long An'}</span>
                   </div>
                 </div>
               </div>
@@ -262,7 +298,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Menu Items - Nhóm theo phân hệ */}
         <nav className="p-2 space-y-3 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700">
-          {categories.map((cat) => {
+          {visibleCategories.map((cat) => {
             const isCatCollapsed = !isSidebarCollapsed && collapsedCategories[cat.id];
             const hasActiveItem = cat.items.some(i => i.id === activeTab);
 
@@ -383,7 +419,7 @@ export const Sidebar: React.FC = () => {
           {!isSidebarCollapsed && (
             <div className="p-2.5 text-[10px] text-slate-400">
               <div className="flex items-center justify-between font-medium">
-                <span>Khu vực: 5 Bưu cục</span>
+                <span>{isStaff ? (currentUser?.assignedPostOffice || 'Phân hệ bưu cục') : 'Khu vực: 5 Bưu cục'}</span>
                 <span className="text-emerald-400 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                   Trực tuyến

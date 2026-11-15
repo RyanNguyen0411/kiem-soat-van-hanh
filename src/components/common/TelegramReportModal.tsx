@@ -13,6 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
+import { useAuth } from '../../context/AuthContext';
 import { 
   getStoredTelegramConfig, 
   saveStoredTelegramConfig, 
@@ -30,6 +31,9 @@ interface TelegramReportModalProps {
 export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({ 
   initialReportType = 'glt' 
 }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === 'post_office_staff') return null;
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [reportType, setReportType] = useState<'glt' | 'lc'>(initialReportType);
   const [showConfig, setShowConfig] = useState<boolean>(false);
