@@ -88,4 +88,18 @@ test('PHÂN HỆ BƯU CỤC & BẢO MẬT ẨN THU NHẬP BƯU TÁ - AUDIT SUITE
     assert.match(postOfficeTabFile, /noWrap=\{true\}/);
     assert.match(postOfficeTabFile, /key: 'buuCuc',\s*header: 'Bưu Cục',\s*sticky: 'left'/);
   });
+
+  await t.test('10. Nút Lịch Floating không tự động thả thanh pill ra chiếm không gian thao tác', () => {
+    const drawerFile = fs.readFileSync(path.join(ROOT_DIR, 'src/components/common/OperationalCalendarDrawer.tsx'), 'utf8');
+    assert.doesNotMatch(drawerFile, /Lịch TMĐT &amp; Âm Dương/);
+    assert.match(drawerFile, /title="Lịch TMĐT & Âm Dương"/);
+  });
+
+  await t.test('11. Lưới Lịch tăng kích thước số và nội dung text tự động xuống dòng không mất chữ', () => {
+    const drawerFile = fs.readFileSync(path.join(ROOT_DIR, 'src/components/common/OperationalCalendarDrawer.tsx'), 'utf8');
+    assert.match(drawerFile, /min-h-\[74px\] sm:min-h-\[84px\]/);
+    assert.match(drawerFile, /text-\[13px\] sm:text-\[15px\] font-black/);
+    assert.match(drawerFile, /break-words whitespace-normal leading-tight/);
+    assert.doesNotMatch(drawerFile, /truncate leading-tight w-full/);
+  });
 });

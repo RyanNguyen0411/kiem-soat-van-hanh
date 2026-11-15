@@ -165,11 +165,6 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
     return days;
   }, [viewYear, viewMonth, selectedDay, today]);
 
-  // Sự kiện đợt Mega Sale gần nhất sắp tới
-  const upcomingBigSale = useMemo(() => {
-    return monthEvents.find(e => e.impactLevel === 'extreme' || e.impactLevel === 'high') || null;
-  }, [monthEvents]);
-
   const handleOpenAi = (prompt: string) => {
     if (onOpenAiWithPrompt) {
       onOpenAiWithPrompt(prompt);
@@ -183,27 +178,17 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
     <>
       {/* =========================================================================
           1. NÚT BẤM FLOATING CALENDAR ACTION BUTTON (KÍCH THƯỚC CHUẨN 34PX)
-          Xếp ngay ngắn phía trên nút Cố Vấn AI, không đè chéo, không che menu đáy
+          Chỉ khi nào nhấn vào biểu tượng icon thì nội dung mới được mở ra (Drawer/Modal)
+          Không thả thanh tooltip hay bất kỳ nội dung nào ra ngoài làm chiếm không gian
           ========================================================================= */}
-      <div className="fixed right-3 bottom-[160px] sm:bottom-[116px] lg:right-6 lg:bottom-[116px] z-40 flex items-center group pointer-events-auto">
-        {/* Tooltip khi hover */}
-        <div className="hidden sm:flex items-center gap-1.5 mr-2 px-2.5 py-1 rounded-full bg-slate-900/95 text-white text-[11px] font-bold shadow-lg backdrop-blur-md border border-cyan-500/40 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none translate-x-2 group-hover:translate-x-0 whitespace-nowrap">
-          <CalendarIcon className="w-3 h-3 text-cyan-400" />
-          <span>Lịch TMĐT &amp; Âm Dương</span>
-          {upcomingBigSale && (
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
-              Sale {upcomingBigSale.name.split(' ')[0]}
-            </span>
-          )}
-        </div>
-
+      <div className="fixed right-3 bottom-[160px] sm:bottom-[116px] lg:right-6 lg:bottom-[116px] z-40 pointer-events-auto">
         {/* Nút bấm tròn 34px đồng bộ với AI và Tìm kiếm */}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
           className="w-[34px] h-[34px] min-w-[34px] min-h-[34px] sm:w-[38px] sm:h-[38px] rounded-full relative bg-gradient-to-tr from-cyan-600 via-teal-600 to-emerald-500 hover:from-cyan-500 hover:to-emerald-400 text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 border border-white/80 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400/50 flex items-center justify-center"
-          title="Mở Lịch Vận Hành TMĐT & Âm Dương Long An"
-          aria-label="Mở Lịch Vận Hành TMĐT & Âm Dương Long An"
+          title="Lịch TMĐT & Âm Dương"
+          aria-label="Lịch TMĐT & Âm Dương"
         >
           <CalendarIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white stroke-[2.2]" />
           
@@ -336,9 +321,9 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                         setSelectedEventForAnalysis(ev);
                         setActiveTab('grid');
                       }}
-                      className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 transition-all cursor-pointer whitespace-nowrap"
+                      className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 transition-all cursor-pointer whitespace-nowrap"
                     >
-                      {ev.name.slice(0, 14)}..
+                      {ev.name}
                     </button>
                   ))}
                 </div>
@@ -416,7 +401,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                           <span className="text-rose-600">CN</span>
                         </div>
 
-                        {/* Các ô ngày thu gọn: Chiều cao chỉ 42px - 46px, vừa vặn toàn bộ 5-6 tuần */}
+                        {/* Các ô ngày mở rộng: Tăng kích thước số, nội dung text tự động xuống dòng hiển thị trọn vẹn */}
                         <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 dark:divide-slate-800">
                           {calendarGrid.map((item, idx) => {
                             const hasEvent = item.events.length > 0;
@@ -436,21 +421,21 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                     }
                                   }
                                 }}
-                                className={`p-1 h-[42px] sm:h-[46px] flex flex-col justify-between transition-all cursor-pointer relative select-none ${
+                                className={`p-1.5 sm:p-2 min-h-[74px] sm:min-h-[84px] flex flex-col justify-between transition-all cursor-pointer relative select-none ${
                                   !item.isCurrentMonth
                                     ? 'bg-slate-50/40 dark:bg-slate-900/30 opacity-25'
                                     : item.isSelected
-                                    ? 'bg-cyan-50 dark:bg-cyan-950/60 ring-2 ring-cyan-500 z-10'
+                                    ? 'bg-cyan-50 dark:bg-cyan-950/60 ring-2 ring-cyan-500 z-10 shadow-xs'
                                     : item.isToday
                                     ? 'bg-amber-50/70 dark:bg-amber-950/30'
                                     : 'hover:bg-slate-50 dark:hover:bg-slate-800/80'
                                 }`}
                               >
-                                {/* Header ngày: Số Dương bên trái, Số Âm bên phải */}
-                                <div className="flex items-baseline justify-between leading-none">
-                                  <span className={`text-[11px] font-black font-mono leading-none ${
+                                {/* Header ngày: Số Dương bên trái to rõ, Số Âm bên phải */}
+                                <div className="flex items-baseline justify-between leading-none mb-1">
+                                  <span className={`text-[13px] sm:text-[15px] font-black font-mono leading-none ${
                                     item.isToday
-                                      ? 'w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center text-[9.5px]'
+                                      ? 'w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-orange-600 text-white flex items-center justify-center text-[10px] sm:text-[11.5px] shadow-xs'
                                       : item.isSelected
                                       ? 'text-cyan-600 dark:text-cyan-400 font-black'
                                       : 'text-slate-800 dark:text-slate-100'
@@ -458,7 +443,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                     {item.dayNumber}
                                   </span>
 
-                                  <span className={`text-[8px] sm:text-[8.5px] font-semibold leading-none ${
+                                  <span className={`text-[9.5px] sm:text-[11px] font-bold leading-none ${
                                     isRamOrMung1
                                       ? 'text-rose-600 dark:text-rose-400 font-extrabold'
                                       : 'text-slate-400 dark:text-slate-500'
@@ -467,66 +452,50 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                   </span>
                                 </div>
 
-                                {/* Event Micro-Badge hoặc nhãn Âm lịch */}
-                                <div className="min-h-[14px] flex items-center">
+                                {/* Event Badge hiển thị toàn bộ nội dung text xuống dòng, không mất chữ */}
+                                <div className="flex-1 flex flex-col justify-start gap-1 w-full mt-0.5">
                                   {mainEvent ? (
                                     <div
-                                      className={`text-[7.5px] sm:text-[8px] font-extrabold px-1 py-0.2 rounded truncate leading-tight w-full flex items-center gap-0.5 ${
+                                      className={`text-[8.5px] sm:text-[9.5px] font-bold px-1.5 py-0.5 rounded leading-tight w-full break-words whitespace-normal text-left flex items-start gap-0.5 shadow-2xs ${
                                         mainEvent.impactLevel === 'extreme'
-                                          ? 'bg-rose-600 text-white'
+                                          ? 'bg-rose-600 text-white font-extrabold'
                                           : mainEvent.platform === 'Shopee'
-                                          ? 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+                                          ? 'bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 border border-orange-200 dark:border-orange-800'
                                           : mainEvent.platform === 'TikTok Shop'
-                                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
-                                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800'
+                                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
                                       }`}
                                       title={mainEvent.name}
                                     >
-                                      {mainEvent.impactLevel === 'extreme' && <Flame className="w-2 h-2 shrink-0 animate-pulse" />}
-                                      <span className="truncate">{mainEvent.name.replace(/^[^\w\s]+/, '').trim()}</span>
+                                      {mainEvent.impactLevel === 'extreme' && <Flame className="w-2.5 h-2.5 shrink-0 mt-0.5 animate-pulse text-amber-300" />}
+                                      <span className="break-words whitespace-normal leading-tight">{mainEvent.name}</span>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-between w-full text-[7.5px] text-slate-400">
-                                      {isRamOrMung1 ? (
-                                        <span className="text-purple-600 dark:text-purple-400 font-bold">
-                                          {item.lunar.day === 1 ? 'Mùng 1' : 'Rằm'}
-                                        </span>
-                                      ) : (
-                                        <span className="opacity-0">.</span>
-                                      )}
-                                      <div className="flex gap-0.5 ml-auto">
-                                        {hasMega ? (
-                                          <span className="w-1 h-1 rounded-full bg-rose-600" />
-                                        ) : hasHigh ? (
-                                          <span className="w-1 h-1 rounded-full bg-amber-500" />
-                                        ) : hasEvent ? (
-                                          <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                                        ) : null}
+                                    isRamOrMung1 && (
+                                      <div className="text-[8.5px] sm:text-[9.5px] font-extrabold text-purple-600 dark:text-purple-400 px-1 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-left">
+                                        {item.lunar.day === 1 ? `Mùng 1 (${item.lunar.day}/${item.lunar.month})` : 'Ngày Rằm (15)'}
                                       </div>
+                                    )
+                                  )}
+
+                                  {/* Hiển thị số lượng sự kiện bổ sung nếu có */}
+                                  {item.events.length > 1 && (
+                                    <div className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 dark:text-slate-400">
+                                      +{item.events.length - 1} sự kiện khác
                                     </div>
                                   )}
                                 </div>
 
-                                {/* Chấm trạng thái nhỏ ở đáy nếu có nhiều sự kiện */}
-                                {mainEvent && (
-                                  <div className="flex items-center justify-between leading-none -mt-0.5">
-                                    <div className="flex gap-0.5">
-                                      {hasMega ? (
-                                        <span className="w-1 h-1 rounded-full bg-rose-600" />
-                                      ) : hasHigh ? (
-                                        <span className="w-1 h-1 rounded-full bg-amber-500" />
-                                      ) : (
-                                        <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                                      )}
-                                      {item.events.length > 1 && (
-                                        <span className="text-[7px] text-slate-400 font-bold">+{item.events.length - 1}</span>
-                                      )}
-                                    </div>
-                                    {isRamOrMung1 && (
-                                      <span className="text-[7px] text-purple-600 dark:text-purple-400 font-bold">
-                                        {item.lunar.day === 1 ? 'M.1' : 'Rằm'}
-                                      </span>
-                                    )}
+                                {/* Chấm trạng thái nhỏ ở đáy nếu không có text badge */}
+                                {!mainEvent && (
+                                  <div className="flex items-center justify-end gap-0.5 leading-none mt-0.5">
+                                    {hasMega ? (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                                    ) : hasHigh ? (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    ) : hasEvent ? (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    ) : null}
                                   </div>
                                 )}
                               </div>
