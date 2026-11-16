@@ -323,7 +323,7 @@ export const DataUpdateTelegramModal: React.FC = () => {
             </div>
 
             <div 
-              className="bg-[#182533] border border-sky-500/25 rounded-2xl p-4 font-sans text-xs sm:text-[13.5px] text-slate-100 leading-relaxed shadow-inner [&_b]:text-white [&_b]:font-bold"
+              className="bg-[#182533] border border-sky-500/25 rounded-2xl p-4 font-sans text-xs sm:text-[13.5px] text-slate-100 leading-relaxed shadow-inner [&_b]:text-white [&_b]:font-bold [&_u]:underline [&_u]:decoration-slate-300"
               dangerouslySetInnerHTML={{ 
                 __html: previewMessage
                   .replace(/(@[a-zA-Z0-9_]+)/g, '<span class="text-sky-400 font-semibold">$1</span>')

@@ -12,11 +12,18 @@ export interface DataUpdateNotificationConfig {
   senderName: string;
 }
 
-export const STORAGE_NOTIFY_KEY = 'ghn_data_update_notify_config_v2';
+export const STORAGE_NOTIFY_KEY = 'ghn_data_update_notify_config_v3';
 
 export const DEFAULT_NOTIFY_BOT_TOKEN = '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
 export const DEFAULT_NOTIFY_CHAT_ID = '-5234712010';
-export const DEFAULT_NOTIFY_MESSAGE = 'Thông báo dữ liệu mới nhất đã được cập nhật. Mở dashboard để xem chi tiết: https://kiem-soat-van-hanh.vercel.app';
+export const DEFAULT_NOTIFY_MESSAGE = `👉 Thông báo dữ liệu mới nhất đã được cập nhật:
++ Chỉ số vận hành <u>Ngày N-1</u>
++ Chỉ số vận hành của <u>Toàn Bưu cục</u>
++ Chỉ số vận hành của <u>Từng NVPTTT</u>
++ Tồn đọng <u>Backlog (Đầu ngày)</u>
++ <u>Thông tin nhân sự</u> đang làm việc
++ <u>Chỉ số nghỉ việc</u> theo từng tháng
+👉 Mở dashboard để xem chi tiết: https://kiem-soat-van-hanh.vercel.app`;
 
 export const DEFAULT_TAGGED_USERS: string[] = [
   '@Trongphuu',
@@ -113,7 +120,7 @@ export function buildFullNotificationMessage(
   let fullText = `<b>🔔 THÔNG BÁO CẬP NHẬT DỮ LIỆU VẬN HÀNH GHN</b>\n\n`;
   fullText += `${cleanMessage}\n\n`;
   fullText += `<b>🕒 Thời gian cập nhật:</b> ${formattedTime}\n`;
-  fullText += `<b>👤 Người thông báo:</b> ${senderName}\n`;
+  fullText += `<b>✅ Người thông báo:</b> ${senderName}\n`;
 
   if (tagsLine) {
     fullText += `\n<b>👥 Tag anh em phụ trách:</b>\n${tagsLine}`;
@@ -134,13 +141,15 @@ export async function sendDataUpdateTelegram(
   };
 
   const cleanToken = cfg.botToken.trim() || DEFAULT_NOTIFY_BOT_TOKEN;
-  const cleanChatId = cfg.chatId.trim() || DEFAULT_NOTIFY_CHAT_ID;
+  // Cưỡng chế ngưng gửi tới ID cá nhân 1215576379, chỉ gửi tới group -5234712010
+  const rawChatId = cfg.chatId.trim();
+  const cleanChatId = (rawChatId === '1215576379' || !rawChatId) ? DEFAULT_NOTIFY_CHAT_ID : rawChatId;
 
   if (!cleanToken) {
     return { ok: false, error: 'Thiếu mã Bot Token Telegram' };
   }
   if (!cleanChatId) {
-    return { ok: false, error: 'Thiếu Chat ID Telegram của người nhận/nhóm' };
+    return { ok: false, error: 'Thiếu Chat ID Telegram của group' };
   }
 
   const textToSend = buildFullNotificationMessage(
