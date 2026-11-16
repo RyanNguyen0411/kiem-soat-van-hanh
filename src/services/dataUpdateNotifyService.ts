@@ -12,10 +12,10 @@ export interface DataUpdateNotificationConfig {
   senderName: string;
 }
 
-export const STORAGE_NOTIFY_KEY = 'ghn_data_update_notify_config_v1';
+export const STORAGE_NOTIFY_KEY = 'ghn_data_update_notify_config_v2';
 
 export const DEFAULT_NOTIFY_BOT_TOKEN = '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
-export const DEFAULT_NOTIFY_CHAT_ID = '1215576379';
+export const DEFAULT_NOTIFY_CHAT_ID = '-5234712010';
 export const DEFAULT_NOTIFY_MESSAGE = 'Thông báo dữ liệu mới nhất đã được cập nhật. Mở dashboard để xem chi tiết: https://kiem-soat-van-hanh.vercel.app';
 
 export const DEFAULT_TAGGED_USERS: string[] = [
@@ -50,9 +50,13 @@ export function getDataUpdateNotifyConfig(): DataUpdateNotificationConfig {
     if (!raw) return defaultConfig;
 
     const parsed = JSON.parse(raw);
+    const resolvedChatId = (parsed.chatId && parsed.chatId.trim() && parsed.chatId.trim() !== '1215576379')
+      ? parsed.chatId.trim()
+      : DEFAULT_NOTIFY_CHAT_ID;
+
     return {
       botToken: (parsed.botToken && parsed.botToken.trim()) || DEFAULT_NOTIFY_BOT_TOKEN,
-      chatId: (parsed.chatId && parsed.chatId.trim()) || DEFAULT_NOTIFY_CHAT_ID,
+      chatId: resolvedChatId,
       messageText: parsed.messageText !== undefined ? parsed.messageText : DEFAULT_NOTIFY_MESSAGE,
       taggedUsers: Array.isArray(parsed.taggedUsers) && parsed.taggedUsers.length > 0 
         ? parsed.taggedUsers 

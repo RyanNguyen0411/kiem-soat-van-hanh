@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 // Mô phỏng logic cấu hình và format tin nhắn từ dataUpdateNotifyService
 const DEFAULT_CONFIG = {
   botToken: '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw',
-  chatId: '1215576379',
+  chatId: '-5234712010',
   messageContent: 'Thông báo dữ liệu mới nhất đã được cập nhật. Mở dashboard để xem chi tiết: https://kiem-soat-van-hanh.vercel.app',
   tags: [
     '@Trongphuu',
@@ -37,7 +37,7 @@ function buildFullNotificationMessage(content, tags, timeString, senderName = 'A
 
 test('Telegram Notification: Default Configuration must match user requirements', () => {
   assert.equal(DEFAULT_CONFIG.botToken, '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw');
-  assert.equal(DEFAULT_CONFIG.chatId, '1215576379');
+  assert.equal(DEFAULT_CONFIG.chatId, '-5234712010');
   assert.match(DEFAULT_CONFIG.messageContent, /https:\/\/kiem-soat-van-hanh\.vercel\.app/);
   
   // Kiểm tra đủ 8 thành viên được tag
