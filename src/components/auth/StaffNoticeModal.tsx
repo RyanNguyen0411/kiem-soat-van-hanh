@@ -49,9 +49,12 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
     if (isPreview) return;
 
     const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<StaffNoticeConfig>;
-      if (customEvent.detail) {
-        setNoticeConfig(customEvent.detail);
+      const customEvent = e as CustomEvent<any>;
+      const detail = customEvent?.detail;
+      if (detail?.config) {
+        setNoticeConfig(detail.config);
+      } else if (detail?.content) {
+        setNoticeConfig(detail);
       } else {
         setNoticeConfig(getStaffNoticeConfig());
       }

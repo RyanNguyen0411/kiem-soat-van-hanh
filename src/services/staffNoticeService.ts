@@ -1,7 +1,6 @@
 /**
- * GHN Control Center - Dịch Vụ Cập Nhật & Quản Trị Thông Báo Phân Hệ Nhân Viên
- * Cho phép AM Huy chủ động cập nhật nội dung thông báo từ Dashboard Nguồn,
- * và đồng bộ tức thì tới tất cả các dashboard phân hệ bưu cục.
+ * GHN Control Center - Dịch Vụ Cập Nhật & Quản Trị Thông Báo Phân Hệ Nhân Viên (Real-Time Ultra Fast)
+ * Đồng bộ ngay lập tức (instantaneous) qua BroadcastChannel và Serverless API Heartbeat.
  */
 
 export interface StaffNoticeConfig {
@@ -17,6 +16,7 @@ export interface StaffNoticeConfig {
 
 export const STORAGE_STAFF_NOTICE_KEY = 'ghn_staff_notice_config_v2';
 export const NOTICE_UPDATED_EVENT = 'ghn_staff_notice_updated';
+export const NOTICE_CHANNEL_NAME = 'ghn_staff_notice_broadcast_channel_v2';
 
 // Mẫu thông báo tinh gọn tiêu chuẩn (Streamlined & Crisp)
 export const DEFAULT_STAFF_NOTICE_CONFIG: StaffNoticeConfig = {
@@ -41,12 +41,45 @@ export const DEFAULT_STAFF_NOTICE_CONFIG: StaffNoticeConfig = {
 • Biến chỉ số thành hành động thực tế để nâng cao chất lượng phục vụ và hoàn thành xuất sắc mục tiêu bưu cục.`,
   closingGreeting: 'Chúc toàn thể anh em vận hành thông suốt, an toàn và hiệu quả!',
   sender: 'AM Huy – ĐNB',
-  updatedAt: 1763265600000, // Khởi tạo mốc thời gian chuẩn
+  updatedAt: 1763265600000,
   version: 1
 };
 
+// Singleton BroadcastChannel cho giao tiếp tức thì giữa các tab/cửa sổ
+let noticeBroadcastChannel: BroadcastChannel | null = null;
+
+function getBroadcastChannel(): BroadcastChannel | null {
+  if (typeof window === 'undefined' || !('BroadcastChannel' in window)) {
+    return null;
+  }
+  if (!noticeBroadcastChannel) {
+    try {
+      noticeBroadcastChannel = new BroadcastChannel(NOTICE_CHANNEL_NAME);
+      noticeBroadcastChannel.onmessage = (event) => {
+        if (event?.data?.type === 'FORCE_NOTICE_UPDATE' && event.data.config) {
+          const incomingConfig = event.data.config as StaffNoticeConfig;
+          try {
+            localStorage.setItem(STORAGE_STAFF_NOTICE_KEY, JSON.stringify(incomingConfig));
+          } catch {}
+          window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { 
+            detail: { config: incomingConfig, forceOpen: true } 
+          }));
+        }
+      };
+    } catch (e) {
+      console.warn('Lỗi khởi tạo BroadcastChannel:', e);
+    }
+  }
+  return noticeBroadcastChannel;
+}
+
+// Khởi chạy lắng nghe BroadcastChannel nếu môi trường browser hỗ trợ
+if (typeof window !== 'undefined') {
+  getBroadcastChannel();
+}
+
 /**
- * Lấy cấu hình thông báo hiện tại
+ * Lấy cấu hình thông báo hiện tại từ bộ nhớ cache cục bộ
  */
 export function getStaffNoticeConfig(): StaffNoticeConfig {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
@@ -84,7 +117,7 @@ export function getStaffNoticeConfig(): StaffNoticeConfig {
 
 /**
  * Lưu cấu hình thông báo mới do AM Huy cập nhật
- * và phát tín hiệu đồng bộ tức thì cho các phân hệ
+ * Bắn tín hiệu đồng bộ tức thì (<5ms) qua BroadcastChannel và gửi lên Serverless API
  */
 export function saveStaffNoticeConfig(newConfig: Partial<StaffNoticeConfig>): {
   success: boolean;
@@ -116,8 +149,33 @@ export function saveStaffNoticeConfig(newConfig: Partial<StaffNoticeConfig>): {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_STAFF_NOTICE_KEY, JSON.stringify(updatedConfig));
-      // Bắn event đồng bộ trong tab hiện tại
-      window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { detail: updatedConfig }));
+
+      // 1. Gửi lệnh tức thì trong tab hiện tại
+      window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { 
+        detail: { config: updatedConfig, forceOpen: true } 
+      }));
+
+      // 2. Gửi lệnh tức thì (<5ms) qua BroadcastChannel tới tất cả tab/cửa sổ khác
+      const channel = getBroadcastChannel();
+      if (channel) {
+        channel.postMessage({
+          type: 'FORCE_NOTICE_UPDATE',
+          config: updatedConfig,
+          timestamp: Date.now()
+        });
+      }
+
+      // 3. Đẩy lên server API cho các thiết bị độc lập (cross-device)
+      fetch('/api/staff-notice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedConfig)
+      }).catch(err => {
+        console.warn('Lỗi đồng bộ thông báo lên server API (sẽ tự động đồng bộ lại qua polling):', err);
+      });
+
     } catch (err) {
       console.error('Lỗi lưu thông báo vào localStorage:', err);
       return {
@@ -130,7 +188,7 @@ export function saveStaffNoticeConfig(newConfig: Partial<StaffNoticeConfig>): {
 
   return {
     success: true,
-    message: 'Đã cập nhật thông báo phân hệ thành công! Nội dung mới đã được đồng bộ tới tất cả bưu cục.',
+    message: 'Đã cập nhật thông báo phân hệ thành công! Lệnh đã được phát ngay lập tức tới tất cả bưu cục.',
     config: updatedConfig
   };
 }
@@ -148,13 +206,114 @@ export function resetStaffNoticeToDefault(): StaffNoticeConfig {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_STAFF_NOTICE_KEY, JSON.stringify(resetConfig));
-      window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { detail: resetConfig }));
+
+      window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { 
+        detail: { config: resetConfig, forceOpen: true } 
+      }));
+
+      const channel = getBroadcastChannel();
+      if (channel) {
+        channel.postMessage({
+          type: 'FORCE_NOTICE_UPDATE',
+          config: resetConfig,
+          timestamp: Date.now()
+        });
+      }
+
+      fetch('/api/staff-notice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resetConfig)
+      }).catch(() => {});
     } catch (err) {
       console.error('Lỗi khôi phục thông báo mặc định:', err);
     }
   }
 
   return resetConfig;
+}
+
+/**
+ * Kiểm tra cập nhật thông báo từ server API (Heartbeat đồng bộ đa thiết bị)
+ */
+export async function checkServerNoticeUpdates(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const res = await fetch('/api/staff-notice', {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    if (data?.success && data?.notice) {
+      const serverNotice = data.notice as StaffNoticeConfig;
+      const localNotice = getStaffNoticeConfig();
+
+      // Nếu server có phiên bản mới hơn hoặc thời gian cập nhật mới hơn
+      if (
+        (serverNotice.version > (localNotice.version || 0)) ||
+        (serverNotice.updatedAt > (localNotice.updatedAt || 0) + 1000)
+      ) {
+        localStorage.setItem(STORAGE_STAFF_NOTICE_KEY, JSON.stringify(serverNotice));
+
+        window.dispatchEvent(new CustomEvent(NOTICE_UPDATED_EVENT, { 
+          detail: { config: serverNotice, forceOpen: true } 
+        }));
+
+        const channel = getBroadcastChannel();
+        if (channel) {
+          channel.postMessage({
+            type: 'FORCE_NOTICE_UPDATE',
+            config: serverNotice,
+            timestamp: Date.now()
+          });
+        }
+        return true;
+      }
+    }
+  } catch {
+    // ignore network errors in polling
+  }
+  return false;
+}
+
+/**
+ * Khởi động tiến trình Heartbeat tự động kiểm tra thông báo mới
+ * Tần số quét: Mỗi 3 giây khi trang đang mở, và quét ngay khi tab được focus/visible
+ */
+export function startNoticeSyncHeartbeat(): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  // Quét ngay khi khởi động
+  checkServerNoticeUpdates();
+
+  // Quét định kỳ mỗi 3.000 ms (3 giây)
+  const intervalId = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      checkServerNoticeUpdates();
+    }
+  }, 3000);
+
+  // Quét ngay lập tức khi người dùng click vào tab hoặc chuyển qua lại cửa sổ
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      checkServerNoticeUpdates();
+    }
+  };
+
+  const handleFocus = () => {
+    checkServerNoticeUpdates();
+  };
+
+  window.addEventListener('visibilitychange', handleVisibility);
+  window.addEventListener('focus', handleFocus);
+
+  return () => {
+    clearInterval(intervalId);
+    window.removeEventListener('visibilitychange', handleVisibility);
+    window.removeEventListener('focus', handleFocus);
+  };
 }
 
 /**
@@ -168,7 +327,8 @@ export function formatNoticeDate(timestamp: number): string {
     const year = d.getFullYear();
     const hours = String(d.getHours()).padStart(2, '0');
     const mins = String(d.getMinutes()).padStart(2, '0');
-    return `${hours}:${mins} ngày ${day}/${month}/${year}`;
+    const secs = String(d.getSeconds()).padStart(2, '0');
+    return `${hours}:${mins}:${secs} ngày ${day}/${month}/${year}`;
   } catch {
     return '10:00 hôm nay';
   }

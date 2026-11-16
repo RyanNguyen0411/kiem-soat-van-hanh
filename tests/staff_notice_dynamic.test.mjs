@@ -91,4 +91,36 @@ test('CẬP NHẬT THÔNG BÁO PHÂN HỆ BƯU CỤC - KIỂM THỬ ĐỘNG & TI
     assert.ok(saveResult.config.version >= 1);
   });
 
+  await t.test('6. API serverless api/staff-notice.ts tồn tại và hỗ trợ GET / POST đồng bộ tức thì', () => {
+    const apiPath = path.join(ROOT_DIR, 'api/staff-notice.ts');
+    assert.ok(fs.existsSync(apiPath), 'api/staff-notice.ts phải tồn tại');
+
+    const apiContent = fs.readFileSync(apiPath, 'utf8');
+    assert.match(apiContent, /processStaffNoticeRequest/);
+    assert.match(apiContent, /req\.method === 'GET'/);
+    assert.match(apiContent, /req\.method === 'POST'/);
+    assert.match(apiContent, /currentServerNotice/);
+  });
+
+  await t.test('7. AuthContext.tsx xóa ack và reset isNoticeAcknowledged khi nhận lệnh cập nhật từ AM', () => {
+    const authContextPath = path.join(ROOT_DIR, 'src/context/AuthContext.tsx');
+    const authContent = fs.readFileSync(authContextPath, 'utf8');
+
+    assert.match(authContent, /handleNoticeRealtimeUpdate/);
+    assert.match(authContent, /sessionStorage\.removeItem\(`ghn_staff_notice_ack_\$\{currentUser\.username\}`\)/);
+    assert.match(authContent, /setIsNoticeAcknowledged\(false\)/);
+    assert.match(authContent, /startNoticeSyncHeartbeat/);
+  });
+
+  await t.test('8. staffNoticeService.ts tích hợp BroadcastChannel và Heartbeat 3s', () => {
+    const servicePath = path.join(ROOT_DIR, 'src/services/staffNoticeService.ts');
+    const serviceContent = fs.readFileSync(servicePath, 'utf8');
+
+    assert.match(serviceContent, /BroadcastChannel/);
+    assert.match(serviceContent, /FORCE_NOTICE_UPDATE/);
+    assert.match(serviceContent, /startNoticeSyncHeartbeat/);
+    assert.match(serviceContent, /checkServerNoticeUpdates/);
+    assert.match(serviceContent, /fetch\('\/api\/staff-notice'/);
+  });
+
 });

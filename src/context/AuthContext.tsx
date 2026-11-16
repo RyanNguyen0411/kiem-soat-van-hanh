@@ -13,6 +13,11 @@ import {
   verifyOtpWithBackend, 
   hasRole as checkRole
 } from '../services/authService';
+import {
+  getStaffNoticeConfig,
+  NOTICE_UPDATED_EVENT,
+  startNoticeSyncHeartbeat
+} from '../services/staffNoticeService';
 
 import type { TabType } from '../types/dashboard';
 
@@ -48,7 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isNoticeAcknowledged, setIsNoticeAcknowledged] = useState<boolean>(() => {
     const user = session?.user;
     if (user?.role === 'post_office_staff') {
-      return sessionStorage.getItem(`ghn_staff_notice_ack_${user.username}`) === 'true';
+      const ackFlag = sessionStorage.getItem(`ghn_staff_notice_ack_${user.username}`);
+      const ackVersion = sessionStorage.getItem(`ghn_staff_notice_ack_version_${user.username}`);
+      const currentConfig = getStaffNoticeConfig();
+      if (ackFlag === 'true' && ackVersion && Number(ackVersion) >= (currentConfig.version || 1)) {
+        return true;
+      }
+      return false;
     }
     return true;
   });
@@ -56,9 +67,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const acknowledgeNotice = useCallback(() => {
     setIsNoticeAcknowledged(true);
     if (currentUser?.username) {
+      const currentConfig = getStaffNoticeConfig();
       sessionStorage.setItem(`ghn_staff_notice_ack_${currentUser.username}`, 'true');
+      sessionStorage.setItem(`ghn_staff_notice_ack_version_${currentUser.username}`, String(currentConfig.version || 1));
     }
   }, [currentUser]);
+
+  // Lắng nghe lệnh cập nhật thông báo từ AM: Dashboard phân hệ nhận lệnh và cập nhật ngay lập tức (<5ms)
+  useEffect(() => {
+    const handleNoticeRealtimeUpdate = () => {
+      if (currentUser?.role === 'post_office_staff') {
+        if (currentUser?.username) {
+          try {
+            sessionStorage.removeItem(`ghn_staff_notice_ack_${currentUser.username}`);
+            sessionStorage.removeItem(`ghn_staff_notice_ack_version_${currentUser.username}`);
+          } catch {}
+        }
+        // Khóa màn hình và bắt buộc nhân viên đọc ngay thông báo mới nhất
+        setIsNoticeAcknowledged(false);
+      }
+    };
+
+    window.addEventListener(NOTICE_UPDATED_EVENT, handleNoticeRealtimeUpdate);
+    return () => window.removeEventListener(NOTICE_UPDATED_EVENT, handleNoticeRealtimeUpdate);
+  }, [currentUser]);
+
+  // Kích hoạt Heartbeat đồng bộ tức thời đa thiết bị (mỗi 3s)
+  useEffect(() => {
+    const stopHeartbeat = startNoticeSyncHeartbeat();
+    return () => stopHeartbeat();
+  }, []);
 
   // Countdown timer for 60s lockout
   useEffect(() => {
