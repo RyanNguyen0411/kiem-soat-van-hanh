@@ -178,15 +178,22 @@ export const PostOfficeManagementTab: React.FC = () => {
 
   useEffect(() => {
     const handleNoticeUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<StaffNoticeConfig>;
-      const latest = customEvent.detail || getStaffNoticeConfig();
-      setNoticeState(latest);
-      setNoticeTitle(latest.title);
-      setNoticeBannerTag(latest.bannerTag);
-      setNoticeGreeting(latest.greeting);
-      setNoticeContent(latest.content);
-      setNoticeClosing(latest.closingGreeting);
-      setNoticeSender(latest.sender);
+      const customEvent = e as CustomEvent<any>;
+      const detail = customEvent?.detail;
+      const latest: StaffNoticeConfig = 
+        (detail?.config && typeof detail.config === 'object') ? detail.config :
+        (detail?.content && typeof detail === 'object') ? detail :
+        getStaffNoticeConfig();
+
+      if (latest && typeof latest === 'object') {
+        setNoticeState(latest);
+        setNoticeTitle(latest.title || '');
+        setNoticeBannerTag(latest.bannerTag || '');
+        setNoticeGreeting(latest.greeting || '');
+        setNoticeContent(latest.content || '');
+        setNoticeClosing(latest.closingGreeting || '');
+        setNoticeSender(latest.sender || '');
+      }
     };
 
     window.addEventListener(NOTICE_UPDATED_EVENT, handleNoticeUpdate);
@@ -195,21 +202,28 @@ export const PostOfficeManagementTab: React.FC = () => {
 
   // Xử lý Lưu & Cập Nhật Thông Báo Phân Hệ
   const handleSaveNotice = () => {
-    if (!noticeContent.trim()) {
+    const trimmedContent = (noticeContent || '').trim();
+    if (!trimmedContent) {
       showToast('error', 'Nội dung thông báo không được để trống!');
       return;
     }
     const res = saveStaffNoticeConfig({
-      title: noticeTitle,
-      bannerTag: noticeBannerTag,
-      greeting: noticeGreeting,
-      content: noticeContent,
-      closingGreeting: noticeClosing,
-      sender: noticeSender
+      title: (noticeTitle || '').trim(),
+      bannerTag: (noticeBannerTag || '').trim(),
+      greeting: (noticeGreeting || '').trim(),
+      content: trimmedContent,
+      closingGreeting: (noticeClosing || '').trim(),
+      sender: (noticeSender || '').trim()
     });
 
-    if (res.success) {
+    if (res.success && res.config) {
       setNoticeState(res.config);
+      setNoticeTitle(res.config.title || '');
+      setNoticeBannerTag(res.config.bannerTag || '');
+      setNoticeGreeting(res.config.greeting || '');
+      setNoticeContent(res.config.content || '');
+      setNoticeClosing(res.config.closingGreeting || '');
+      setNoticeSender(res.config.sender || '');
       showToast('success', res.message);
     } else {
       showToast('error', res.message);
@@ -869,7 +883,7 @@ export const PostOfficeManagementTab: React.FC = () => {
               <input
                 type="text"
                 placeholder="Ví dụ: THÔNG BÁO & HƯỚNG DẪN SỬ DỤNG DASHBOARD VẬN HÀNH..."
-                value={noticeTitle}
+                value={noticeTitle || ''}
                 onChange={e => setNoticeTitle(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
               />
@@ -880,7 +894,7 @@ export const PostOfficeManagementTab: React.FC = () => {
               <input
                 type="text"
                 placeholder="Ví dụ: QUY ĐỊNH BẮT BUỘC, THÔNG BÁO MỚI..."
-                value={noticeBannerTag}
+                value={noticeBannerTag || ''}
                 onChange={e => setNoticeBannerTag(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
               />
@@ -891,7 +905,7 @@ export const PostOfficeManagementTab: React.FC = () => {
               <input
                 type="text"
                 placeholder="Ví dụ: AM Huy – ĐNB..."
-                value={noticeSender}
+                value={noticeSender || ''}
                 onChange={e => setNoticeSender(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-orange-400 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
               />
@@ -904,7 +918,7 @@ export const PostOfficeManagementTab: React.FC = () => {
             <input
               type="text"
               placeholder="Lời chào mở đầu khi nhân viên mở thông báo..."
-              value={noticeGreeting}
+              value={noticeGreeting || ''}
               onChange={e => setNoticeGreeting(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
             />
@@ -952,14 +966,14 @@ export const PostOfficeManagementTab: React.FC = () => {
 
             <textarea
               rows={9}
-              value={noticeContent}
+              value={noticeContent || ''}
               onChange={e => setNoticeContent(e.target.value)}
               placeholder="Nhập nội dung thông báo... (Hỗ trợ định dạng: 1. TIÊU ĐỀ MỤC, • Gạch đầu dòng chi tiết...)"
               className="w-full bg-slate-950/80 border border-slate-700 rounded-xl p-3 text-slate-200 font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs sm:text-[13px] scrollbar-thin"
             />
             <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
               <span>Cú pháp đề xuất: Đánh số mục (1., 2., 3., 4.) và gạch đầu dòng (• hoặc -) để hiển thị thẻ trực quan.</span>
-              <span>{noticeContent.length} ký tự &bull; {noticeContent.split('\n').filter(Boolean).length} dòng</span>
+              <span>{(noticeContent || '').length} ký tự &bull; {(noticeContent || '').split('\n').filter(Boolean).length} dòng</span>
             </div>
           </div>
 
@@ -969,61 +983,62 @@ export const PostOfficeManagementTab: React.FC = () => {
             <input
               type="text"
               placeholder="Ví dụ: Chúc toàn thể anh em vận hành thông suốt, an toàn và hiệu quả!..."
-              value={noticeClosing}
+              value={noticeClosing || ''}
               onChange={e => setNoticeClosing(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
             />
           </div>
         </div>
 
-        {/* Thanh công cụ thao tác cập nhật của AM */}
-        <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-orange-400 shrink-0" />
+        {/* Thanh công cụ thao tác cập nhật của AM (Đã thu nhỏ tinh gọn theo đúng yêu cầu) */}
+        <div className="pt-2.5 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-orange-400 shrink-0" />
             <span>Khi AM bấm <strong>"Cập Nhật Thông Báo"</strong>, toàn bộ Dashboard phân nhánh sẽ áp dụng nội dung mới ngay lập tức.</span>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {/* Nút Xem Trước (Live Preview) */}
+          <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
+            {/* Nút Xem Trước (Live Preview) - Thu nhỏ */}
             <button
               type="button"
               onClick={() => setIsPreviewNoticeOpen(true)}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs hover:scale-[1.02] active:scale-[0.98]"
               title="Xem trước thông báo hiển thị trên giao diện nhân viên bưu cục"
             >
-              <Eye className="w-4 h-4 text-sky-400" />
+              <Eye className="w-3.5 h-3.5 text-sky-400" />
               <span>Xem Trước (Preview)</span>
             </button>
 
-            {/* Nút Khôi phục mẫu mặc định */}
+            {/* Nút Khôi phục mẫu mặc định - Thu nhỏ */}
             <button
               type="button"
               onClick={handleResetNoticeDefault}
-              className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/80 font-semibold text-xs flex items-center gap-1 transition-all cursor-pointer"
+              className="px-2 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/80 font-medium text-xs flex items-center gap-1 transition-all cursor-pointer"
               title="Khôi phục lại mẫu thông báo tinh gọn mặc định"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3 h-3" />
               <span className="hidden sm:inline">Mẫu Gốc</span>
             </button>
 
-            {/* Nút BẮN TELEGRAM BÁO CẬP NHẬT DỮ LIỆU CHO NHÂN VIÊN */}
+            {/* Nút BẮN TELEGRAM BÁO CẬP NHẬT DỮ LIỆU CHO NHÂN VIÊN - Thu nhỏ */}
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('open-data-update-telegram-modal'))}
-              className="px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
               title="Gửi tin nhắn Telegram thông báo đã cập nhật dữ liệu kèm tag các nhân sự"
             >
-              <Send className="w-4 h-4 text-sky-200" />
+              <Send className="w-3.5 h-3.5 text-sky-200" />
               <span>📢 Bắn Tele Báo Cập Nhật Data</span>
             </button>
 
-            {/* Nút CẬP NHẬT THÔNG BÁO CHO PHÂN HỆ */}
+            {/* Nút CẬP NHẬT THÔNG BÁO CHO PHÂN HỆ - Thu nhỏ */}
             <button
               type="button"
               onClick={handleSaveNotice}
-              className="px-5 sm:px-6 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-600/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Lưu và phát lệnh cập nhật thông báo tới tất cả phân hệ bưu cục ngay lập tức"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               <span>Cập Nhật Thông Báo Cho Phân Hệ</span>
             </button>
           </div>

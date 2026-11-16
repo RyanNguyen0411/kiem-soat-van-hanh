@@ -228,15 +228,15 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
         <div className="p-5 sm:p-7 md:p-8 text-slate-200 text-sm sm:text-base md:text-[16px] leading-relaxed space-y-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-700">
           
           {/* Lời chào mở đầu */}
-          {noticeConfig.greeting && (
+          {Boolean(noticeConfig?.greeting) && (
             <div className="bg-orange-950/40 border border-orange-500/40 rounded-2xl px-5 py-3.5 sm:px-6 sm:py-4 text-slate-200 flex items-start gap-3.5 shadow-sm">
               <Sparkles className="w-6 h-6 text-orange-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-orange-400 text-base sm:text-lg md:text-xl inline">
-                  {noticeConfig.greeting.split('!')[0] ? `${noticeConfig.greeting.split('!')[0]}! ` : ''}
+                  {(noticeConfig.greeting || '').split('!')[0] ? `${(noticeConfig.greeting || '').split('!')[0]}! ` : ''}
                 </p>
                 <span className="text-slate-100 font-medium text-sm sm:text-base md:text-[16px]">
-                  {noticeConfig.greeting.split('!').slice(1).join('!') || noticeConfig.greeting}
+                  {(noticeConfig.greeting || '').split('!').slice(1).join('!') || noticeConfig.greeting || ''}
                 </span>
               </div>
             </div>

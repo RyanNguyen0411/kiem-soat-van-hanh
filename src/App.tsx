@@ -24,6 +24,7 @@ import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal
 import { GoogleDriveLockModal } from './components/common/GoogleDriveLockModal';
 import { GoogleDriveExportToast } from './components/common/GoogleDriveExportToast';
 import { SettingsModal } from './components/common/SettingsModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // 9 Required Tabs
 import OverviewTab from './pages/OverviewTab';
@@ -240,8 +241,10 @@ const RootContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RootContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RootContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
