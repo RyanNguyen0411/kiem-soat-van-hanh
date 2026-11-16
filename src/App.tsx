@@ -17,6 +17,7 @@ import { OperationalCalendarDrawer } from './components/common/OperationalCalend
 import { ExecutiveDirectoryModal } from './components/common/ExecutiveDirectoryModal';
 import { ExecutiveBreadcrumbBar } from './components/common/ExecutiveBreadcrumbBar';
 import { TelegramReportModal } from './components/common/TelegramReportModal';
+import { DataUpdateTelegramModal } from './components/common/DataUpdateTelegramModal';
 import { StaffNoticeModal } from './components/auth/StaffNoticeModal';
 import { DataQualityModal } from './components/common/DataQualityModal';
 import { GoogleSheetsLockModal } from './components/common/GoogleSheetsLockModal';
@@ -200,6 +201,9 @@ const DashboardContent: React.FC = () => {
 
       {/* Báo Cáo Telegram Tồn Đọng GLT (120h & 192h) và Tồn LC (Chỉ dành cho AM Huy) */}
       {!isStaff && <TelegramReportModal />}
+
+      {/* Thông Báo Telegram Cập Nhật Dữ Liệu Cho Nhân Viên (Chỉ dành cho AM Huy) */}
+      {!isStaff && <DataUpdateTelegramModal />}
 
       {/* Thông Báo Hướng Dẫn Sử Dụng Phân Hệ Bưu Cục Cho Nhân Viên (Blur nội dung đến khi Đồng ý) */}
       <StaffNoticeModal />

@@ -162,32 +162,32 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
       role="dialog"
       aria-modal="true"
     >
-      {/* Khung thông báo mở rộng tinh gọn, chuẩn giao diện (~94vw, max 1550px) */}
-      <div className="w-[94vw] max-w-[1550px] max-h-[90vh] bg-slate-900 border border-slate-700/80 rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto border-orange-500/40">
+      {/* Khung thông báo mở rộng tinh gọn, chuẩn giao diện theo khung đỏ (~96vw, max 1700px, max-h 94vh) */}
+      <div className="w-[96vw] max-w-[1700px] max-h-[94vh] bg-slate-900 border-2 border-orange-500/50 rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto">
         
         {/* MODAL HEADER */}
-        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 px-5 sm:px-6 py-3 text-white shrink-0 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-black text-sm shadow-inner shrink-0">
-              <FileText className="w-5 h-5 text-white" />
+        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 px-6 sm:px-8 py-3.5 sm:py-4 text-white shrink-0 shadow-md flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-black text-sm shadow-inner shrink-0">
+              <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] sm:text-xs font-black tracking-widest text-orange-200 uppercase leading-none">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs sm:text-sm font-black tracking-widest text-orange-200 uppercase leading-none">
                   GHN CONTROL CENTER &bull; PHÂN HỆ VẬN HÀNH BƯU CỤC
                 </span>
                 {noticeConfig.bannerTag && (
-                  <span className="px-2 py-0.5 rounded-full bg-white/20 text-white font-extrabold text-[10px] tracking-wider uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/25 text-white font-extrabold text-[11px] sm:text-xs tracking-wider uppercase">
                     {noticeConfig.bannerTag}
                   </span>
                 )}
                 {isPreview && (
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-black text-[10px] tracking-wider uppercase animate-pulse">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-[11px] sm:text-xs tracking-wider uppercase animate-pulse">
                     ĐANG XEM TRƯỚC (PREVIEW)
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg md:text-xl font-black tracking-tight uppercase leading-tight text-white mt-1">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight uppercase leading-tight text-white mt-1">
                 {noticeConfig.title}
               </h2>
             </div>
@@ -199,7 +199,7 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
                 if (isPreview && onClose) onClose();
                 else setManualOpen(false);
               }}
-              className="text-white/80 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 text-xs sm:text-sm font-bold transition-colors cursor-pointer"
+              className="text-white/90 hover:text-white px-3.5 py-2 rounded-xl hover:bg-white/15 text-sm sm:text-base font-bold transition-colors cursor-pointer"
             >
               ✕ Đóng
             </button>
@@ -207,9 +207,9 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
         </div>
 
         {/* SUB-HEADER STATUS BAR: THỜI GIAN AM CẬP NHẬT GẦN NHẤT */}
-        <div className="bg-slate-950/80 border-b border-slate-800 px-5 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className="bg-slate-950/90 border-b border-slate-800 px-6 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm md:text-[14.5px] text-slate-300">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="text-slate-400">Thời gian AM cập nhật gần nhất:</span>
             <span className="text-emerald-400 font-mono font-bold">
               {formatNoticeDate(noticeConfig.updatedAt)}
@@ -224,72 +224,72 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
           </div>
         </div>
 
-        {/* MODAL BODY (TINH GỌN, THOÁNG ĐÃNG, DỄ ĐỌC) */}
-        <div className="p-4 sm:p-5 md:p-6 text-slate-200 text-xs sm:text-sm md:text-[14.5px] leading-relaxed space-y-3.5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-700">
+        {/* MODAL BODY (RỘNG RÃI, CHỮ TO RÕ RÀNG, DỄ ĐỌC THEO KHUNG ĐỎ) */}
+        <div className="p-5 sm:p-7 md:p-8 text-slate-200 text-sm sm:text-base md:text-[16px] leading-relaxed space-y-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-700">
           
           {/* Lời chào mở đầu */}
           {noticeConfig.greeting && (
-            <div className="bg-orange-950/35 border border-orange-500/30 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 text-slate-200 flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+            <div className="bg-orange-950/40 border border-orange-500/40 rounded-2xl px-5 py-3.5 sm:px-6 sm:py-4 text-slate-200 flex items-start gap-3.5 shadow-sm">
+              <Sparkles className="w-6 h-6 text-orange-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-orange-400 text-sm sm:text-base inline">
+                <p className="font-bold text-orange-400 text-base sm:text-lg md:text-xl inline">
                   {noticeConfig.greeting.split('!')[0] ? `${noticeConfig.greeting.split('!')[0]}! ` : ''}
                 </p>
-                <span className="text-slate-200 font-normal">
+                <span className="text-slate-100 font-medium text-sm sm:text-base md:text-[16px]">
                   {noticeConfig.greeting.split('!').slice(1).join('!') || noticeConfig.greeting}
                 </span>
               </div>
             </div>
           )}
 
-          {/* HIỂN THỊ CÁC MỤC THÔNG BÁO TINH GỌN (CHIA 2 CỘT TỰ ĐỘNG CÂN XỨNG) */}
+          {/* HIỂN THỊ CÁC MỤC THÔNG BÁO TINH GỌN (CHIA 2 CỘT TỰ ĐỘNG CÂN XỨNG VỚI FONT CHỮ LỚN DỄ ĐỌC) */}
           {parsedSections.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 lg:gap-4 flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5 flex-1">
               {parsedSections.map((sec, idx) => {
                 // Phối màu và icon theo loại khối
-                let iconEl = <Info className="w-4 h-4 text-orange-400 shrink-0" />;
+                let iconEl = <Info className="w-5 h-5 text-orange-400 shrink-0" />;
                 let titleColor = 'text-orange-400';
                 let borderColor = 'border-slate-800';
 
                 if (sec.iconType === 'data') {
-                  iconEl = <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0" />;
+                  iconEl = <span className="w-3 h-3 rounded-full bg-orange-500 shrink-0" />;
                   titleColor = 'text-orange-400';
-                  borderColor = 'border-slate-800 hover:border-orange-500/40';
+                  borderColor = 'border-slate-800 hover:border-orange-500/50';
                 } else if (sec.iconType === 'clock') {
-                  iconEl = <Clock className="w-4 h-4 text-emerald-400 shrink-0" />;
+                  iconEl = <Clock className="w-5 h-5 text-emerald-400 shrink-0" />;
                   titleColor = 'text-emerald-400';
-                  borderColor = 'border-slate-800 hover:border-emerald-500/40';
+                  borderColor = 'border-slate-800 hover:border-emerald-500/50';
                 } else if (sec.iconType === 'lock') {
-                  iconEl = <Lock className="w-4 h-4 text-rose-400 shrink-0" />;
+                  iconEl = <Lock className="w-5 h-5 text-rose-400 shrink-0" />;
                   titleColor = 'text-rose-400';
-                  borderColor = 'border-slate-800 hover:border-rose-500/40';
+                  borderColor = 'border-slate-800 hover:border-rose-500/50';
                 } else if (sec.iconType === 'goal') {
-                  iconEl = <HeartHandshake className="w-4 h-4 text-amber-400 shrink-0" />;
+                  iconEl = <HeartHandshake className="w-5 h-5 text-amber-400 shrink-0" />;
                   titleColor = 'text-amber-400';
-                  borderColor = 'border-amber-600/35 hover:border-amber-500/50';
+                  borderColor = 'border-amber-600/40 hover:border-amber-500/60';
                 }
 
                 return (
                   <div 
                     key={sec.id || idx}
-                    className={`bg-slate-950/65 border ${borderColor} rounded-2xl p-3.5 sm:p-4 space-y-2 transition-all flex flex-col justify-between`}
+                    className={`bg-slate-950/70 border ${borderColor} rounded-2xl p-4 sm:p-5 space-y-2.5 transition-all flex flex-col justify-between shadow-xs`}
                   >
                     <div>
-                      <div className={`flex items-center gap-2 ${titleColor} font-black text-xs sm:text-sm md:text-[14.5px] uppercase tracking-wide`}>
+                      <div className={`flex items-center gap-2.5 ${titleColor} font-black text-sm sm:text-base md:text-[17px] uppercase tracking-wide`}>
                         {iconEl}
                         <span>{sec.id}. {sec.title}</span>
                       </div>
                       
-                      <ul className="space-y-1.5 pt-2 pl-1 text-slate-200">
+                      <ul className="space-y-2 pt-2.5 pl-1 text-slate-100 text-xs sm:text-sm md:text-[15px]">
                         {sec.items.map((it, itemIdx) => {
                           const cleanItem = it.replace(/^[\•\-\*]\s*/, '');
                           return (
-                            <li key={itemIdx} className="flex items-start gap-2">
-                              <span className="text-orange-500 font-bold shrink-0">&bull;</span>
+                            <li key={itemIdx} className="flex items-start gap-2.5">
+                              <span className="text-orange-500 font-bold shrink-0 text-base leading-none mt-1">&bull;</span>
                               <span className="leading-relaxed">
                                 {cleanItem.includes(':') ? (
                                   <>
-                                    <strong className="text-slate-100">{cleanItem.split(':')[0]}:</strong>
+                                    <strong className="text-white font-bold">{cleanItem.split(':')[0]}:</strong>
                                     <span>{cleanItem.slice(cleanItem.indexOf(':') + 1)}</span>
                                   </>
                                 ) : (
@@ -307,21 +307,21 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
             </div>
           ) : (
             // Nếu người dùng nhập văn bản tự do không chia số thứ tự
-            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 whitespace-pre-wrap font-sans text-slate-200 leading-relaxed">
+            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-6 whitespace-pre-wrap font-sans text-slate-100 text-sm sm:text-base md:text-[16px] leading-relaxed">
               {noticeConfig.content}
             </div>
           )}
 
           {/* LỜI NHẮN KẾT */}
           {noticeConfig.closingGreeting && (
-            <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/30 to-slate-950/80 border border-amber-600/30 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <HeartHandshake className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="font-bold text-amber-300 text-xs sm:text-sm md:text-[14px]">
+            <div className="bg-gradient-to-r from-amber-950/50 via-orange-950/40 to-slate-950/90 border border-amber-600/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <HeartHandshake className="w-5 h-5 text-amber-400 shrink-0" />
+                <span className="font-bold text-amber-300 text-sm sm:text-base md:text-[16px]">
                   {noticeConfig.closingGreeting}
                 </span>
               </div>
-              <span className="font-black text-white text-right text-xs sm:text-sm md:text-[14px] uppercase tracking-wider shrink-0">
+              <span className="font-black text-white text-right text-sm sm:text-base md:text-[16px] uppercase tracking-wider shrink-0">
                 TRÂN TRỌNG!
               </span>
             </div>
@@ -330,18 +330,18 @@ export const StaffNoticeModal: React.FC<StaffNoticeModalProps> = ({
         </div>
 
         {/* MODAL FOOTER WITH NÚT ĐỒNG Ý */}
-        <div className="bg-slate-950/95 border-t border-slate-800 px-5 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="text-xs sm:text-sm text-slate-300 text-center sm:text-left">
+        <div className="bg-slate-950/95 border-t border-slate-800 px-6 sm:px-8 py-3.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+          <div className="text-xs sm:text-sm md:text-[14.5px] text-slate-300 text-center sm:text-left">
             <span>Bằng việc bấm <strong>"Đồng ý"</strong>, bạn xác nhận đã đọc, hiểu và cam kết tuân thủ các quy định vận hành trên.</span>
           </div>
           <button
             type="button"
             onClick={handleAgree}
-            className="w-full sm:w-auto px-7 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm sm:text-base shadow-lg shadow-orange-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
+            className="w-full sm:w-auto px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-base sm:text-lg shadow-lg shadow-orange-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
           >
-            <CheckCircle2 className="w-5 h-5" />
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
             <span>{isPreview ? 'Đóng chế độ xem trước' : 'Đồng ý & Bắt đầu sử dụng'}</span>
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 

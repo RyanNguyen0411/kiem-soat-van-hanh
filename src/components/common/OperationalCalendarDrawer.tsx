@@ -421,13 +421,13 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                     }
                                   }
                                 }}
-                                className={`p-1.5 sm:p-2 min-h-[74px] sm:min-h-[84px] flex flex-col justify-between transition-all cursor-pointer relative select-none ${
+                                className={`p-1.5 sm:p-2 min-h-[74px] sm:min-h-[84px] md:min-h-[96px] flex flex-col justify-between transition-all cursor-pointer relative select-none rounded-lg border border-slate-200/60 dark:border-slate-800 ${
                                   !item.isCurrentMonth
-                                    ? 'bg-slate-50/40 dark:bg-slate-900/30 opacity-25'
+                                    ? 'bg-slate-50/40 dark:bg-slate-900/30 opacity-30'
                                     : item.isSelected
                                     ? 'bg-cyan-50 dark:bg-cyan-950/60 ring-2 ring-cyan-500 z-10 shadow-xs'
                                     : item.isToday
-                                    ? 'bg-amber-50/70 dark:bg-amber-950/30'
+                                    ? 'bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-amber-400'
                                     : 'hover:bg-slate-50 dark:hover:bg-slate-800/80'
                                 }`}
                               >
@@ -435,7 +435,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                 <div className="flex items-baseline justify-between leading-none mb-1">
                                   <span className={`text-[13px] sm:text-[15px] font-black font-mono leading-none ${
                                     item.isToday
-                                      ? 'w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-orange-600 text-white flex items-center justify-center text-[10px] sm:text-[11.5px] shadow-xs'
+                                      ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-orange-600 text-white flex items-center justify-center text-xs sm:text-sm shadow-xs'
                                       : item.isSelected
                                       ? 'text-cyan-600 dark:text-cyan-400 font-black'
                                       : 'text-slate-800 dark:text-slate-100'
@@ -443,7 +443,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                     {item.dayNumber}
                                   </span>
 
-                                  <span className={`text-[9.5px] sm:text-[11px] font-bold leading-none ${
+                                  <span className={`text-[9.5px] sm:text-[11px] md:text-xs font-bold leading-none ${
                                     isRamOrMung1
                                       ? 'text-rose-600 dark:text-rose-400 font-extrabold'
                                       : 'text-slate-400 dark:text-slate-500'
@@ -456,7 +456,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                 <div className="flex-1 flex flex-col justify-start gap-1 w-full mt-0.5">
                                   {mainEvent ? (
                                     <div
-                                      className={`text-[8.5px] sm:text-[9.5px] font-bold px-1.5 py-0.5 rounded leading-tight w-full break-words whitespace-normal text-left flex items-start gap-0.5 shadow-2xs ${
+                                      className={`text-[8.5px] sm:text-[9.5px] md:text-[10.5px] font-bold px-1.5 py-0.5 rounded leading-tight w-full break-words whitespace-normal text-left flex items-start gap-1 shadow-2xs ${
                                         mainEvent.impactLevel === 'extreme'
                                           ? 'bg-rose-600 text-white font-extrabold'
                                           : mainEvent.platform === 'Shopee'
@@ -467,12 +467,12 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                                       }`}
                                       title={mainEvent.name}
                                     >
-                                      {mainEvent.impactLevel === 'extreme' && <Flame className="w-2.5 h-2.5 shrink-0 mt-0.5 animate-pulse text-amber-300" />}
+                                      {mainEvent.impactLevel === 'extreme' && <Flame className="w-3 h-3 shrink-0 mt-0.5 animate-pulse text-amber-300" />}
                                       <span className="break-words whitespace-normal leading-tight">{mainEvent.name}</span>
                                     </div>
                                   ) : (
                                     isRamOrMung1 && (
-                                      <div className="text-[8.5px] sm:text-[9.5px] font-extrabold text-purple-600 dark:text-purple-400 px-1 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-left">
+                                      <div className="text-[8.5px] sm:text-[9.5px] md:text-[10.5px] font-extrabold text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-left leading-tight break-words whitespace-normal">
                                         {item.lunar.day === 1 ? `Mùng 1 (${item.lunar.day}/${item.lunar.month})` : 'Ngày Rằm (15)'}
                                       </div>
                                     )
@@ -480,7 +480,7 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
 
                                   {/* Hiển thị số lượng sự kiện bổ sung nếu có */}
                                   {item.events.length > 1 && (
-                                    <div className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 dark:text-slate-400">
+                                    <div className="text-[8px] sm:text-[9px] font-bold text-slate-500 dark:text-slate-400">
                                       +{item.events.length - 1} sự kiện khác
                                     </div>
                                   )}

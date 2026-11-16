@@ -12,7 +12,8 @@ import {
   LogOut, 
   Settings,
   Clock,
-  FileText
+  FileText,
+  Send
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
@@ -136,6 +137,19 @@ export const Header: React.FC = () => {
             <RefreshCw className={`w-3 h-3 ${syncStatus.isSyncing ? 'animate-spin text-orange-400' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
           </button>
+
+          {/* Nút Bắn Thông Báo Telegram Cho Nhân Viên (Chỉ AM Huy) */}
+          {!isStaff && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-data-update-telegram-modal'))}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-md bg-[#229ED9] hover:bg-[#1b88bd] text-white shadow-2xs transition-all cursor-pointer border border-[#229ED9]/50"
+              title="Bắn thông báo Telegram cho nhân viên khi vừa cập nhật dữ liệu xong"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span className="hidden sm:inline">Báo Data (Tele)</span>
+            </button>
+          )}
 
           {/* Cây Cơ Cấu / Menu Tổng Hợp Launcher */}
           <button

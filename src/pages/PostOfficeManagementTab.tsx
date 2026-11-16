@@ -883,6 +883,17 @@ export const PostOfficeManagementTab: React.FC = () => {
               <span className="hidden sm:inline">Mẫu Gốc</span>
             </button>
 
+            {/* Nút BẮN TELEGRAM BÁO CẬP NHẬT DỮ LIỆU CHO NHÂN VIÊN */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-data-update-telegram-modal'))}
+              className="px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+              title="Gửi tin nhắn Telegram thông báo đã cập nhật dữ liệu kèm tag các nhân sự"
+            >
+              <Send className="w-4 h-4 text-sky-200" />
+              <span>📢 Bắn Tele Báo Cập Nhật Data</span>
+            </button>
+
             {/* Nút CẬP NHẬT THÔNG BÁO CHO PHÂN HỆ */}
             <button
               type="button"
