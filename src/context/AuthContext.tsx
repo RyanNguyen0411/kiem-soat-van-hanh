@@ -18,6 +18,7 @@ import {
   NOTICE_UPDATED_EVENT,
   startNoticeSyncHeartbeat
 } from '../services/staffNoticeService';
+import { sendStaffHeartbeat } from '../services/postOfficeAuthService';
 
 import type { TabType } from '../types/dashboard';
 
@@ -97,6 +98,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const stopHeartbeat = startNoticeSyncHeartbeat();
     return () => stopHeartbeat();
   }, []);
+
+  // Gửi heartbeat duy trì trạng thái online / đang cập nhật cho nhân viên bưu cục (mỗi 30s)
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.username) return;
+
+    sendStaffHeartbeat(currentUser.username, currentUser.assignedPostOffice);
+
+    const heartbeatTimer = setInterval(() => {
+      sendStaffHeartbeat(currentUser.username, currentUser.assignedPostOffice);
+    }, 30000);
+
+    return () => clearInterval(heartbeatTimer);
+  }, [isAuthenticated, currentUser]);
 
   // Countdown timer for 60s lockout
   useEffect(() => {

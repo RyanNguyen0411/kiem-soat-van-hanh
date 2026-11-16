@@ -40,6 +40,20 @@ export interface LoginAuditRecord {
   note?: string;
 }
 
+export interface UserOnlineStatus {
+  username: string;
+  postOffice: string;
+  postOfficeCode?: string;
+  displayName?: string;
+  isOnline: boolean;
+  lastLoginAt?: number;
+  lastLoginStr?: string;
+  lastSeenAt?: number;
+  lastSeenStr?: string;
+  device?: string;
+  ip?: string;
+}
+
 // 5 Bưu cục chính thức khu vực Long An
 export const OFFICIAL_POST_OFFICES = [
   { code: '22206000', name: '(LAN) Rạch Kiến', shortName: 'Rạch Kiến', defaultPass: '22206000@K' },
@@ -391,9 +405,80 @@ export function recordLoginAudit(record: Omit<LoginAuditRecord, 'id' | 'timestam
     const updated = [newRecord, ...currentAudits].slice(0, 500); // Giữ tối đa 500 lượt gần nhất
     localStorage.setItem(STORAGE_AUDIT_KEY, JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('ghn_po_audits_updated'));
+
+    // Gửi realtime lên serverless API để AM Huy nhận được ngay lập tức
+    if (typeof window !== 'undefined') {
+      fetch('/api/staff-audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          username: record.username,
+          postOffice: record.postOffice,
+          postOfficeCode: record.postOfficeCode,
+          status: record.status,
+          device: record.device,
+          note: record.note
+        })
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error('Lỗi ghi nhận audit đăng nhập:', err);
   }
+}
+
+/**
+ * Gửi heartbeat duy trì trạng thái online / đang cập nhật
+ */
+export async function sendStaffHeartbeat(username: string, postOffice?: string): Promise<void> {
+  try {
+    if (typeof window === 'undefined' || !username) return;
+    await fetch('/api/staff-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'heartbeat',
+        username,
+        postOffice
+      })
+    });
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Đồng bộ toàn bộ lịch sử đăng nhập và trạng thái user từ serverless API
+ */
+export async function fetchRealtimeAudits(): Promise<{
+  audits: LoginAuditRecord[];
+  userStatusMap: Record<string, UserOnlineStatus>;
+}> {
+  try {
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/staff-audit', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.audits)) {
+          localStorage.setItem(STORAGE_AUDIT_KEY, JSON.stringify(data.audits));
+          window.dispatchEvent(new CustomEvent('ghn_po_audits_updated', { detail: data }));
+          return {
+            audits: data.audits,
+            userStatusMap: data.userStatusMap || {}
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Không thể đồng bộ audit từ server, fallback cache:', err);
+  }
+
+  return {
+    audits: getLoginAudits(),
+    userStatusMap: {}
+  };
 }
 
 /**

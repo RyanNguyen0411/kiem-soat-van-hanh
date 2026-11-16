@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Building2, 
   Users, 
@@ -23,7 +23,12 @@ import {
   MessageSquareText,
   Send,
   RotateCcw,
-  Info
+  Info,
+  RefreshCw,
+  Activity,
+  Wifi,
+  WifiOff,
+  Smartphone
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -38,6 +43,7 @@ import {
 import { 
   getPostOfficeAccounts, 
   getLoginAudits, 
+  fetchRealtimeAudits,
   resetAccountLockout, 
   changePostOfficePassword, 
   addPostOfficeUser, 
@@ -47,7 +53,8 @@ import {
   OFFICIAL_POST_OFFICES, 
   ALL_ASSIGNABLE_TABS,
   type PostOfficeAccount, 
-  type LoginAuditRecord 
+  type LoginAuditRecord,
+  type UserOnlineStatus
 } from '../services/postOfficeAuthService';
 import {
   getStaffNoticeConfig,
@@ -64,10 +71,54 @@ export const PostOfficeManagementTab: React.FC = () => {
   const [accounts, setAccounts] = useState<PostOfficeAccount[]>(() => getPostOfficeAccounts());
   const [audits, setAudits] = useState<LoginAuditRecord[]>(() => getLoginAudits());
 
+  // State giám sát online/offline & Realtime audit từ serverless
+  const [userStatusMap, setUserStatusMap] = useState<Record<string, UserOnlineStatus>>({});
+  const [isSyncingRealtime, setIsSyncingRealtime] = useState<boolean>(false);
+  const [selectedUserDetail, setSelectedUserDetail] = useState<{
+    username: string;
+    postOffice: string;
+    displayName: string;
+    isOnline: boolean;
+    lastLoginStr?: string;
+    lastSeenStr?: string;
+    device?: string;
+    ip?: string;
+  } | null>(null);
+
+  // Đồng bộ audits và trạng thái online thời gian thực
+  const refreshAuditsRealtime = useCallback(async () => {
+    setIsSyncingRealtime(true);
+    try {
+      const res = await fetchRealtimeAudits();
+      if (res?.audits && res.audits.length > 0) {
+        setAudits(res.audits);
+      }
+      if (res?.userStatusMap) {
+        setUserStatusMap(res.userStatusMap);
+      }
+    } finally {
+      setIsSyncingRealtime(false);
+    }
+  }, []);
+
+  // Tự động polling realtime mỗi 5 giây
+  useEffect(() => {
+    refreshAuditsRealtime();
+    const interval = setInterval(refreshAuditsRealtime, 5000);
+    return () => clearInterval(interval);
+  }, [refreshAuditsRealtime]);
+
   // Lắng nghe sự kiện cập nhật tài khoản và audit
   useEffect(() => {
     const handleAccUpdate = () => setAccounts(getPostOfficeAccounts());
-    const handleAuditUpdate = () => setAudits(getLoginAudits());
+    const handleAuditUpdate = (e?: any) => {
+      if (e?.detail?.audits) {
+        setAudits(e.detail.audits);
+        if (e.detail.userStatusMap) setUserStatusMap(e.detail.userStatusMap);
+      } else {
+        setAudits(getLoginAudits());
+      }
+    };
 
     window.addEventListener('ghn_po_accounts_updated', handleAccUpdate);
     window.addEventListener('ghn_po_audits_updated', handleAuditUpdate);
@@ -278,6 +329,56 @@ export const PostOfficeManagementTab: React.FC = () => {
       return true;
     });
   }, [audits, auditFilterPo, auditFilterStatus, auditSearchQuery]);
+
+  // Danh sách user nhân viên phục vụ giám sát trạng thái trực tuyến (Xanh / Đỏ)
+  const staffUsersToMonitor = useMemo(() => {
+    return accounts.map(acc => {
+      const status = userStatusMap[acc.username];
+      const userAudits = audits.filter(a => a.username === acc.username);
+      const latestAudit = userAudits[0];
+      const isOnline = Boolean(status?.isOnline);
+      const lastLoginStr = status?.lastLoginStr || (latestAudit ? `${latestAudit.timeStr} ngày ${latestAudit.dateStr}` : 'Chưa có ghi nhận');
+      const lastSeenStr = status?.lastSeenStr || (isOnline ? 'Đang mở dashboard' : 'Chưa có tín hiệu');
+
+      return {
+        ...acc,
+        isOnline,
+        lastLoginStr,
+        lastSeenStr,
+        device: status?.device || latestAudit?.device || 'Desktop (Windows/Chrome)',
+        ip: status?.ip || latestAudit?.ipAddress || '113.161.78.10'
+      };
+    });
+  }, [accounts, userStatusMap, audits]);
+
+  const onlineCount = useMemo(() => staffUsersToMonitor.filter(u => u.isOnline).length, [staffUsersToMonitor]);
+  const offlineCount = useMemo(() => staffUsersToMonitor.length - onlineCount, [staffUsersToMonitor, onlineCount]);
+
+  // Nhật ký của user đang được chọn xem chi tiết lần đăng nhập gần nhất
+  const selectedUserAudits = useMemo(() => {
+    if (!selectedUserDetail) return [];
+    return audits.filter(a => a.username === selectedUserDetail.username);
+  }, [selectedUserDetail, audits]);
+
+  // Mở modal xem lần đăng nhập gần nhất của user
+  const handleOpenUserDetail = useCallback((username: string, postOffice: string, displayName?: string) => {
+    const statusInfo = userStatusMap[username];
+    const userAudits = audits.filter(a => a.username === username);
+    const latestAudit = userAudits[0];
+    const isOnline = Boolean(statusInfo?.isOnline);
+    const acc = accounts.find(a => a.username === username);
+
+    setSelectedUserDetail({
+      username,
+      postOffice: postOffice || acc?.postOffice || 'Long An',
+      displayName: displayName || acc?.displayName || `Nhân Viên (${username})`,
+      isOnline,
+      lastLoginStr: statusInfo?.lastLoginStr || (latestAudit ? `${latestAudit.timeStr} ngày ${latestAudit.dateStr}` : 'Chưa có ghi nhận đăng nhập'),
+      lastSeenStr: statusInfo?.lastSeenStr || (isOnline ? 'Vừa mới (Đang mở dashboard)' : 'Ngoại tuyến'),
+      device: statusInfo?.device || latestAudit?.device || 'Desktop (Windows/Chrome)',
+      ip: statusInfo?.ip || latestAudit?.ipAddress || '113.161.78.10'
+    });
+  }, [userStatusMap, audits, accounts]);
 
   // Xử lý Mở khóa tài khoản bị nhập sai 5 lần
   const handleUnlockUser = (username: string) => {
@@ -617,9 +718,31 @@ export const PostOfficeManagementTab: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4">
-                      <span className="font-mono font-bold text-orange-400 bg-orange-950/40 px-2 py-0.5 rounded border border-orange-500/30">
-                        {acc.username}
-                      </span>
+                      {(() => {
+                        const isOnline = Boolean(userStatusMap[acc.username]?.isOnline);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUserDetail(acc.username, acc.postOffice, acc.displayName)}
+                            className={`font-mono font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1.5 transition-all cursor-pointer group ${
+                              isOnline
+                                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                                : 'bg-rose-950/40 border-rose-500/30 text-rose-300 hover:bg-rose-900/60'
+                            }`}
+                            title="Nhấn để xem lần đăng nhập gần nhất và thông tin chi tiết"
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${
+                              isOnline ? 'bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-rose-500'
+                            }`} />
+                            <span className="group-hover:underline">{acc.username}</span>
+                            <span className={`text-[9.5px] font-semibold px-1 py-0.2 rounded ${
+                              isOnline ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                            }`}>
+                              {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                          </button>
+                        );
+                      })()}
                     </td>
 
                     <td className="py-3 px-4">
@@ -1034,7 +1157,87 @@ export const PostOfficeManagementTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP THEO TỪNG MỐC THỜI GIAN */}
+      {/* 6. GIÁM SÁT TRẠNG THÁI TRỰC TUYẾN & ĐANG CẬP NHẬT CỦA NHÂN VIÊN */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-400" />
+              <span>GIÁM SÁT TRẠNG THÁI TRỰC TUYẾN & ĐANG CẬP NHẬT (REALTIME)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              <span className="text-emerald-400 font-bold">XANH:</span> Đang mở dashboard & cập nhật số liệu. <span className="text-rose-400 font-bold">ĐỎ:</span> Chưa đăng nhập. Nhấn vào bất kỳ User nào để xem lần đăng nhập gần nhất.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{onlineCount} Đang Cập Nhật</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span>{offlineCount} Chưa Đăng Nhập</span>
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={refreshAuditsRealtime}
+              disabled={isSyncingRealtime}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors cursor-pointer disabled:opacity-60"
+              title="Làm mới đồng bộ ngay lập tức"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncingRealtime ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Làm Mới Realtime</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Lưới Thẻ Giám Sát Từng Nhân Viên (Xanh: Đang cập nhật, Đỏ: Chưa đăng nhập) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {staffUsersToMonitor.map(staff => {
+            const isOnline = staff.isOnline;
+            return (
+              <button
+                key={staff.username}
+                type="button"
+                onClick={() => handleOpenUserDetail(staff.username, staff.postOffice, staff.displayName)}
+                className={`p-2.5 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer flex flex-col justify-between gap-2 shadow-sm ${
+                  isOnline 
+                    ? 'bg-emerald-950/30 border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-950/50 hover:shadow-emerald-950/40' 
+                    : 'bg-rose-950/20 border-rose-500/30 hover:border-rose-400 hover:bg-rose-950/40'
+                }`}
+                title="Nhấn để xem chi tiết và lần đăng nhập gần nhất"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span className="font-mono font-black text-sm text-white">{staff.username}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 ${
+                    isOnline ? 'bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-rose-500'
+                  }`} />
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-bold text-slate-200 truncate">{staff.postOffice}</div>
+                  <div className="text-[10px] text-slate-400 truncate">{staff.displayName}</div>
+                </div>
+
+                <div className="pt-1.5 border-t border-slate-800/80">
+                  <div className={`text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${isOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span>{isOnline ? '🟢 ĐANG CẬP NHẬT' : '🔴 CHƯA ĐĂNG NHẬP'}</span>
+                  </div>
+                  <div className="text-[9.5px] text-slate-400 font-mono truncate mt-0.5">
+                    {staff.lastLoginStr ? staff.lastLoginStr.split(' ngày ')[0] : 'Chưa vào'}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 7. BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP THEO TỪNG MỐC THỜI GIAN */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-800 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1047,8 +1250,24 @@ export const PostOfficeManagementTab: React.FC = () => {
                 Lịch sử truy cập hệ thống thời gian thực của nhân viên 5 bưu cục Long An
               </p>
             </div>
-            <div className="text-xs text-slate-400">
-              Hiển thị: <strong className="text-emerald-400 font-bold">{filteredAudits.length}</strong> / {audits.length} lượt
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-500/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Tự động đồng bộ Realtime (5s)</span>
+              </div>
+              <button
+                type="button"
+                onClick={refreshAuditsRealtime}
+                disabled={isSyncingRealtime}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                title="Làm mới bảng kê thời gian thực"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncingRealtime ? 'animate-spin' : ''}`} />
+                <span>Làm Mới</span>
+              </button>
+              <div className="text-xs text-slate-400">
+                Hiển thị: <strong className="text-emerald-400 font-bold">{filteredAudits.length}</strong> / {audits.length} lượt
+              </div>
             </div>
           </div>
 
@@ -1114,53 +1333,75 @@ export const PostOfficeManagementTab: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredAudits.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2.5 px-4 whitespace-nowrap">
-                      <div className="font-mono font-bold text-white">{item.timeStr}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{item.dateStr}</div>
-                    </td>
+                filteredAudits.map(item => {
+                  const isOnline = Boolean(userStatusMap[item.username]?.isOnline);
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-4 whitespace-nowrap">
+                        <div className="font-mono font-bold text-white">{item.timeStr}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{item.dateStr}</div>
+                      </td>
 
-                    <td className="py-2.5 px-4 font-semibold text-slate-200 whitespace-nowrap">
-                      {item.postOffice}
-                    </td>
+                      <td className="py-2.5 px-4 font-semibold text-slate-200 whitespace-nowrap">
+                        {item.postOffice}
+                      </td>
 
-                    <td className="py-2.5 px-4 font-mono font-bold text-orange-400 whitespace-nowrap">
-                      {item.username}
-                    </td>
+                      <td className="py-2.5 px-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenUserDetail(item.username, item.postOffice)}
+                          className={`group inline-flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                            isOnline
+                              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                              : 'bg-rose-950/40 border-rose-500/30 text-rose-300 hover:bg-rose-900/60'
+                          }`}
+                          title="Nhấn để xem trạng thái và lần đăng nhập gần nhất"
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${
+                            isOnline ? 'bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-rose-500'
+                          }`} />
+                          <span className="font-mono font-bold group-hover:underline">{item.username}</span>
+                          <span className={`text-[9.5px] font-semibold px-1 py-0.2 rounded ${
+                            isOnline ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                          }`}>
+                            {isOnline ? 'Đang cập nhật' : 'Offline'}
+                          </span>
+                        </button>
+                      </td>
 
-                    <td className="py-2.5 px-4 whitespace-nowrap">
-                      {item.status === 'SUCCESS' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Thành Công</span>
-                        </span>
-                      ) : item.status === 'LOCKED_MAX_ATTEMPTS' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse">
-                          <Lock className="w-3 h-3" />
-                          <span>Bị Khóa (5 lần)</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>Sai Mật Khẩu</span>
-                        </span>
-                      )}
-                    </td>
+                      <td className="py-2.5 px-4 whitespace-nowrap">
+                        {item.status === 'SUCCESS' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Thành Công</span>
+                          </span>
+                        ) : item.status === 'LOCKED_MAX_ATTEMPTS' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse">
+                            <Lock className="w-3 h-3" />
+                            <span>Bị Khóa (5 lần)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>Sai Mật Khẩu</span>
+                          </span>
+                        )}
+                      </td>
 
-                    <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
-                      {item.device || 'Trình duyệt Web'}
-                    </td>
+                      <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
+                        {item.device || 'Trình duyệt Web'}
+                      </td>
 
-                    <td className="py-2.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
-                      {item.ipAddress || '127.0.0.1'}
-                    </td>
+                      <td className="py-2.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
+                        {item.ipAddress || '127.0.0.1'}
+                      </td>
 
-                    <td className="py-2.5 px-4 text-slate-400 text-[11px]">
-                      {item.note || 'N/A'}
-                    </td>
-                  </tr>
-                ))
+                      <td className="py-2.5 px-4 text-slate-400 text-[11px]">
+                        {item.note || 'N/A'}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1326,6 +1567,169 @@ export const PostOfficeManagementTab: React.FC = () => {
           }}
           onClose={() => setIsPreviewNoticeOpen(false)}
         />
+      )}
+
+      {/* MODAL 4: CHI TIẾT TRUY CẬP & LẦN ĐĂNG NHẬP GẦN NHẤT CỦA USER */}
+      {selectedUserDetail && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-5 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl ${selectedUserDetail.isOnline ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                  {selectedUserDetail.isOnline ? <Wifi className="w-5 h-5 animate-pulse" /> : <WifiOff className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>Chi Tiết Lần Đăng Nhập Gần Nhất</span>
+                    <span className="font-mono text-orange-400 bg-orange-950/60 px-2 py-0.5 rounded border border-orange-500/30">
+                      {selectedUserDetail.username}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400">{selectedUserDetail.displayName} &bull; {selectedUserDetail.postOffice}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedUserDetail(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Trạng thái trực quan */}
+            <div className={`p-4 rounded-xl border flex items-center justify-between ${
+              selectedUserDetail.isOnline 
+                ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200' 
+                : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <span className={`w-3.5 h-3.5 rounded-full ${
+                  selectedUserDetail.isOnline ? 'bg-emerald-400 shadow-[0_0_12px_#10b981] animate-pulse' : 'bg-rose-500'
+                }`} />
+                <div>
+                  <div className="font-bold text-xs uppercase tracking-wider">
+                    {selectedUserDetail.isOnline ? '🟢 Đang Trực Tuyến & Cập Nhật Dữ Liệu' : '🔴 Hiện Không Đăng Nhập / Ngoại Tuyến'}
+                  </div>
+                  <div className="text-[11px] opacity-80 mt-0.5">
+                    {selectedUserDetail.isOnline 
+                      ? 'Nhân viên đang mở dashboard phân hệ và thao tác số liệu thời gian thực.' 
+                      : 'Nhân viên chưa đăng nhập hoặc đã đóng phiên làm việc.'}
+                  </div>
+                </div>
+              </div>
+              <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border ${
+                selectedUserDetail.isOnline 
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' 
+                  : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+              }`}>
+                {selectedUserDetail.isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+
+            {/* Thẻ thông tin lần đăng nhập gần nhất */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Lần đăng nhập gần nhất:</span>
+                </div>
+                <div className="font-mono font-bold text-white text-xs pl-5">
+                  {selectedUserDetail.lastLoginStr || 'Chưa ghi nhận'}
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Tín hiệu cập nhật gần nhất:</span>
+                </div>
+                <div className="font-mono font-bold text-white text-xs pl-5">
+                  {selectedUserDetail.lastSeenStr || (selectedUserDetail.isOnline ? 'Vừa mới đây' : 'Không có')}
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Thiết bị / Trình duyệt:</span>
+                </div>
+                <div className="text-slate-200 font-medium text-xs pl-5">
+                  {selectedUserDetail.device || 'Desktop (Windows/Chrome)'}
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Địa chỉ IP mạng:</span>
+                </div>
+                <div className="font-mono font-semibold text-slate-200 text-xs pl-5">
+                  {selectedUserDetail.ip || '113.161.78.10'}
+                </div>
+              </div>
+            </div>
+
+            {/* Lịch sử 5 lần đăng nhập gần nhất của riêng user này */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-300">Lịch Sử Các Lần Đăng Nhập Của User:</span>
+                <span className="text-slate-500 font-mono">{selectedUserAudits.length} lượt</span>
+              </div>
+
+              <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                <table className="w-full text-left text-[11px] text-slate-300">
+                  <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                    <tr>
+                      <th className="py-2 px-3">Thời gian</th>
+                      <th className="py-2 px-3">Kết quả</th>
+                      <th className="py-2 px-3">Thiết bị</th>
+                      <th className="py-2 px-3">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {selectedUserAudits.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center py-4 text-slate-500">
+                          Chưa có nhật ký truy cập nào cho user này.
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedUserAudits.slice(0, 5).map(a => (
+                        <tr key={a.id} className="hover:bg-slate-900/60">
+                          <td className="py-2 px-3 font-mono font-bold text-white whitespace-nowrap">
+                            {a.timeStr} <span className="text-[10px] text-slate-500 font-normal">{a.dateStr}</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            {a.status === 'SUCCESS' ? (
+                              <span className="text-emerald-400 font-bold">Thành Công</span>
+                            ) : a.status === 'LOCKED_MAX_ATTEMPTS' ? (
+                              <span className="text-rose-400 font-bold">Bị Khóa</span>
+                            ) : (
+                              <span className="text-amber-400 font-bold">Sai Mật Khẩu</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-slate-400 truncate max-w-[150px]">{a.device || 'N/A'}</td>
+                          <td className="py-2 px-3 font-mono text-slate-400">{a.ipAddress || 'N/A'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelectedUserDetail(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
