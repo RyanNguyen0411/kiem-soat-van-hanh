@@ -19,7 +19,11 @@ import {
   EyeOff, 
   Download, 
   X,
-  Sparkles
+  Sparkles,
+  MessageSquareText,
+  Send,
+  RotateCcw,
+  Info
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -45,6 +49,15 @@ import {
   type PostOfficeAccount, 
   type LoginAuditRecord 
 } from '../services/postOfficeAuthService';
+import {
+  getStaffNoticeConfig,
+  saveStaffNoticeConfig,
+  resetStaffNoticeToDefault,
+  formatNoticeDate,
+  NOTICE_UPDATED_EVENT,
+  type StaffNoticeConfig
+} from '../services/staffNoticeService';
+import { StaffNoticeModal } from '../components/auth/StaffNoticeModal';
 import type { TabType } from '../types/dashboard';
 
 export const PostOfficeManagementTab: React.FC = () => {
@@ -100,6 +113,108 @@ export const PostOfficeManagementTab: React.FC = () => {
 
   const toggleTreePo = (poCode: string) => {
     setExpandedTreePos(prev => ({ ...prev, [poCode]: !prev[poCode] }));
+  };
+
+  // State Quản Lý & Cập Nhật Thông Báo Phân Hệ Nhân Viên
+  const [noticeState, setNoticeState] = useState<StaffNoticeConfig>(() => getStaffNoticeConfig());
+  const [noticeTitle, setNoticeTitle] = useState<string>(noticeState.title);
+  const [noticeBannerTag, setNoticeBannerTag] = useState<string>(noticeState.bannerTag);
+  const [noticeGreeting, setNoticeGreeting] = useState<string>(noticeState.greeting);
+  const [noticeContent, setNoticeContent] = useState<string>(noticeState.content);
+  const [noticeClosing, setNoticeClosing] = useState<string>(noticeState.closingGreeting);
+  const [noticeSender, setNoticeSender] = useState<string>(noticeState.sender);
+  const [isPreviewNoticeOpen, setIsPreviewNoticeOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleNoticeUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<StaffNoticeConfig>;
+      const latest = customEvent.detail || getStaffNoticeConfig();
+      setNoticeState(latest);
+      setNoticeTitle(latest.title);
+      setNoticeBannerTag(latest.bannerTag);
+      setNoticeGreeting(latest.greeting);
+      setNoticeContent(latest.content);
+      setNoticeClosing(latest.closingGreeting);
+      setNoticeSender(latest.sender);
+    };
+
+    window.addEventListener(NOTICE_UPDATED_EVENT, handleNoticeUpdate);
+    return () => window.removeEventListener(NOTICE_UPDATED_EVENT, handleNoticeUpdate);
+  }, []);
+
+  // Xử lý Lưu & Cập Nhật Thông Báo Phân Hệ
+  const handleSaveNotice = () => {
+    if (!noticeContent.trim()) {
+      showToast('error', 'Nội dung thông báo không được để trống!');
+      return;
+    }
+    const res = saveStaffNoticeConfig({
+      title: noticeTitle,
+      bannerTag: noticeBannerTag,
+      greeting: noticeGreeting,
+      content: noticeContent,
+      closingGreeting: noticeClosing,
+      sender: noticeSender
+    });
+
+    if (res.success) {
+      setNoticeState(res.config);
+      showToast('success', res.message);
+    } else {
+      showToast('error', res.message);
+    }
+  };
+
+  // Khôi phục về mẫu thông báo tinh gọn mặc định
+  const handleResetNoticeDefault = () => {
+    const resetCfg = resetStaffNoticeToDefault();
+    setNoticeState(resetCfg);
+    setNoticeTitle(resetCfg.title);
+    setNoticeBannerTag(resetCfg.bannerTag);
+    setNoticeGreeting(resetCfg.greeting);
+    setNoticeContent(resetCfg.content);
+    setNoticeClosing(resetCfg.closingGreeting);
+    setNoticeSender(resetCfg.sender);
+    showToast('info', 'Đã khôi phục về mẫu thông báo tinh gọn mặc định.');
+  };
+
+  // Nạp nhanh mẫu Siêu Sale
+  const handleApplySaleTemplate = () => {
+    setNoticeBannerTag('CHIẾN DỊCH SIÊU SALE');
+    setNoticeGreeting('Thông báo cao điểm: Đợt Siêu Sale sàn TMĐT (Shopee / TikTok Shop)!');
+    setNoticeContent(`1. DỰ BÁO SẢN LƯỢNG CAO ĐIỂM
+• Dự kiến sản lượng toàn tuyến tăng +90% đến +140% so với ngày thường.
+• Điểm nóng giao nhận: Phước Lý, Rạch Kiến và Cần Đước 1.
+
+2. KẾ HOẠCH PHÂN BỔ CA & ĐIỀU PHỐI
+• Ca sáng: Xuất tuyến sớm trước 07h45, tập trung giao dứt điểm đơn D+1 và D+2.
+• Ca chiều: Điều động bưu tá hỗ trợ tuyến quá tải, tuyệt đối không để dồn ứ đơn tại bưu cục.
+
+3. KIỂM SOÁT TỒN ĐỌNG & SLA GIAO NHẬN
+• Giám sát sát sao chỉ số GTC ngày, hạn chế tối đa phát sinh tồn lưu kho quá 24h.
+• Cập nhật trạng thái phát hàng ngay trên App, không để phát sinh đơn không rõ lý do.
+
+4. BẢO MẬT TÀI KHOẢN & SỐ LIỆU NỘI BỘ
+• Bưu cục sử dụng đúng tài khoản được cấp. Mọi vấn đề phát sinh liên hệ AM Huy hỗ trợ ngay.`);
+    showToast('info', 'Đã nạp mẫu thông báo Chiến Dịch Siêu Sale.');
+  };
+
+  // Nạp nhanh mẫu Siết Tồn Backlog
+  const handleApplyBacklogTemplate = () => {
+    setNoticeBannerTag('CẢNH BÁO TỒN ĐỌNG');
+    setNoticeGreeting('Chỉ đạo AM: Siết chặt kiểm soát tồn đọng GLT và xử lý dứt điểm đơn tồn kho!');
+    setNoticeContent(`1. MỤC TIÊU GIẢM TỒN TRONG CA
+• Yêu cầu 100% bưu cục rà soát kho, giải phóng triệt để đơn tồn GLT 120h và 192h.
+• Các đơn tồn Luân Chuyển (LC) phải được kiểm đếm và khớp dữ liệu ca trước 11h00.
+
+2. PHÂN CÔNG XỬ LÝ ĐƠN TỒN KHÓ PHÁT
+• Bưu tá chủ động liên hệ lại người nhận, hẹn ca giao lại hoặc cập nhật nguyên nhân chính xác.
+• NVXL bưu cục chủ động báo cáo AM khi có dấu hiệu nghẽn tuyến hoặc quá tải cục bộ.
+
+3. CAM KẾT CHỈ SỐ GTC
+• Quyết tâm giữ vững chỉ số GTC bưu cục đạt trên 92% toàn ca.
+• Toàn thể anh em nỗ lực hoàn thành kế hoạch vận hành hôm nay!`);
+    showToast('info', 'Đã nạp mẫu thông báo Cảnh Báo Tồn Đọng.');
   };
 
   // Thống kê tổng quan KPI Cards
@@ -596,7 +711,192 @@ export const PostOfficeManagementTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. CÂY SƠ ĐỒ PHÂN QUYỀN XEM DỮ LIỆU (PERMISSION TREE VIEW) */}
+      {/* 4. QUẢN LÝ & CẬP NHẬT THÔNG BÁO PHÂN HỆ BƯU CỤC (DÀNH RIÊNG CHO AM HUY) */}
+      <div className="bg-slate-900/90 border border-orange-500/40 rounded-2xl shadow-xl overflow-hidden p-4 sm:p-5 space-y-4">
+        {/* Tiêu đề & Thông số trạng thái thông báo */}
+        <div className="border-b border-slate-800 pb-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <MessageSquareText className="w-5 h-5 text-orange-400" />
+              <span>QUẢN LÝ & CẬP NHẬT THÔNG BÁO PHÂN HỆ BƯU CỤC</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              AM Huy chủ động cập nhật nội dung thông báo. Sau khi nhấn <strong className="text-orange-400 font-bold">"Cập Nhật Thông Báo"</strong>, Dashboard phân nhánh của nhân viên sẽ lập tức cập nhật theo nội dung thông báo mới của AM.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-400">AM cập nhật gần nhất:</span>
+              <span className="text-emerald-400 font-mono font-bold">{formatNoticeDate(noticeState.updatedAt)}</span>
+            </div>
+            <div className="bg-orange-950/60 text-orange-300 px-2.5 py-1.5 rounded-xl border border-orange-500/30 font-bold text-[11px]">
+              Phiên bản: v{noticeState.version}
+            </div>
+          </div>
+        </div>
+
+        {/* Khung nhập liệu chỉnh sửa thông báo của AM */}
+        <div className="space-y-3.5 text-xs">
+          {/* Hàng 1: Tiêu đề + Nhãn Tag + Người ký tên */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">Tiêu Đề Thông Báo:</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: THÔNG BÁO & HƯỚNG DẪN SỬ DỤNG DASHBOARD VẬN HÀNH..."
+                value={noticeTitle}
+                onChange={e => setNoticeTitle(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">Nhãn Phân Loại (Tag):</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: QUY ĐỊNH BẮT BUỘC, THÔNG BÁO MỚI..."
+                value={noticeBannerTag}
+                onChange={e => setNoticeBannerTag(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">Người Ký Phê Duyệt:</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: AM Huy – ĐNB..."
+                value={noticeSender}
+                onChange={e => setNoticeSender(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-orange-400 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Hàng 2: Lời chào mở đầu */}
+          <div>
+            <label className="block text-slate-300 font-bold mb-1">Lời Chào Mở Đầu:</label>
+            <input
+              type="text"
+              placeholder="Lời chào mở đầu khi nhân viên mở thông báo..."
+              value={noticeGreeting}
+              onChange={e => setNoticeGreeting(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+            />
+          </div>
+
+          {/* Hàng 3: Nội dung văn bản chính + Nút nạp mẫu nhanh */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
+              <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                <span>Nội Dung Thông Báo Chính (Hiển thị cho nhân viên khi đăng nhập phân hệ):</span>
+                <span className="text-[11px] text-slate-400 font-normal">
+                  (Đoạn text do AM chủ động nhập vào)
+                </span>
+              </label>
+
+              {/* Nút nạp mẫu nhanh */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-slate-500">Mẫu gợi ý:</span>
+                <button
+                  type="button"
+                  onClick={handleResetNoticeDefault}
+                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                  title="Nạp mẫu quy định vận hành tinh gọn"
+                >
+                  📋 Mẫu Tinh Gọn
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplySaleTemplate}
+                  className="px-2 py-0.5 rounded-md bg-orange-950/60 hover:bg-orange-900/80 text-orange-300 border border-orange-500/30 transition-colors cursor-pointer"
+                  title="Nạp mẫu thông báo chiến dịch Siêu Sale sàn TMĐT"
+                >
+                  🔥 Mẫu Siêu Sale
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyBacklogTemplate}
+                  className="px-2 py-0.5 rounded-md bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                  title="Nạp mẫu siết tồn Backlog 120h/192h"
+                >
+                  ⚡ Mẫu Siết Tồn GLT
+                </button>
+              </div>
+            </div>
+
+            <textarea
+              rows={9}
+              value={noticeContent}
+              onChange={e => setNoticeContent(e.target.value)}
+              placeholder="Nhập nội dung thông báo... (Hỗ trợ định dạng: 1. TIÊU ĐỀ MỤC, • Gạch đầu dòng chi tiết...)"
+              className="w-full bg-slate-950/80 border border-slate-700 rounded-xl p-3 text-slate-200 font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs sm:text-[13px] scrollbar-thin"
+            />
+            <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+              <span>Cú pháp đề xuất: Đánh số mục (1., 2., 3., 4.) và gạch đầu dòng (• hoặc -) để hiển thị thẻ trực quan.</span>
+              <span>{noticeContent.length} ký tự &bull; {noticeContent.split('\n').filter(Boolean).length} dòng</span>
+            </div>
+          </div>
+
+          {/* Hàng 4: Lời nhắn kết */}
+          <div>
+            <label className="block text-slate-300 font-bold mb-1">Lời Nhắn Kết Thúc:</label>
+            <input
+              type="text"
+              placeholder="Ví dụ: Chúc toàn thể anh em vận hành thông suốt, an toàn và hiệu quả!..."
+              value={noticeClosing}
+              onChange={e => setNoticeClosing(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Thanh công cụ thao tác cập nhật của AM */}
+        <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5">
+            <Info className="w-4 h-4 text-orange-400 shrink-0" />
+            <span>Khi AM bấm <strong>"Cập Nhật Thông Báo"</strong>, toàn bộ Dashboard phân nhánh sẽ áp dụng nội dung mới ngay lập tức.</span>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Nút Xem Trước (Live Preview) */}
+            <button
+              type="button"
+              onClick={() => setIsPreviewNoticeOpen(true)}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+              title="Xem trước thông báo hiển thị trên giao diện nhân viên bưu cục"
+            >
+              <Eye className="w-4 h-4 text-sky-400" />
+              <span>Xem Trước (Preview)</span>
+            </button>
+
+            {/* Nút Khôi phục mẫu mặc định */}
+            <button
+              type="button"
+              onClick={handleResetNoticeDefault}
+              className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/80 font-semibold text-xs flex items-center gap-1 transition-all cursor-pointer"
+              title="Khôi phục lại mẫu thông báo tinh gọn mặc định"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mẫu Gốc</span>
+            </button>
+
+            {/* Nút CẬP NHẬT THÔNG BÁO CHO PHÂN HỆ */}
+            <button
+              type="button"
+              onClick={handleSaveNotice}
+              className="px-5 sm:px-6 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              <span>Cập Nhật Thông Báo Cho Phân Hệ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. CÂY SƠ ĐỒ PHÂN QUYỀN XEM DỮ LIỆU (PERMISSION TREE VIEW) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden p-4 sm:p-5 space-y-4">
         <div className="border-b border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
@@ -997,6 +1297,24 @@ export const PostOfficeManagementTab: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL 3: XEM TRƯỚC THÔNG BÁO PHÂN HỆ CHO AM HUY */}
+      {isPreviewNoticeOpen && (
+        <StaffNoticeModal
+          isPreview={true}
+          previewConfig={{
+            title: noticeTitle,
+            bannerTag: noticeBannerTag,
+            greeting: noticeGreeting,
+            content: noticeContent,
+            closingGreeting: noticeClosing,
+            sender: noticeSender,
+            updatedAt: Date.now(),
+            version: noticeState.version
+          }}
+          onClose={() => setIsPreviewNoticeOpen(false)}
+        />
       )}
     </div>
   );
