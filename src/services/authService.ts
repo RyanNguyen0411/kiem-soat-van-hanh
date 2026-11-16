@@ -58,9 +58,9 @@ const SESSION_STORAGE_KEY = 'ghn_session_auth_v2';
 const FAILED_ATTEMPTS_KEY = 'ghn_auth_failed_attempts_count';
 const LOCKOUT_KEY = 'ghn_auth_lockout_deadline';
 
-// Default session TTL: 8 hours (work shift), Idle timeout: 10 minutes
+// Default session TTL: 8 hours (work shift), Idle timeout: 60 minutes
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-export const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+export const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 60 phút không thao tác tự động khóa (Dashboard nguồn & phân hệ)
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60 * 1000; // 60s
 

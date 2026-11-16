@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   }, [currentUser]);
 
-  // Logic tự động đăng xuất sau 10 phút không thao tác (10-minute Idle Auto-Logout)
+  // Logic tự động đăng xuất sau 60 phút không thao tác (60-minute Idle Auto-Logout - Cả Dashboard nguồn & Phân hệ)
   useEffect(() => {
     if (!isAuthenticated || !session) return;
 
@@ -238,7 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const idleCheckInterval = setInterval(() => {
       const active = getActiveSession();
       if (!active || !isSessionValid(active)) {
-        logout('Phiên làm việc đã hết hạn hoặc không có thao tác trong 10 phút. Vui lòng đăng nhập lại để tiếp tục.');
+        logout('Phiên làm việc đã hết hạn hoặc không có thao tác trong 60 phút. Vui lòng đăng nhập lại để tiếp tục.');
       }
     }, 5000);
 

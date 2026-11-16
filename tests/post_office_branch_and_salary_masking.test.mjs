@@ -102,4 +102,12 @@ test('PHÂN HỆ BƯU CỤC & BẢO MẬT ẨN THU NHẬP BƯU TÁ - AUDIT SUITE
     assert.match(drawerFile, /break-words whitespace-normal leading-tight/);
     assert.doesNotMatch(drawerFile, /truncate leading-tight w-full/);
   });
+
+  await t.test('12. Thời gian tự động khóa do không thao tác (Inactivity Auto-Lock) kéo dài thành 60 phút', () => {
+    const authServiceFile = fs.readFileSync(path.join(ROOT_DIR, 'src/services/authService.ts'), 'utf8');
+    assert.match(authServiceFile, /export const IDLE_TIMEOUT_MS = 60 \* 60 \* 1000;/);
+
+    const authContextFile = fs.readFileSync(path.join(ROOT_DIR, 'src/context/AuthContext.tsx'), 'utf8');
+    assert.match(authContextFile, /không có thao tác trong 60 phút/);
+  });
 });

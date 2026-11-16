@@ -16,7 +16,7 @@ test('1. BẢO MẬT PHIÊN (Session Validation & Expiration)', () => {
   };
 
   const isExpired = (session) => Date.now() >= session.expiresAt;
-  const isIdleTimedOut = (session) => (Date.now() - session.lastActivity) > (10 * 60 * 1000);
+  const isIdleTimedOut = (session) => (Date.now() - session.lastActivity) > (60 * 60 * 1000);
 
   assert.equal(isExpired(activeSession), false, 'Phiên làm việc còn trong thời hạn 8 giờ');
   assert.equal(isIdleTimedOut(activeSession), false, 'Phiên làm việc chưa bị idle timeout');
@@ -28,12 +28,12 @@ test('1. BẢO MẬT PHIÊN (Session Validation & Expiration)', () => {
   };
   assert.equal(isExpired(expiredSession), true, 'Phiên làm việc quá hạn phải bị từ chối');
 
-  // Idle timed out session (idle > 10 mins)
+  // Idle timed out session (idle > 60 mins)
   const idleSession = {
     ...activeSession,
-    lastActivity: now - (11 * 60 * 1000)
+    lastActivity: now - (61 * 60 * 1000)
   };
-  assert.equal(isIdleTimedOut(idleSession), true, 'Phiên làm việc không thao tác > 10 phút phải bị đăng xuất');
+  assert.equal(isIdleTimedOut(idleSession), true, 'Phiên làm việc không thao tác > 60 phút phải bị đăng xuất');
 });
 
 test('2. PHÂN QUYỀN TRUY CẬP (Role-Based Access Control - RBAC)', () => {
