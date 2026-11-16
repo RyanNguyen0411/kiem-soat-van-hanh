@@ -75,3 +75,137 @@ body,
     min-height: 38px !important;
   }
 }
+
+/* =========================================================================
+   TỐI ƯU KHÔNG GIAN DỮ LIỆU DASHBOARD (DATA-DENSE EXECUTIVE VIEW)
+   Thu nhỏ cân đối kích thước toàn bộ bảng và text để tối ưu không gian xem dữ liệu.
+   NGOẠI LỆ: Biểu đồ và chú thích biểu đồ giữ nguyên kích thước ban đầu.
+   ========================================================================= */
+
+/* 1. Mở rộng khung nhìn toàn màn hình trên máy tính (Laptop & Desktop) */
+@media (min-width: 1280px) {
+  .max-w-7xl {
+    max-width: 1800px !important;
+  }
+}
+
+/* 2. Tối ưu toàn bộ Bảng Dữ Liệu: font chữ tinh gọn, khoảng cách dòng gọn gàng */
+main table {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+main table thead th {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.25 !important;
+}
+
+main table tbody td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+main table tbody tr {
+  min-height: 28px !important;
+}
+
+/* Tối ưu số liệu trong bảng: font monospace rõ nét */
+main table td .font-mono,
+main table td strong {
+  font-size: 11.5px !important;
+}
+
+/* Tối ưu nhãn / badge trong bảng */
+main table td span[class*="rounded"] {
+  font-size: 10px !important;
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+}
+
+/* 3. Tối ưu kích thước Text & Thẻ Card trong Dashboard (Thu nhỏ cân đối, không lạm dụng) */
+main .space-y-6 {
+  gap: 14px !important;
+}
+
+main .space-y-4 {
+  gap: 10px !important;
+}
+
+/* Thu gọn padding các card bao quanh để không gian bảng rộng hơn */
+@media (min-width: 640px) {
+  main .p-4.md\:p-6,
+  main .p-3.md\:p-5,
+  main .p-3.sm\:p-5.lg\:p-6 {
+    padding: 12px 16px !important;
+  }
+}
+
+/* Tiêu đề mục & chú giải trong card */
+main h2,
+main h3 {
+  font-size: 13.5px !important;
+  line-height: 1.3 !important;
+}
+
+main h4 {
+  font-size: 12.5px !important;
+  line-height: 1.3 !important;
+}
+
+/* Form input, select trong bảng & bộ lọc */
+main table select,
+main table input,
+main .bg-slate-900 select,
+main .bg-slate-800 select {
+  font-size: 11px !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+  padding-left: 7px !important;
+  padding-right: 7px !important;
+}
+
+/* 4. NGOẠI LỆ TUYỆT ĐỐI: BIỂU ĐỒ & CHÚ THÍCH BIỂU ĐỒ GIỮ NGUYÊN KÍCH THƯỚC */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface *,
+.recharts-legend-wrapper,
+.recharts-legend-wrapper *,
+.recharts-legend-item,
+.recharts-legend-item *,
+.recharts-legend-item-text,
+.recharts-default-tooltip,
+.recharts-default-tooltip *,
+.recharts-tooltip-item,
+.recharts-tooltip-item *,
+.recharts-tooltip-label,
+.recharts-cartesian-axis,
+.recharts-cartesian-axis *,
+.recharts-cartesian-axis-tick,
+.recharts-cartesian-axis-tick *,
+.recharts-cartesian-axis-tick-value,
+.recharts-text,
+.recharts-label,
+.recharts-responsive-container,
+[class*="recharts"],
+[class*="recharts"] *,
+.chart-legend,
+.chart-legend *,
+.chart-tooltip,
+.chart-tooltip * {
+  font-size: initial !important;
+  line-height: initial !important;
+  letter-spacing: normal !important;
+}
