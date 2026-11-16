@@ -92,7 +92,7 @@ export function saveDataUpdateNotifyConfig(config: Partial<DataUpdateNotificatio
 }
 
 /**
- * Lắp ráp toàn bộ tin nhắn Telegram hoàn chỉnh theo chuẩn
+ * Lắp ráp toàn bộ tin nhắn Telegram hoàn chỉnh theo chuẩn HTML (in đậm tiêu đề & đề mục)
  */
 export function buildFullNotificationMessage(
   messageText: string,
@@ -106,20 +106,20 @@ export function buildFullNotificationMessage(
   const cleanMessage = messageText.trim() || DEFAULT_NOTIFY_MESSAGE;
   const tagsLine = taggedUsers.length > 0 ? taggedUsers.join(' ') : '';
 
-  let fullText = `🔔 THÔNG BÁO CẬP NHẬT DỮ LIỆU VẬN HÀNH GHN\n\n`;
+  let fullText = `<b>🔔 THÔNG BÁO CẬP NHẬT DỮ LIỆU VẬN HÀNH GHN</b>\n\n`;
   fullText += `${cleanMessage}\n\n`;
-  fullText += `🕒 Thời gian cập nhật: ${formattedTime}\n`;
-  fullText += `👤 Người thông báo: ${senderName}\n`;
+  fullText += `<b>🕒 Thời gian cập nhật:</b> ${formattedTime}\n`;
+  fullText += `<b>👤 Người thông báo:</b> ${senderName}\n`;
 
   if (tagsLine) {
-    fullText += `\n👥 Kính gửi anh em phụ trách:\n${tagsLine}`;
+    fullText += `\n<b>👥 Tag anh em phụ trách:</b>\n${tagsLine}`;
   }
 
   return fullText;
 }
 
 /**
- * Gửi thông báo trực tiếp qua Telegram Bot API
+ * Gửi thông báo trực tiếp qua Telegram Bot API (hỗ trợ parse_mode: HTML để in đậm)
  */
 export async function sendDataUpdateTelegram(
   overrideConfig?: Partial<DataUpdateNotificationConfig>
@@ -154,7 +154,8 @@ export async function sendDataUpdateTelegram(
       },
       body: JSON.stringify({
         chat_id: cleanChatId,
-        text: textToSend
+        text: textToSend,
+        parse_mode: 'HTML'
       })
     });
 

@@ -18,16 +18,21 @@ const DEFAULT_CONFIG = {
   ]
 };
 
-function buildFullNotificationMessage(content, tags) {
-  const cleanContent = (content || '').trim();
-  const cleanTags = (tags || []).map(t => t.trim()).filter(Boolean);
-  
-  if (cleanTags.length === 0) {
-    return cleanContent;
+function buildFullNotificationMessage(content, tags, timeString, senderName = 'AM Huy (ĐNB)') {
+  const formattedTime = timeString || '12:48 ngày 16/11/2026';
+  const cleanMessage = (content || '').trim();
+  const tagsLine = (tags || []).join(' ');
+
+  let fullText = `<b>🔔 THÔNG BÁO CẬP NHẬT DỮ LIỆU VẬN HÀNH GHN</b>\n\n`;
+  fullText += `${cleanMessage}\n\n`;
+  fullText += `<b>🕒 Thời gian cập nhật:</b> ${formattedTime}\n`;
+  fullText += `<b>👤 Người thông báo:</b> ${senderName}\n`;
+
+  if (tagsLine) {
+    fullText += `\n<b>👥 Tag anh em phụ trách:</b>\n${tagsLine}`;
   }
-  
-  const tagLine = cleanTags.join(' ');
-  return `${cleanContent}\n\n${tagLine}`;
+
+  return fullText;
 }
 
 test('Telegram Notification: Default Configuration must match user requirements', () => {
@@ -49,20 +54,27 @@ test('Telegram Notification: Default Configuration must match user requirements'
   assert.deepEqual(DEFAULT_CONFIG.tags, expectedTags);
 });
 
-test('Telegram Notification: Message building with tags', () => {
+test('Telegram Notification: Message building with HTML bolding and Tag anh em phụ trách', () => {
   const msg = buildFullNotificationMessage(DEFAULT_CONFIG.messageContent, DEFAULT_CONFIG.tags);
   
-  assert.ok(msg.includes('Thông báo dữ liệu mới nhất đã được cập nhật.'));
-  assert.ok(msg.includes('https://kiem-soat-van-hanh.vercel.app'));
+  // Kiểm tra in đậm tiêu đề
+  assert.ok(msg.includes('<b>🔔 THÔNG BÁO CẬP NHẬT DỮ LIỆU VẬN HÀNH GHN</b>'));
+  // Kiểm tra in đậm các đề mục
+  assert.ok(msg.includes('<b>🕒 Thời gian cập nhật:</b>'));
+  assert.ok(msg.includes('<b>👤 Người thông báo:</b>'));
+  // Kiểm tra đổi tên đề mục thành "Tag anh em phụ trách" và in đậm
+  assert.ok(msg.includes('<b>👥 Tag anh em phụ trách:</b>'));
+  assert.ok(!msg.includes('Kính gửi anh em phụ trách'));
+  // Kiểm tra tags
   assert.ok(msg.includes('@Trongphuu @Nhuynh31 @ghntien @NguyenDang_Tuan @Loc_nh @Chuannq @thuyp2t87 @ttrung_nghia'));
 });
 
 test('Telegram Notification: Tag pills editing support', () => {
   const customTags = ['@Trongphuu', '@Nhuynh31'];
   const msg = buildFullNotificationMessage('Test content', customTags);
-  assert.equal(msg, 'Test content\n\n@Trongphuu @Nhuynh31');
+  assert.ok(msg.includes('<b>👥 Tag anh em phụ trách:</b>\n@Trongphuu @Nhuynh31'));
   
-  // Không có tag
+  // Không có tag thì không có đề mục tag
   const msgNoTags = buildFullNotificationMessage('Only content', []);
-  assert.equal(msgNoTags, 'Only content');
+  assert.ok(!msgNoTags.includes('<b>👥 Tag anh em phụ trách:</b>'));
 });

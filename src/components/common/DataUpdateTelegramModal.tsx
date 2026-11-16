@@ -322,9 +322,14 @@ export const DataUpdateTelegramModal: React.FC = () => {
               <span className="text-[11px] text-slate-500">Định dạng hiển thị trực tiếp trong nhóm</span>
             </div>
 
-            <div className="bg-[#182533] border border-sky-500/20 rounded-2xl p-3.5 sm:p-4 font-sans text-xs sm:text-[13px] text-slate-100 whitespace-pre-wrap leading-relaxed shadow-inner">
-              {previewMessage}
-            </div>
+            <div 
+              className="bg-[#182533] border border-sky-500/25 rounded-2xl p-4 font-sans text-xs sm:text-[13.5px] text-slate-100 leading-relaxed shadow-inner [&_b]:text-white [&_b]:font-bold"
+              dangerouslySetInnerHTML={{ 
+                __html: previewMessage
+                  .replace(/(@[a-zA-Z0-9_]+)/g, '<span class="text-sky-400 font-semibold">$1</span>')
+                  .replace(/\n/g, '<br/>') 
+              }}
+            />
           </div>
 
           {/* 4. CẤU HÌNH NÂNG CAO (BOT TOKEN & CHAT ID) */}
