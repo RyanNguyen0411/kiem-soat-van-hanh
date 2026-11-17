@@ -10,6 +10,20 @@
     <meta name="apple-mobile-web-app-title" content="GHN Long An" />
     <link rel="manifest" href="/manifest.json" />
     <title>GHN Express - Điều Hành Vận Hành Khu Vực Long An | AM Huy (ĐNB)</title>
+    <script>
+      (function() {
+        try {
+          var savedZoom = localStorage.getItem('ghn_display_zoom_level');
+          if (savedZoom) {
+            document.documentElement.style.zoom = savedZoom + '%';
+          }
+          var savedFont = localStorage.getItem('ghn_display_font_scale');
+          if (savedFont) {
+            document.documentElement.style.fontSize = savedFont + '%';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-slate-900 text-slate-100 antialiased selection:bg-orange-500 selection:text-white">
     <div id="root"></div>

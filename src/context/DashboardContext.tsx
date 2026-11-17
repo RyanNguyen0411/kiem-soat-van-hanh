@@ -47,6 +47,16 @@ export interface DashboardContextType {
   setSelectedDateGlobal: (date: string) => void;
   setActiveTab: (tab: TabType) => void;
   navigateToTab: (tab: TabType, options?: { buuCuc?: string; date?: string }) => void;
+
+  // Zoom toàn màn hình & Font size scale
+  zoomLevel: number;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
+  fontScale: number;
+  increaseFontSize: () => void;
+  decreaseFontSize: () => void;
+  resetFontSize: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -141,6 +151,82 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [darkMode]);
 
+  // Quản lý Zoom toàn màn hình (áp dụng toàn dashboard, toàn tab/task, lưu lâu dài)
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ghn_display_zoom_level');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 70 && parsed <= 150) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+    return 100;
+  });
+
+  // Quản lý cỡ chữ Font Size Scale (áp dụng toàn dashboard, toàn tab/task, lưu lâu dài)
+  const [fontScale, setFontScale] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ghn_display_font_scale');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 75 && parsed <= 135) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+    return 100;
+  });
+
+  const zoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(150, prev + 5));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomLevel(prev => Math.max(70, prev - 5));
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoomLevel(100);
+  }, []);
+
+  const increaseFontSize = useCallback(() => {
+    setFontScale(prev => Math.min(135, prev + 5));
+  }, []);
+
+  const decreaseFontSize = useCallback(() => {
+    setFontScale(prev => Math.max(75, prev - 5));
+  }, []);
+
+  const resetFontSize = useCallback(() => {
+    setFontScale(100);
+  }, []);
+
+  // Áp dụng Zoom vào root element và lưu localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ghn_display_zoom_level', String(zoomLevel));
+      (document.documentElement.style as any).zoom = `${zoomLevel}%`;
+    } catch (err) {
+      console.warn('Lỗi khi áp dụng zoom level:', err);
+    }
+  }, [zoomLevel]);
+
+  // Áp dụng Font Size scale vào root element và lưu localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ghn_display_font_scale', String(fontScale));
+      document.documentElement.style.fontSize = `${fontScale}%`;
+    } catch (err) {
+      console.warn('Lỗi khi áp dụng font scale:', err);
+    }
+  }, [fontScale]);
+
   const refreshData = useCallback(async () => {
     setSyncStatus(prev => ({ ...prev, isSyncing: true }));
     try {
@@ -214,7 +300,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     selectedDateGlobal,
     setSelectedDateGlobal,
     setActiveTab,
-    navigateToTab
+    navigateToTab,
+    zoomLevel,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    fontScale,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize
   }), [
     effectiveDataset,
     syncStatus,
@@ -225,7 +319,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     selectedBuuCucGlobal,
     selectedDateGlobal,
     setActiveTab,
-    navigateToTab
+    navigateToTab,
+    zoomLevel,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    fontScale,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize
   ]);
 
   return (

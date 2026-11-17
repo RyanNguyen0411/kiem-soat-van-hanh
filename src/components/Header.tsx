@@ -11,9 +11,10 @@ import {
   FolderOpen, 
   LogOut, 
   Settings,
-  Clock,
   FileText,
-  Send
+  ZoomIn,
+  ZoomOut,
+  Type
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +29,15 @@ export const Header: React.FC = () => {
     setDarkMode, 
     setIsSidebarOpen,
     isSidebarCollapsed,
-    setIsSidebarCollapsed
+    setIsSidebarCollapsed,
+    zoomLevel,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    fontScale,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize
   } = useDashboard();
 
   const handleToggleSidebar = () => {
@@ -98,16 +107,75 @@ export const Header: React.FC = () => {
             </span>
           </button>
 
-          {/* Thời Gian AM Cập Nhật Gần Nhất (Cùng hàng với Dữ liệu kiểm toán) */}
+          {/* Cụm điều khiển Zoom Màn hình (áp dụng toàn dashboard, toàn task) */}
           <div 
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gradient-to-r from-orange-950/60 to-slate-800/90 border border-orange-500/40 text-[11px] transition-colors"
-            title={`Thời gian AM Huy cập nhật dữ liệu nguồn Google Sheets gần nhất: ${syncStatus.lastUpdated}. Chỉ AM mới có quyền cập nhật dữ liệu nguồn.`}
+            className="flex items-center bg-slate-800/90 border border-slate-700/70 rounded-md p-0.5 text-[11px] shadow-2xs"
+            title={`Phóng to / Thu nhỏ toàn bộ màn hình dashboard (Hiện tại: ${zoomLevel}%). Bấm % để đặt lại 100%.`}
           >
-            <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-            <span className="font-bold text-orange-400 hidden sm:inline">AM cập nhật:</span>
-            <span className="text-white font-mono font-bold text-[10px] sm:text-[11px] whitespace-nowrap">
-              {syncStatus.lastUpdated || '10:00 hôm nay'}
-            </span>
+            <button
+              type="button"
+              onClick={zoomOut}
+              disabled={zoomLevel <= 70}
+              className="p-1 hover:bg-slate-700 text-slate-300 hover:text-white rounded disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+              title="Thu nhỏ toàn màn hình (Tối thiểu 70%)"
+              aria-label="Thu nhỏ màn hình"
+            >
+              <ZoomOut className="w-3 h-3 text-slate-300" />
+            </button>
+            <button
+              type="button"
+              onClick={resetZoom}
+              className="px-1 py-0.5 font-mono text-[10px] font-bold text-orange-400 hover:text-orange-300 hover:bg-slate-700/70 rounded cursor-pointer transition-colors whitespace-nowrap"
+              title="Bấm để đặt lại Zoom 100%"
+            >
+              {zoomLevel}%
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              disabled={zoomLevel >= 150}
+              className="p-1 hover:bg-slate-700 text-slate-300 hover:text-white rounded disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+              title="Phóng to toàn màn hình (Tối đa 150%)"
+              aria-label="Phóng to màn hình"
+            >
+              <ZoomIn className="w-3 h-3 text-slate-300" />
+            </button>
+          </div>
+
+          {/* Cụm điều khiển Cỡ chữ toàn Dashboard (áp dụng toàn dashboard, toàn task) */}
+          <div 
+            className="flex items-center bg-slate-800/90 border border-slate-700/70 rounded-md p-0.5 text-[11px] shadow-2xs"
+            title={`Tăng / Giảm kích thước chữ toàn dashboard (Hiện tại: ${fontScale}%). Bấm % để đặt lại 100%.`}
+          >
+            <button
+              type="button"
+              onClick={decreaseFontSize}
+              disabled={fontScale <= 75}
+              className="px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-700 rounded disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+              title="Giảm kích thước chữ toàn dashboard (Tối thiểu 75%)"
+              aria-label="Giảm kích thước chữ"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={resetFontSize}
+              className="px-1 py-0.5 font-mono text-[10px] font-bold text-sky-400 hover:text-sky-300 hover:bg-slate-700/70 rounded flex items-center gap-0.5 cursor-pointer transition-colors whitespace-nowrap"
+              title="Bấm để đặt lại cỡ chữ 100%"
+            >
+              <Type className="w-2.5 h-2.5" />
+              <span>{fontScale}%</span>
+            </button>
+            <button
+              type="button"
+              onClick={increaseFontSize}
+              disabled={fontScale >= 135}
+              className="px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-700 rounded disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+              title="Tăng kích thước chữ toàn dashboard (Tối đa 135%)"
+              aria-label="Tăng kích thước chữ"
+            >
+              A+
+            </button>
           </div>
 
           {/* Nút Xem Lại Hướng Dẫn Vận Hành cho Phân Hệ Nhân Viên */}
@@ -137,19 +205,6 @@ export const Header: React.FC = () => {
             <RefreshCw className={`w-3 h-3 ${syncStatus.isSyncing ? 'animate-spin text-orange-400' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
           </button>
-
-          {/* Nút Bắn Thông Báo Telegram Cho Nhân Viên (Chỉ AM Huy) */}
-          {!isStaff && (
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-data-update-telegram-modal'))}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-md bg-[#229ED9] hover:bg-[#1b88bd] text-white shadow-2xs transition-all cursor-pointer border border-[#229ED9]/50"
-              title="Bắn thông báo Telegram cho nhân viên khi vừa cập nhật dữ liệu xong"
-            >
-              <Send className="w-3.5 h-3.5 text-white" />
-              <span className="hidden sm:inline">Báo Data (Tele)</span>
-            </button>
-          )}
 
           {/* Cây Cơ Cấu / Menu Tổng Hợp Launcher */}
           <button
