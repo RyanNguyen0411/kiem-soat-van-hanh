@@ -72,22 +72,30 @@ export function classifyGltAging(thoiGianTonDong?: string, canhBao?: string): Gl
   const tg = (thoiGianTonDong || '').trim();
   const cb = (canhBao || '').toLowerCase();
 
-  // 1. Nhóm 5-8 ngày (120-192h) - Đặt trước để không bị nhầm lẫn với mốc 192h đơn lẻ
-  if (tg === '120_192' || cb.includes('120_192') || cb.includes('khẩn cấp quá hạn')) {
-    return GLT_DAY_GROUPS['5_8d'];
-  }
-
-  // 2. Nhóm 192h (> 8 ngày) - Khẩn cấp nhất cần xử lý triệt để
+  // 1. Nhóm 192h (> 8 ngày = 192h) - MỨC ĐỘ KHẨN CẤP NHẤT, XỬ LÝ TRIỆT ĐỂ!
+  // Ưu tiên kiểm tra mốc 192h trước (loại trừ các chuỗi chứa 120 để tránh nhầm với 120_192)
   if (
     tg === '192' || 
     tg === '>192' || 
     tg === '> 192' || 
     tg.startsWith('192') ||
-    (tg.includes('192') && !tg.includes('120_192')) || 
-    (cb.includes('192') && !cb.includes('120_192')) || 
+    (tg.includes('192') && !tg.includes('120')) || 
+    (cb.includes('192') && !cb.includes('120')) || 
     cb.includes('đơn đã quá hạn')
   ) {
     return GLT_DAY_GROUPS.gt_8d_192h;
+  }
+
+  // 2. Nhóm 5-8 ngày (120-192h)
+  if (
+    tg === '120_192' || 
+    tg.startsWith('120') || 
+    tg.includes('120_192') || 
+    tg.includes('120-192') ||
+    cb.includes('120_192') || 
+    cb.includes('khẩn cấp quá hạn')
+  ) {
+    return GLT_DAY_GROUPS['5_8d'];
   }
 
   // 3. Nhóm 3-5 ngày (72-120h)

@@ -2,6 +2,7 @@ import { toCanvas } from 'html-to-image';
 import type { BacklogGltRecord, BacklogLcRecord } from '../types/dashboard';
 import { normalizePostOfficeName } from './dataConnector';
 import { getAppsScriptUrlOverride } from './settingsService';
+import { classifyGltAging } from '../utils/gltAgingEngine';
 
 export interface TelegramConfig {
   relayEndpoint?: string;
@@ -18,8 +19,8 @@ export const DEFAULT_TELEGRAM_RELAY_ENDPOINT = 'https://script.google.com/macros
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_BOT_TOKEN) ||
-  ['9066732714', 'AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw'].join(':');
-export const DEFAULT_TELEGRAM_CHAT_ID = '1215576379';
+  '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
+export const DEFAULT_TELEGRAM_CHAT_ID = '-5234712010';
 
 /**
  * DEFAULT_TELEGRAM_CONFIG
@@ -337,9 +338,9 @@ export async function sendPhotoToTelegram(
  */
 export const LONG_AN_POST_OFFICES = [
   { name: '(LAN) Cần Đước 1', code: '23220000' },
-  { name: '(LAN) Cần Giuộc', code: '23210000' },
-  { name: '(LAN) Phước Lý', code: '23240000' },
-  { name: '(LAN) Rạch Kiến', code: '23230000' },
+  { name: '(LAN) Cần Giuộc', code: '21529000' },
+  { name: '(LAN) Phước Lý', code: '22849000' },
+  { name: '(LAN) Rạch Kiến', code: '22206000' },
   { name: '(LAN) Tầm Vu', code: '21710000' }
 ];
 
@@ -416,41 +417,42 @@ export interface GltBranchReport {
 
 /**
  * Xây dựng báo cáo Telegram TỒN ĐỌNG GLT ở 2 cột mốc 120h và 192h cho từng bưu cục riêng biệt
- * - Chỉ lọc mã đơn TTS và Shopee
- * - Phân nhóm chi tiết: có chuyến đi và chưa có chuyến đi theo mốc 192h trước, sau đó đến 120h
- * - Mỗi mã đơn là 1 hàng
- * - Nếu bưu cục nào không có thì ghi rõ "Không có"
+ * - Quét toàn bộ dữ liệu nguồn tồn đọng GLT của bưu cục (không sót đơn khách hàng nào)
+ * - Đối chiếu chuẩn xác theo phân cấp độ tuổi tồn: 192h (> 8 ngày) và 120h (5 - 8 ngày)
+ * - Phân nhóm chi tiết: chưa có chuyến đi và đang/đã có chuyến đi theo mốc 192h trước, sau đó đến 120h
+ * - Mỗi mã đơn là 1 hàng kèm thông tin khách hàng và loại đơn
+ * - Nếu không có đơn thì ghi rõ "Không có đơn cảnh báo"
  */
 export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBranchReport[] {
   return LONG_AN_POST_OFFICES.map(po => {
-    // Lọc theo bưu cục (Đồng nhất Cần Đước thành Cần Đước 1)
+    // Lọc theo bưu cục (Đồng nhất tên và mã chuẩn)
     const branchRecords = tonDongGlt.filter(d => {
       const normalized = normalizePostOfficeName(d.buuCuc);
-      return normalized === po.name;
+      return normalized === po.name || d.maBC === po.code;
     });
 
-    // Chỉ lọc khách hàng TTS và SHOPEE
-    const targetEcomRecords = branchRecords.filter(d => {
-      const kh = (d.khachHang || '').toUpperCase();
-      return kh === 'TTS' || kh === 'SHOPEE';
+    // Cột mốc 192h (> 8 ngày / 192h) - Khẩn cấp nhất, xử lý triệt để
+    const rec192 = branchRecords.filter(d => {
+      const g = classifyGltAging(d.thoiGianTonDong, d.canhBao);
+      return g.key === 'gt_8d_192h';
     });
-
-    // Cột mốc 192h (> 192h)
-    const rec192 = targetEcomRecords.filter(d => d.thoiGianTonDong === '192');
     const rec192HasTrip = rec192.filter(d => 
-      d.trangThai.includes('Đã có chuyến') || d.trangThai.includes('Đang có chuyến')
+      (d.trangThai || '').includes('Đã có chuyến') || (d.trangThai || '').includes('Đang có chuyến')
     );
     const rec192NoTrip = rec192.filter(d => 
-      !d.trangThai.includes('Đã có chuyến') && !d.trangThai.includes('Đang có chuyến')
+      !(d.trangThai || '').includes('Đã có chuyến') && !(d.trangThai || '').includes('Đang có chuyến')
     );
 
-    // Cột mốc 120h (120h - 192h)
-    const rec120 = targetEcomRecords.filter(d => d.thoiGianTonDong === '120_192');
+    // Cột mốc 120h (120h - 192h / 5 - 8 ngày) - Cấp thiết
+    const rec120 = branchRecords.filter(d => {
+      const g = classifyGltAging(d.thoiGianTonDong, d.canhBao);
+      return g.key === '5_8d';
+    });
     const rec120HasTrip = rec120.filter(d => 
-      d.trangThai.includes('Đã có chuyến') || d.trangThai.includes('Đang có chuyến')
+      (d.trangThai || '').includes('Đã có chuyến') || (d.trangThai || '').includes('Đang có chuyến')
     );
     const rec120NoTrip = rec120.filter(d => 
-      !d.trangThai.includes('Đã có chuyến') && !d.trangThai.includes('Đang có chuyến')
+      !(d.trangThai || '').includes('Đã có chuyến') && !(d.trangThai || '').includes('Đang có chuyến')
     );
 
     const totalAlert = rec192.length + rec120.length;
@@ -469,13 +471,13 @@ export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBran
       if (rec192NoTrip.length > 0) {
         msg += `<b>• Chưa có chuyến đi trong ngày (${rec192NoTrip.length} đơn):</b>\n`;
         rec192NoTrip.forEach((item, idx) => {
-          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang} | ${item.loaiDon}\n`;
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.loaiDon}\n`;
         });
       }
       if (rec192HasTrip.length > 0) {
         msg += `<b>• Đang/Đã có chuyến đi trong ngày (${rec192HasTrip.length} đơn):</b>\n`;
         rec192HasTrip.forEach((item, idx) => {
-          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang} | ${item.loaiDon}\n`;
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.loaiDon}\n`;
         });
       }
       msg += `\n`;
@@ -489,13 +491,13 @@ export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBran
       if (rec120NoTrip.length > 0) {
         msg += `<b>• Chưa có chuyến đi trong ngày (${rec120NoTrip.length} đơn):</b>\n`;
         rec120NoTrip.forEach((item, idx) => {
-          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang} | ${item.loaiDon}\n`;
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.loaiDon}\n`;
         });
       }
       if (rec120HasTrip.length > 0) {
         msg += `<b>• Đang/Đã có chuyến đi trong ngày (${rec120HasTrip.length} đơn):</b>\n`;
         rec120HasTrip.forEach((item, idx) => {
-          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang} | ${item.loaiDon}\n`;
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.loaiDon}\n`;
         });
       }
       msg += `\n`;
