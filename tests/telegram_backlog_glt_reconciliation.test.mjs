@@ -111,4 +111,12 @@ test('ĐỐI CHIẾU CHUẨN XÁC BÁO CÁO TỒN ĐỌNG GLT TELEGRAM & DỮ LI
     assert.doesNotMatch(telegramServiceSrc, /targetEcomRecords\s*=\s*branchRecords\.filter\(\s*d\s*=>\s*\{\s*const kh/);
     assert.match(telegramServiceSrc, /classifyGltAging/);
   });
+
+  await t.test('5. Tự động di trú dọn dẹp token cũ 9066732714 và chat ID cũ 1215576379 để không bị lỗi chat not found', () => {
+    // Kiểm tra các quy tắc bảo vệ chống token cũ
+    assert.match(telegramServiceSrc, /savedToken\.startsWith\('9066732714'\)/);
+    assert.match(telegramServiceSrc, /savedChatId === '1215576379'/);
+    assert.match(telegramServiceSrc, /cleanToken\.startsWith\('9066732714'\)/);
+    assert.match(telegramServiceSrc, /Lỗi chat not found/);
+  });
 });

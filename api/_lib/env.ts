@@ -110,7 +110,7 @@ export function readRequiredServerEnv(name: string): string {
   return raw.trim();
 }
 
-export const DEFAULT_TELEGRAM_BOT_TOKEN = '9066732714:AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw';
+export const DEFAULT_TELEGRAM_BOT_TOKEN = '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
 
 export function getAuthBrokerEnv(): AuthBrokerEnv {
   const supabaseUrl = readRequiredServerEnv('SUPABASE_URL');

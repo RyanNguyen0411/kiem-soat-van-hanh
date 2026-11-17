@@ -20,7 +20,11 @@ import {
   testTelegramBotConnection, 
   sendMessageToTelegram, 
   buildGltTelegramReports, 
-  buildLcTelegramReports
+  buildLcTelegramReports,
+  formatTelegramError,
+  DEFAULT_TELEGRAM_BOT_TOKEN,
+  DEFAULT_TELEGRAM_CHAT_ID,
+  DEFAULT_TELEGRAM_RELAY_ENDPOINT
 } from '../../services/telegramService';
 import type { TelegramConfig } from '../../services/telegramService';
 
@@ -98,6 +102,17 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
     setShowConfig(false);
   };
 
+  const handleResetConfig = () => {
+    const def: TelegramConfig = {
+      botToken: DEFAULT_TELEGRAM_BOT_TOKEN,
+      chatId: DEFAULT_TELEGRAM_CHAT_ID,
+      relayEndpoint: DEFAULT_TELEGRAM_RELAY_ENDPOINT
+    };
+    setConfig(def);
+    saveStoredTelegramConfig(def);
+    setTestResult(null);
+  };
+
   const togglePreview = (branchName: string) => {
     setExpandedPreview(prev => ({ ...prev, [branchName]: !prev[branchName] }));
   };
@@ -119,7 +134,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
       } else {
         setSendStatuses(prev => ({
           ...prev,
-          [branchName]: { status: 'error', message: res.description || 'Lỗi khi gửi tin nhắn' }
+          [branchName]: { status: 'error', message: formatTelegramError(res.description) }
         }));
       }
     } catch (err: any) {
@@ -155,7 +170,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
         } else {
           setSendStatuses(prev => ({
             ...prev,
-            [rep.buuCuc]: { status: 'error', message: res.description || 'Lỗi khi gửi tin nhắn' }
+            [rep.buuCuc]: { status: 'error', message: formatTelegramError(res.description) }
           }));
         }
       } catch (err: any) {
@@ -282,9 +297,17 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={handleResetConfig}
+                    className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all cursor-pointer"
+                    title="Khôi phục Token Bot và Group ID chuẩn AM Huy"
+                  >
+                    Khôi Phục Chuẩn
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleTestConnection}
                     disabled={testResult?.testing}
-                    className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-white text-[11px] font-bold transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold transition-all cursor-pointer"
                   >
                     Kiểm Tra Kết Nối
                   </button>
