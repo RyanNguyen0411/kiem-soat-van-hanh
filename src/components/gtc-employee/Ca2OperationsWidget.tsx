@@ -1997,7 +1997,7 @@ export const Ca2OperationsWidget: React.FC<Ca2OperationsWidgetProps> = ({
             </tbody>
             <tfoot className="bg-slate-100 dark:bg-slate-750 font-black border-t-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 text-[11px]">
               <tr>
-                <td className="py-2 px-2 text-center uppercase tracking-wider text-orange-600 dark:text-orange-400 font-black">
+                <td className="py-2 px-2 text-left uppercase tracking-wider text-orange-600 dark:text-orange-400 font-black">
                   TOÀN KHU VỰC
                 </td>
                 <td className="py-2 px-1.5 text-center font-black">

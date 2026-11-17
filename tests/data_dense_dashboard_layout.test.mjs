@@ -32,6 +32,17 @@ test('TỐI ƯU KHÔNG GIAN DỮ LIỆU DASHBOARD (DATA-DENSE EXECUTIVE VIEW)', 
     assert.match(cssContent, /main table tbody td:not\(\.font-mono\)[\s\S]*?text-align:\s*left !important;/);
   });
 
+  await t.test('1d. Quy tắc chuẩn hóa dòng tổng hợp cuối bảng (tfoot): Chữ căn trái, Số căn giữa', () => {
+    const cssContent = fs.readFileSync(path.join(ROOT_DIR, 'src/index.css'), 'utf8');
+    // Chữ (nhãn tổng cộng / toà khu vực) căn trái
+    assert.match(cssContent, /main table tfoot td:first-child[\s\S]*?text-align:\s*left !important;/);
+    assert.match(cssContent, /main table tfoot td\[class\*="text-left"\][\s\S]*?text-align:\s*left !important;/);
+
+    // Số tổng hợp căn giữa
+    assert.match(cssContent, /main table tfoot td\.font-mono[\s\S]*?text-align:\s*center !important;/);
+    assert.match(cssContent, /main table tfoot td\[class\*="text-center"\][\s\S]*?text-align:\s*center !important;/);
+  });
+
   await t.test('1c. Toàn bộ th trên các trang dashboard đều phải căn giữa (text-center, zero text-left/text-right)', () => {
     const targetFiles = [
       'src/pages/BaoCaoGtcBcTab.tsx',

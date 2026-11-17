@@ -223,13 +223,38 @@ table tfoot td {
 
 /* Đảm bảo ô văn bản (bưu cục, họ tên, địa bàn, chức vụ, khách hàng, mô tả) luôn căn trái */
 main table tbody td:not(.font-mono):not([class*="font-mono"]):not([class*="text-right"]):not([class*="text-center"]):not([class*="tabular-nums"]),
-table tbody td:not(.font-mono):not([class*="font-mono"]):not([class*="text-right"]):not([class*="text-center"]):not([class*="tabular-nums"]) {
+table tbody td:not(.font-mono):not([class*="font-mono"]):not([class*="text-right"]):not([class*="text-center"]):not([class*="tabular-nums"]),
+main table tbody td.text-left,
+table tbody td.text-left,
+main table tbody td[class*="text-left"],
+table tbody td[class*="text-left"] {
   text-align: left !important;
 }
 
+/* Cuối bảng có tổng hợp/total: Nếu là chữ (dạng text: "Tổng cộng", "Toàn khu vực",...) thì căn trái */
 main table tfoot td:first-child,
-table tfoot td:first-child {
+table tfoot td:first-child,
+main table tfoot td[class*="text-left"],
+table tfoot td[class*="text-left"],
+main table tfoot td.text-left,
+table tfoot td.text-left,
+main table tfoot td[colspan],
+table tfoot td[colspan] {
   text-align: left !important;
+}
+
+/* Cuối bảng có tổng hợp/total: Nếu là số thì căn giữa */
+main table tfoot td:not(:first-child):not([colspan]):not([class*="text-left"]):not(.text-left),
+table tfoot td:not(:first-child):not([colspan]):not([class*="text-left"]):not(.text-left),
+main table tfoot td.font-mono,
+table tfoot td.font-mono,
+main table tfoot td[class*="font-mono"],
+table tfoot td[class*="font-mono"],
+main table tfoot td[class*="text-right"],
+table tfoot td[class*="text-right"],
+main table tfoot td[class*="text-center"],
+table tfoot td[class*="text-center"] {
+  text-align: center !important;
 }
 
 main table tbody tr,

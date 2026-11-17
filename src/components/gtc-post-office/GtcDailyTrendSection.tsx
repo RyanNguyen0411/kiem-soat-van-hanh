@@ -1344,14 +1344,14 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                     </td>
                     {activeKpiDrillDown === 'volume' && (
                       <>
-                        <td className="py-2.5 px-3 text-right font-black text-[#15803D] dark:text-emerald-400">
+                        <td className="py-2.5 px-3 text-center font-black text-[#15803D] dark:text-emerald-400">
                           {overallKPIs.volume.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono">100%</td>
-                        <td className="py-2.5 px-3 text-right font-semibold">
+                        <td className="py-2.5 px-3 text-center font-mono">100%</td>
+                        <td className="py-2.5 px-3 text-center font-semibold">
                           {overallKPIs.sldGan.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400">
+                        <td className="py-2.5 px-3 text-center font-bold text-emerald-700 dark:text-emerald-400">
                           {overallKPIs.ganRate.toFixed(1)}%
                         </td>
                         <td className="py-2.5 px-3 text-center">-</td>
@@ -1359,25 +1359,25 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                     )}
                     {activeKpiDrillDown === 'gtc' && (
                       <>
-                        <td className="py-2.5 px-3 text-right font-black text-[#002D72] dark:text-blue-400">
+                        <td className="py-2.5 px-3 text-center font-black text-[#002D72] dark:text-blue-400">
                           {overallKPIs.sldGTC.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-2.5 px-3 text-center">
                           {overallKPIs.volume.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-blue-600 dark:text-blue-400">
+                        <td className="py-2.5 px-3 text-center font-bold text-blue-600 dark:text-blue-400">
                           {overallKPIs.gtcRate.toFixed(2)}%
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono">100%</td>
+                        <td className="py-2.5 px-3 text-center font-mono">100%</td>
                         <td className="py-2.5 px-3 text-center">-</td>
                       </>
                     )}
                     {activeKpiDrillDown === 'rate' && (
                       <>
-                        <td className="py-2.5 px-3 text-right font-black text-[#0284C7] dark:text-sky-400 text-sm">
+                        <td className="py-2.5 px-3 text-center font-black text-[#0284C7] dark:text-sky-400 text-sm">
                           {overallKPIs.gtcRate.toFixed(2)}%
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono">
+                        <td className="py-2.5 px-3 text-center font-mono">
                           {overallKPIs.sldGTC.toLocaleString('vi-VN')} / {overallKPIs.volume.toLocaleString('vi-VN')}
                         </td>
                         <td className="py-2.5 px-3 text-center">
@@ -1387,7 +1387,7 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                             Toàn vùng: {overallKPIs.gtcRate >= 80 ? 'Đạt' : 'Cần tối ưu'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold">
+                        <td className="py-2.5 px-3 text-center font-mono font-bold">
                           {overallKPIs.gtcRate - 80 >= 0 ? (
                             <span className="text-emerald-600">+{(overallKPIs.gtcRate - 80).toFixed(2)}%</span>
                           ) : (
@@ -1398,13 +1398,13 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                     )}
                     {activeKpiDrillDown === 'tondong' && (
                       <>
-                        <td className="py-2.5 px-3 text-right font-black text-[#F97316] dark:text-orange-400">
+                        <td className="py-2.5 px-3 text-center font-black text-[#F97316] dark:text-orange-400">
                           {overallKPIs.tonDong.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-2.5 px-3 text-center">
                           {overallKPIs.volume.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-orange-600 dark:text-orange-400">
+                        <td className="py-2.5 px-3 text-center font-bold text-orange-600 dark:text-orange-400">
                           {overallKPIs.volume > 0 ? ((overallKPIs.tonDong / overallKPIs.volume) * 100).toFixed(1) : '0.0'}%
                         </td>
                         <td className="py-2.5 px-3 text-center">-</td>
@@ -1862,19 +1862,19 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                   {/* DÒNG TỔNG CỘNG TẤT CẢ CÁC BƯU CỤC ĐANG CHỌN */}
                   <tfoot className="bg-slate-200/95 dark:bg-slate-700 text-slate-900 dark:text-white font-black sticky bottom-0 z-10 border-t-2 border-slate-300 dark:border-slate-600 shadow-2xs">
                     <tr>
-                      <td className="py-1 px-1.5 uppercase text-[9.5px] text-orange-700 dark:text-orange-300 truncate">
+                      <td className="py-1 px-1.5 uppercase text-[9.5px] text-orange-700 dark:text-orange-300 truncate text-left">
                         Tổng {inspectionTableData.poGroups.length} Bưu Cục:
                       </td>
-                      <td className="py-1 px-1 text-right font-mono text-[10px] font-black text-orange-700 dark:text-orange-300">
+                      <td className="py-1 px-1 text-center font-mono text-[10px] font-black text-orange-700 dark:text-orange-300">
                         {inspectionTableData.grandVolume.toLocaleString('vi-VN')}
                       </td>
-                      <td className="py-1 px-1 text-right font-mono text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                      <td className="py-1 px-1 text-center font-mono text-[10px] font-black text-emerald-700 dark:text-emerald-300">
                         {inspectionTableData.grandSldGtc.toLocaleString('vi-VN')}
                       </td>
-                      <td className="py-1 px-1 text-right font-mono text-[10px] font-black text-blue-700 dark:text-blue-300">
+                      <td className="py-1 px-1 text-center font-mono text-[10px] font-black text-blue-700 dark:text-blue-300">
                         {inspectionTableData.grandGtcRate.toFixed(1)}%
                       </td>
-                      <td className="py-1 px-1 text-right font-mono text-[10px] font-black text-rose-700 dark:text-rose-300">
+                      <td className="py-1 px-1 text-center font-mono text-[10px] font-black text-rose-700 dark:text-rose-300">
                         {inspectionTableData.grandTonDong.toLocaleString('vi-VN')}
                       </td>
                     </tr>

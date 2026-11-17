@@ -748,7 +748,7 @@ export const NhanSuTab: React.FC = () => {
             </tbody>
             <tfoot className="bg-slate-100 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-600 font-black text-slate-900 dark:text-white">
               <tr>
-                <td className="py-3 px-4 font-black uppercase text-indigo-700 dark:text-indigo-300">
+                <td className="py-3 px-4 font-black uppercase text-indigo-700 dark:text-indigo-300 text-left">
                   TỔNG TOÀN KHU VỰC
                 </td>
                 <td className="py-3 px-3 text-center font-black text-sm">{kpis.total}</td>

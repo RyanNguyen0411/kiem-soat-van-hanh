@@ -1405,21 +1405,21 @@ export function NghiViecTab() {
                   </tbody>
                   <tfoot className="bg-slate-100/95 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t border-slate-300 dark:border-slate-600 sticky bottom-0 z-10 text-[11px]">
                     <tr>
-                      <td className="p-2 uppercase">TỔNG CỘNG</td>
+                      <td className="p-2 uppercase text-left">TỔNG CỘNG</td>
                       {OFFICIAL_POST_OFFICES.map(po => {
                         if (!matrixSelectedPos.includes(po)) return null;
                         const sum = timeMatrixRows.reduce((s, r) => s + (r.poCounts[po] || 0), 0);
                         return (
-                          <td key={po} className="p-2 text-right font-mono font-bold">
+                          <td key={po} className="p-2 text-center font-mono font-bold">
                             {sum}
                           </td>
                         );
                       })}
-                      <td className="p-2 text-right text-rose-600 font-mono font-black text-xs">
+                      <td className="p-2 text-center text-rose-600 font-mono font-black text-xs">
                         {timeMatrixRows.reduce((s, r) => s + r.selectedTotal, 0)}
                       </td>
                       <td className="p-2 text-center text-slate-400">-</td>
-                      <td className="p-2 text-right font-mono text-indigo-600">100%</td>
+                      <td className="p-2 text-center font-mono text-indigo-600">100%</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1655,12 +1655,12 @@ export function NghiViecTab() {
                 </tbody>
                 <tfoot className="bg-slate-100/90 dark:bg-slate-750 font-black text-slate-900 dark:text-white border-t border-slate-300 dark:border-slate-600">
                   <tr>
-                    <td className="p-2 uppercase text-[11px]">TỔNG TOÀN KHU VỰC</td>
-                    <td className="p-2 text-right text-rose-600 font-mono text-xs">{metrics.total}</td>
-                    <td className="p-2 text-right font-mono text-[11px]">100%</td>
-                    <td className="p-2 text-right text-amber-600 font-mono text-[11px]">{metrics.g01Count} ca</td>
-                    <td className="p-2 text-right font-mono text-[11px]">{metrics.under3MCount} ca ({metrics.under3MRate}%)</td>
-                    <td className="p-2 text-right text-red-600 font-mono text-[11px]">{metrics.codViolations} ca</td>
+                    <td className="p-2 uppercase text-[11px] text-left">TỔNG TOÀN KHU VỰC</td>
+                    <td className="p-2 text-center text-rose-600 font-mono text-xs">{metrics.total}</td>
+                    <td className="p-2 text-center font-mono text-[11px]">100%</td>
+                    <td className="p-2 text-center text-amber-600 font-mono text-[11px]">{metrics.g01Count} ca</td>
+                    <td className="p-2 text-center font-mono text-[11px]">{metrics.under3MCount} ca ({metrics.under3MRate}%)</td>
+                    <td className="p-2 text-center text-red-600 font-mono text-[11px]">{metrics.codViolations} ca</td>
                   </tr>
                 </tfoot>
               </table>
