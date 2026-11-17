@@ -239,7 +239,7 @@ export function DataTable<T extends Record<string, any>>({
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key, col.sortable !== false)}
-                    className={`px-2.5 py-2 font-bold tracking-wider select-none ${
+                    className={`px-2.5 py-2 font-bold tracking-wider select-none text-center ${
                       isStickyLeft
                         ? 'bg-slate-200/90 dark:bg-slate-700 shadow-[1px_0_0_0_rgba(203,213,225,1)] dark:shadow-[1px_0_0_0_rgba(51,65,85,1)]'
                         : 'bg-slate-100 dark:bg-slate-750'
@@ -253,8 +253,6 @@ export function DataTable<T extends Record<string, any>>({
                         : ''
                     } ${noWrap ? 'whitespace-nowrap' : ''} ${
                       col.sortable !== false ? 'cursor-pointer hover:bg-slate-200/80 dark:hover:bg-slate-700' : ''
-                    } ${
-                      col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                     } ${col.headerClassName || ''}`}
                     style={{
                       width: col.width,
@@ -262,7 +260,7 @@ export function DataTable<T extends Record<string, any>>({
                       left: col.stickyLeft
                     }}
                   >
-                    <div className={`inline-flex items-center gap-1 ${noWrap ? 'whitespace-nowrap' : ''} ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : 'justify-start'}`}>
+                    <div className={`inline-flex items-center gap-1 justify-center w-full ${noWrap ? 'whitespace-nowrap' : ''}`}>
                       <span className={noWrap ? 'whitespace-nowrap' : ''}>{col.header}</span>
                       {col.sortable !== false && (
                         <span className="text-slate-400 shrink-0">
@@ -323,7 +321,7 @@ export function DataTable<T extends Record<string, any>>({
                                       : 'bg-slate-50 dark:bg-slate-800'
                                   }`
                                 : ''
-                            } ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}
+                            } ${col.align === 'right' || col.align === 'center' ? 'text-center' : 'text-left'} ${col.className || ''}`}
                             style={{ minWidth: col.width, left: col.stickyLeft }}
                           >
                             {(() => {

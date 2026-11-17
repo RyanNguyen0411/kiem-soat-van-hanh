@@ -13,9 +13,23 @@ test('TỐI ƯU KHÔNG GIAN DỮ LIỆU DASHBOARD (DATA-DENSE EXECUTIVE VIEW)', 
 
     const cssContent = fs.readFileSync(cssPath, 'utf8');
     assert.match(cssContent, /main table,\s*table\s*\{[^}]*font-size:\s*13px !important/);
-    assert.match(cssContent, /main table thead th,\s*table thead th\s*\{[^}]*font-size:\s*12\.5px !important/);
-    assert.match(cssContent, /main table tbody td,\s*main table tfoot td,\s*table tbody td,\s*table tfoot td\s*\{[^}]*font-size:\s*13px !important/);
+    assert.match(cssContent, /main table thead th[\s\S]*?font-size:\s*12\.5px !important/);
+    assert.match(cssContent, /main table tbody td[\s\S]*?font-size:\s*13px !important/);
     assert.match(cssContent, /main table td \.font-mono/);
+  });
+
+  await t.test('1b. Quy tắc căn chỉnh 3 thành phần bảng báo cáo: Tiêu đề giữa, Số liệu giữa, Văn bản trái', () => {
+    const cssContent = fs.readFileSync(path.join(ROOT_DIR, 'src/index.css'), 'utf8');
+    // 1. Tiêu đề căn giữa
+    assert.match(cssContent, /main table thead th[\s\S]*?text-align:\s*center !important;/);
+    assert.match(cssContent, /main table thead th[\s\S]*?justify-content:\s*center !important;/);
+
+    // 2. Số liệu căn giữa
+    assert.match(cssContent, /main table td\.font-mono[\s\S]*?text-align:\s*center !important;/);
+    assert.match(cssContent, /main table td\[class\*="text-right"\][\s\S]*?text-align:\s*center !important;/);
+
+    // 3. Văn bản căn lề trái
+    assert.match(cssContent, /main table tbody td:not\(\.font-mono\)[\s\S]*?text-align:\s*left !important;/);
   });
 
   await t.test('2. Biểu đồ và chú thích biểu đồ được bảo toàn nguyên bản kích thước (KHÔNG THU NHỎ)', () => {

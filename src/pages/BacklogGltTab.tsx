@@ -1027,32 +1027,32 @@ export const BacklogGltTab: React.FC = () => {
               <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                 <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
                   <tr>
-                    <th className="px-2 py-2 w-[16%]">Bưu Cục</th>
-                    <th className="px-1.5 py-2 text-right text-emerald-600 dark:text-emerald-400 w-[10%]">
+                    <th className="px-2 py-2 text-center w-[16%]">Bưu Cục</th>
+                    <th className="px-1.5 py-2 text-center text-emerald-600 dark:text-emerald-400 w-[10%]">
                       <span className="block font-bold">&lt; 1 ngày</span>
                       <span className="text-[9.5px] font-normal opacity-75">(&lt;24h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-amber-600 w-[10%]">
+                    <th className="px-1.5 py-2 text-center text-amber-600 w-[10%]">
                       <span className="block font-bold">1 - 3 ngày</span>
                       <span className="text-[9.5px] font-normal opacity-75">(24-72h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-orange-600 w-[10%]">
+                    <th className="px-1.5 py-2 text-center text-orange-600 w-[10%]">
                       <span className="block font-bold">3 - 5 ngày</span>
                       <span className="text-[9.5px] font-normal opacity-75">(72-120h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-rose-600 w-[10%]">
+                    <th className="px-1.5 py-2 text-center text-rose-600 w-[10%]">
                       <span className="block font-bold">5 - 8 ngày</span>
                       <span className="text-[9.5px] font-normal opacity-75">(120-192h)</span>
                     </th>
                     {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) - KHẨN CẤP NHẤT */}
-                    <th className="px-1.5 py-2 text-right bg-red-600/10 dark:bg-red-950/50 border-x-2 border-red-500 text-red-700 dark:text-red-400 font-black w-[13%]">
-                      <div className="flex items-center justify-end gap-1">
+                    <th className="px-1.5 py-2 text-center bg-red-600/10 dark:bg-red-950/50 border-x-2 border-red-500 text-red-700 dark:text-red-400 font-black w-[13%]">
+                      <div className="flex items-center justify-center gap-1">
                         <AlertOctagon className="w-3.5 h-3.5 text-red-600 animate-pulse" />
                         <span className="block uppercase text-[10.5px]">&gt; 8 ngày (192h)</span>
                       </div>
                       <span className="text-[9px] font-extrabold text-red-600 block leading-tight">XỬ LÝ TRIỆT ĐỂ</span>
                     </th>
-                    <th className="px-2 py-2 text-right text-slate-900 dark:text-white font-black w-[11%]">Tổng Tồn</th>
+                    <th className="px-2 py-2 text-center text-slate-900 dark:text-white font-black w-[11%]">Tổng Tồn</th>
                     <th className="px-1.5 py-2 text-center w-[10%]">% Quá Hạn</th>
                     <th className="px-1.5 py-2 text-center w-[10%]">Rủi Ro</th>
                   </tr>
@@ -1066,26 +1066,26 @@ export const BacklogGltTab: React.FC = () => {
                         row.riskLevel === 'danger' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
                       }`}
                     >
-                      <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100">
+                      <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100 text-left">
                         <div className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate">{row.buuCucShort}</span>
                         </div>
                       </td>
-                      <td className="px-1.5 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="px-1.5 py-2 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {row.lt_1d.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-1.5 py-2 text-right font-mono font-bold text-amber-600">
+                      <td className="px-1.5 py-2 text-center font-mono font-bold text-amber-600">
                         {row.p_1_3d.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-1.5 py-2 text-right font-mono font-bold text-orange-600">
+                      <td className="px-1.5 py-2 text-center font-mono font-bold text-orange-600">
                         {row.p_3_5d.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-1.5 py-2 text-right font-mono font-bold text-rose-600">
+                      <td className="px-1.5 py-2 text-center font-mono font-bold text-rose-600">
                         {row.p_5_8d.toLocaleString('vi-VN')}
                       </td>
                       {/* CELL 192H TÁCH RIÊNG BIỆT KHẨN CẤP */}
-                      <td className="px-1.5 py-2 text-right font-mono font-black border-x-2 border-red-500/50 bg-red-100/50 dark:bg-red-950/40">
+                      <td className="px-1.5 py-2 text-center font-mono font-black border-x-2 border-red-500/50 bg-red-100/50 dark:bg-red-950/40">
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black ${
                           row.p_gt_8d_192h > 0
                             ? 'bg-red-600 text-white animate-pulse shadow-2xs'
@@ -1094,7 +1094,7 @@ export const BacklogGltTab: React.FC = () => {
                           {row.p_gt_8d_192h.toLocaleString('vi-VN')}
                         </span>
                       </td>
-                      <td className="px-2 py-2 text-right font-mono font-black text-slate-900 dark:text-white text-xs">
+                      <td className="px-2 py-2 text-center font-mono font-black text-slate-900 dark:text-white text-xs">
                         {row.total.toLocaleString('vi-VN')}
                       </td>
                       <td className="px-1.5 py-2 text-center">
@@ -1130,26 +1130,26 @@ export const BacklogGltTab: React.FC = () => {
                 </tbody>
                 <tfoot className="bg-slate-100/90 dark:bg-slate-750 text-slate-900 dark:text-white font-extrabold border-t-2 border-slate-300 dark:border-slate-650">
                   <tr>
-                    <td className="px-2 py-2.5 uppercase tracking-wider text-[11px] font-bold">
+                    <td className="px-2 py-2.5 uppercase tracking-wider text-[11px] font-bold text-left">
                       {agingMatrixData.totals.buuCuc}
                     </td>
-                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="px-1.5 py-2.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       {agingMatrixData.totals.lt_1d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-amber-600">
+                    <td className="px-1.5 py-2.5 text-center font-mono font-bold text-amber-600">
                       {agingMatrixData.totals.p_1_3d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-orange-600">
+                    <td className="px-1.5 py-2.5 text-center font-mono font-bold text-orange-600">
                       {agingMatrixData.totals.p_3_5d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-rose-600">
+                    <td className="px-1.5 py-2.5 text-center font-mono font-bold text-rose-600">
                       {agingMatrixData.totals.p_5_8d.toLocaleString('vi-VN')}
                     </td>
                     {/* TỔNG NHÓM 192H */}
-                    <td className="px-1.5 py-2.5 text-right font-mono font-black border-x-2 border-red-500 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs sm:text-sm">
+                    <td className="px-1.5 py-2.5 text-center font-mono font-black border-x-2 border-red-500 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs sm:text-sm">
                       {agingMatrixData.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                    <td className="px-2 py-2.5 text-center font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">
                       {agingMatrixData.totals.total.toLocaleString('vi-VN')}
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-bold text-rose-600">
@@ -1544,27 +1544,27 @@ export const BacklogGltTab: React.FC = () => {
             <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
               <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
                 <tr>
-                  <th className="px-3 py-2.5">Nhóm Khách Hàng / Đối Tác</th>
+                  <th className="px-3 py-2.5 text-center">Nhóm Khách Hàng / Đối Tác</th>
                   <th className="px-2.5 py-2.5 text-center">Phân Loại</th>
-                  <th className="px-2.5 py-2.5 text-right font-extrabold text-slate-900 dark:text-white">Tổng Tồn</th>
-                  <th className="px-2 py-2.5 text-right text-slate-500">Tỷ Trọng</th>
-                  <th className="px-2.5 py-2.5 text-right text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">
+                  <th className="px-2.5 py-2.5 text-center font-extrabold text-slate-900 dark:text-white">Tổng Tồn</th>
+                  <th className="px-2 py-2.5 text-center text-slate-500">Tỷ Trọng</th>
+                  <th className="px-2.5 py-2.5 text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">
                     &lt; 1 Ngày (&lt;24h)
                   </th>
-                  <th className="px-2.5 py-2.5 text-right text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30">
+                  <th className="px-2.5 py-2.5 text-center text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30">
                     1 - 3 Ngày (24-72h)
                   </th>
-                  <th className="px-2.5 py-2.5 text-right text-orange-700 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/30">
+                  <th className="px-2.5 py-2.5 text-center text-orange-700 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/30">
                     3 - 5 Ngày (72-120h)
                   </th>
-                  <th className="px-2.5 py-2.5 text-right text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30">
+                  <th className="px-2.5 py-2.5 text-center text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30">
                     5 - 8 Ngày (120-192h)
                   </th>
                   {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) - MỨC ĐỘ KHẨN CẤP NHẤT */}
-                  <th className="px-3 py-2.5 text-right text-white bg-red-600 dark:bg-red-700 font-black border-x-2 border-red-700 shadow-inner">
+                  <th className="px-3 py-2.5 text-center text-white bg-red-600 dark:bg-red-700 font-black border-x-2 border-red-700 shadow-inner">
                     🚨 &gt; 8 Ngày (192h)
                   </th>
-                  <th className="px-2.5 py-2.5 text-right text-rose-600 dark:text-rose-400">Quá Hạn %</th>
+                  <th className="px-2.5 py-2.5 text-center text-rose-600 dark:text-rose-400">Quá Hạn %</th>
                   <th className="px-2.5 py-2.5 text-center">Áp Lực SLA</th>
                   <th className="px-2.5 py-2.5 text-center">Thao Tác</th>
                 </tr>
@@ -1575,7 +1575,7 @@ export const BacklogGltTab: React.FC = () => {
                     key={row.khachHang} 
                     className="hover:bg-slate-50 dark:hover:bg-slate-750/60 transition-colors"
                   >
-                    <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-left">
                       <Store className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                       <span className="font-mono text-indigo-700 dark:text-indigo-300 font-extrabold">{row.khachHang}</span>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">({row.partnerName})</span>
@@ -1590,33 +1590,33 @@ export const BacklogGltTab: React.FC = () => {
                         {row.categoryBadge}
                       </span>
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono font-black text-slate-900 dark:text-white">
+                    <td className="px-2.5 py-2 text-center font-mono font-black text-slate-900 dark:text-white">
                       {row.total.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-2 py-2 text-right font-mono text-[11px] text-slate-500">
+                    <td className="px-2 py-2 text-center font-mono text-[11px] text-slate-500">
                       {row.sharePct.toFixed(1)}%
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10">
+                    <td className="px-2.5 py-2 text-center font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10">
                       {row.lt_1d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono text-amber-700 dark:text-amber-400 bg-amber-50/20 dark:bg-amber-950/10">
+                    <td className="px-2.5 py-2 text-center font-mono text-amber-700 dark:text-amber-400 bg-amber-50/20 dark:bg-amber-950/10">
                       {row.p_1_3d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono text-orange-700 dark:text-orange-400 bg-orange-50/20 dark:bg-orange-950/10">
+                    <td className="px-2.5 py-2 text-center font-mono text-orange-700 dark:text-orange-400 bg-orange-50/20 dark:bg-orange-950/10">
                       {row.p_3_5d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono text-rose-700 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
+                    <td className="px-2.5 py-2 text-center font-mono text-rose-700 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
                       {row.p_5_8d.toLocaleString('vi-VN')}
                     </td>
                     {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) */}
-                    <td className={`px-3 py-2 text-right font-mono font-black border-x border-red-200 dark:border-red-900 ${
+                    <td className={`px-3 py-2 text-center font-mono font-black border-x border-red-200 dark:border-red-900 ${
                       row.p_gt_8d_192h > 0 
                         ? 'bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse font-extrabold' 
                         : 'text-slate-400 bg-slate-50/50 dark:bg-slate-800/40'
                     }`}>
                       {row.p_gt_8d_192h > 0 ? `🚨 ${row.p_gt_8d_192h.toLocaleString('vi-VN')}` : '-'}
                     </td>
-                    <td className="px-2.5 py-2 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                    <td className="px-2.5 py-2 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
                       {row.overdueRate.toFixed(1)}%
                     </td>
                     <td className="px-2.5 py-2 text-center">
@@ -1643,31 +1643,31 @@ export const BacklogGltTab: React.FC = () => {
               </tbody>
               <tfoot className="bg-slate-100/95 dark:bg-slate-750 text-slate-900 dark:text-white font-extrabold border-t-2 border-slate-300 dark:border-slate-650">
                 <tr>
-                  <td className="px-3 py-2.5 uppercase tracking-wider text-[11px] font-black" colSpan={2}>
+                  <td className="px-3 py-2.5 uppercase tracking-wider text-[11px] font-black text-left" colSpan={2}>
                     {customerAgingDetailed.totals.partnerName}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right font-mono text-sm font-black text-indigo-700 dark:text-indigo-300">
+                  <td className="px-2.5 py-2.5 text-center font-mono text-sm font-black text-indigo-700 dark:text-indigo-300">
                     {customerAgingDetailed.totals.total.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-2 py-2.5 text-right font-mono text-[11px] text-slate-500">
+                  <td className="px-2 py-2.5 text-center font-mono text-[11px] text-slate-500">
                     100%
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-emerald-700 dark:text-emerald-400 font-mono">
+                  <td className="px-2.5 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-mono">
                     {customerAgingDetailed.totals.lt_1d.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-amber-700 dark:text-amber-400 font-mono">
+                  <td className="px-2.5 py-2.5 text-center text-amber-700 dark:text-amber-400 font-mono">
                     {customerAgingDetailed.totals.p_1_3d.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-orange-700 dark:text-orange-400 font-mono">
+                  <td className="px-2.5 py-2.5 text-center text-orange-700 dark:text-orange-400 font-mono">
                     {customerAgingDetailed.totals.p_3_5d.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-rose-700 dark:text-rose-400 font-mono">
+                  <td className="px-2.5 py-2.5 text-center text-rose-700 dark:text-rose-400 font-mono">
                     {customerAgingDetailed.totals.p_5_8d.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-white bg-red-600 dark:bg-red-700 font-black font-mono border-x-2 border-red-700 text-sm">
+                  <td className="px-3 py-2.5 text-center text-white bg-red-600 dark:bg-red-700 font-black font-mono border-x-2 border-red-700 text-sm">
                     {customerAgingDetailed.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                  <td className="px-2.5 py-2.5 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
                     {customerAgingDetailed.totals.overdueRate.toFixed(1)}%
                   </td>
                   <td className="px-2.5 py-2.5 text-center">

@@ -90,7 +90,10 @@ body,
 }
 
 /* =========================================================================
-   2. TĂNG KÍCH THƯỚC NỘI DUNG CHỮ TRONG TẤT CẢ CÁC BẢNG BÁO CÁO CỦA DASHBOARD
+   2. TĂNG KÍCH THƯỚC & CĂN CHỈNH NỘI DUNG CHỮ TRONG TẤT CẢ CÁC BẢNG BÁO CÁO CỦA DASHBOARD
+   - Số liệu ở tất cả các bảng báo cáo của dashboard đều phải căn giữa
+   - Nội dung text (văn bản) căn lề trái
+   - Nội dung tiêu đề của bảng thì căn giữa
    (LƯU Ý QUAN TRỌNG: CHỈ TĂNG KÍCH THƯỚC NỘI DUNG CHỮ TRONG BẢNG. KHÔNG TĂNG TẤT CẢ)
    ========================================================================= */
 main table,
@@ -99,8 +102,10 @@ table {
   line-height: 1.45 !important;
 }
 
+/* 1. TIÊU ĐỀ CỦA BẢNG THÌ CĂN GIỮA (100% THEAD TH TOÀN HỆ THỐNG) */
 main table thead th,
-table thead th {
+table thead th,
+.data-table-container thead th {
   padding-top: 7px !important;
   padding-bottom: 7px !important;
   padding-left: 8px !important;
@@ -109,11 +114,70 @@ table thead th {
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   line-height: 1.3 !important;
+  text-align: center !important;
 }
 
+main table thead th > div,
+table thead th > div,
+main table thead th span,
+table thead th span,
+.data-table-container thead th > div {
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+/* 2. SỐ LIỆU Ở TẤT CẢ CÁC BẢNG BÁO CÁO ĐỀU PHẢI CĂN GIỮA */
+main table td.font-mono,
+main table td .font-mono,
+main table td[class*="font-mono"],
+main table td[class*="text-right"],
+main table td[class*="text-end"],
+main table td[class*="tabular-nums"],
+main table tfoot td.font-mono,
+main table tfoot td .font-mono,
+main table tfoot td[class*="font-mono"],
+main table tfoot td[class*="text-right"],
+main table tfoot td[class*="text-end"],
+table td.font-mono,
+table td .font-mono,
+table td[class*="font-mono"],
+table td[class*="text-right"],
+table td[class*="text-end"],
+table td[class*="tabular-nums"],
+table tfoot td.font-mono,
+table tfoot td .font-mono,
+table tfoot td[class*="font-mono"],
+table tfoot td[class*="text-right"],
+table tfoot td[class*="text-end"],
+.data-table-container td.font-mono,
+.data-table-container td .font-mono,
+.data-table-container td[class*="text-right"] {
+  text-align: center !important;
+}
+
+main table td.font-mono div,
+main table td .font-mono div,
+main table td[class*="text-right"] div,
+table td.font-mono div,
+table td .font-mono div,
+table td[class*="text-right"] div {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* 3. NỘI DUNG TEXT (VĂN BẢN) CĂN LỀ TRÁI */
 main table tbody td,
+table tbody td {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  text-align: left; /* Mặc định lề trái */
+}
+
 main table tfoot td,
-table tbody td,
 table tfoot td {
   padding-top: 6px !important;
   padding-bottom: 6px !important;
@@ -121,6 +185,17 @@ table tfoot td {
   padding-right: 8px !important;
   font-size: 13px !important;
   line-height: 1.45 !important;
+}
+
+/* Đảm bảo ô văn bản (bưu cục, họ tên, địa bàn, chức vụ, khách hàng, mô tả) luôn căn trái */
+main table tbody td:not(.font-mono):not([class*="font-mono"]):not([class*="text-right"]):not([class*="text-center"]):not([class*="tabular-nums"]),
+table tbody td:not(.font-mono):not([class*="font-mono"]):not([class*="text-right"]):not([class*="text-center"]):not([class*="tabular-nums"]) {
+  text-align: left !important;
+}
+
+main table tfoot td:first-child,
+table tfoot td:first-child {
+  text-align: left !important;
 }
 
 main table tbody tr,
