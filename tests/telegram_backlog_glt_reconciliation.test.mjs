@@ -118,4 +118,28 @@ test('ĐỐI CHIẾU CHUẨN XÁC BÁO CÁO TỒN ĐỌNG GLT TELEGRAM & DỮ LI
     assert.match(telegramServiceSrc, /cleanChatId === '-5234712010'/);
     assert.match(telegramServiceSrc, /Lỗi chat not found/);
   });
+
+  await t.test('6. Hàm buildGlt192hTelegramReports tạo báo cáo chuyên biệt nhóm 192h (>8 ngày)', () => {
+    assert.match(telegramServiceSrc, /export function buildGlt192hTelegramReports/);
+    assert.match(telegramServiceSrc, /BÁO CÁO TỒN ĐỌNG KHẨN CẤP: ĐƠN 192H/);
+    assert.match(telegramServiceSrc, /CHỈ ĐẠO CỦA AM ĐỐI VỚI ĐƠN 192H/);
+  });
+
+  await t.test('7. Tab BacklogGltTab tích hợp Drill-Down ngầm hiểu cho tất cả các bảng', () => {
+    const backlogGltSrc = fs.readFileSync(path.join(ROOT_DIR, 'src/pages/BacklogGltTab.tsx'), 'utf8');
+    assert.match(backlogGltSrc, /UnifiedDrillDownModal/);
+    assert.match(backlogGltSrc, /drillDownColumns/);
+    assert.match(backlogGltSrc, /handleOpenDrillDown/);
+    // Bảng 3 đã xóa cột Thao Tác ("Xem Đơn") để tuân thủ ẩn đi ngầm hiểu
+    assert.doesNotMatch(backlogGltSrc, /<th className="px-2\.5 py-2\.5 text-center">Thao Tác<\/th>/);
+    // Nút Báo Cáo Tele 192h trên header tab
+    assert.match(backlogGltSrc, /Báo Cáo Tele 192h/);
+  });
+
+  await t.test('8. Modal TelegramReportModal hỗ trợ nhánh báo cáo glt_192h', () => {
+    const modalSrc = fs.readFileSync(path.join(ROOT_DIR, 'src/components/common/TelegramReportModal.tsx'), 'utf8');
+    assert.match(modalSrc, /'glt_192h'/);
+    assert.match(modalSrc, /buildGlt192hTelegramReports/);
+    assert.match(modalSrc, /Báo Cáo Riêng Đơn 192h/);
+  });
 });

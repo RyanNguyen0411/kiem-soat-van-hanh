@@ -22,7 +22,8 @@ import {
   Timer,
   ChevronUp,
   ChevronDown,
-  Send
+  Send,
+  Copy
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -46,6 +47,8 @@ import { normalizeOrderId, dedupeGltRecords, computeGltBacklogBreakdown } from '
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
 import { IndividualFilterDropdown } from '../components/common/IndividualFilterDropdown';
+import { UnifiedDrillDownModal } from '../components/common/UnifiedDrillDownModal';
+import type { DrillDownColumn, DrillDownSummaryKpi } from '../components/common/UnifiedDrillDownModal';
 import { 
   classifyGltAging, 
   computePostOfficeAgingMatrix, 
@@ -223,6 +226,201 @@ export const BacklogGltTab: React.FC = () => {
       urgent192hCount
     };
   }, [filteredData, gltBreakdown]);
+
+  // =========================================================================
+  // DRILL DOWN MODAL CHO TẤT CẢ CÁC BẢNG (BẤM VÀO SỐ LƯỢNG MỞ BẢNG KÊ CHI TIẾT)
+  // =========================================================================
+  const [drillDownState, setDrillDownState] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    appliedFilters?: { label: string; value: string }[];
+    data: BacklogGltRecord[];
+    summaryKpis?: DrillDownSummaryKpi[];
+    exportFileName?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    data: []
+  });
+
+  const closeDrillDown = () => {
+    setDrillDownState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleOpenDrillDown = (
+    title: string,
+    subtitle: string,
+    appliedFilters: { label: string; value: string }[],
+    filterFn: (r: BacklogGltRecord) => boolean,
+    exportFileNamePrefix: string
+  ) => {
+    const matchingRecords = filteredData.filter(filterFn);
+    const totalCount = matchingRecords.length;
+    const count192 = matchingRecords.filter(r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'gt_8d_192h').length;
+    const countNoTrip = matchingRecords.filter(r => 
+      !(r.trangThai || '').includes('Đã có chuyến') && !(r.trangThai || '').includes('Đang có chuyến')
+    ).length;
+    const countHasTrip = matchingRecords.filter(r => 
+      (r.trangThai || '').includes('Đã có chuyến') || (r.trangThai || '').includes('Đang có chuyến')
+    ).length;
+
+    setDrillDownState({
+      isOpen: true,
+      title,
+      subtitle: `${subtitle} (${totalCount.toLocaleString('vi-VN')} đơn)`,
+      appliedFilters,
+      data: matchingRecords,
+      summaryKpis: [
+        { label: 'Tổng Đơn Khớp', value: `${totalCount.toLocaleString('vi-VN')} đơn`, colorClass: 'text-indigo-600 font-bold' },
+        { label: 'Chưa Có Chuyến', value: `${countNoTrip.toLocaleString('vi-VN')} đơn`, colorClass: 'text-amber-600 font-bold' },
+        { label: 'Đang/Đã Có Chuyến', value: `${countHasTrip.toLocaleString('vi-VN')} đơn`, colorClass: 'text-blue-600 font-bold' },
+        { label: 'Nhóm 192h (>8N)', value: `${count192.toLocaleString('vi-VN')} đơn`, colorClass: 'text-red-600 font-black' }
+      ],
+      exportFileName: `${exportFileNamePrefix}_${new Date().toISOString().slice(0, 10)}`
+    });
+  };
+
+  const drillDownColumns: DrillDownColumn<BacklogGltRecord>[] = useMemo(() => [
+    {
+      key: 'maDonHang',
+      header: 'Mã Đơn Hàng',
+      align: 'left',
+      sortable: true,
+      render: (r) => (
+        <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 dark:text-white">
+          <span className="text-orange-600 dark:text-orange-400 select-all">{r.maDonHang}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard?.writeText(r.maDonHang);
+            }}
+            title="Sao chép mã đơn"
+            className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+          >
+            <Copy className="w-3 h-3" />
+          </button>
+        </div>
+      ),
+      exportValue: (r) => r.maDonHang
+    },
+    {
+      key: 'buuCuc',
+      header: 'Bưu Cục',
+      align: 'left',
+      sortable: true,
+      render: (r) => (
+        <span className="font-bold text-slate-800 dark:text-slate-100">
+          {r.buuCuc}
+        </span>
+      ),
+      exportValue: (r) => r.buuCuc
+    },
+    {
+      key: 'khachHang',
+      header: 'Khách Hàng',
+      align: 'center',
+      sortable: true,
+      render: (r) => {
+        const kh = (r.khachHang || 'OTHER').toUpperCase();
+        return (
+          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+            kh.includes('TTS') ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+            kh.includes('SHOPEE') ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
+            'bg-slate-100 text-slate-700 dark:bg-slate-750 dark:text-slate-300'
+          }`}>
+            {kh}
+          </span>
+        );
+      },
+      exportValue: (r) => r.khachHang || 'OTHER'
+    },
+    {
+      key: 'thoiGianTonDong',
+      header: 'Thời Gian Tồn',
+      align: 'center',
+      sortable: true,
+      render: (r) => {
+        const aging = classifyGltAging(r.thoiGianTonDong, r.canhBao);
+        return (
+          <div className="flex flex-col items-center">
+            <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
+              {r.thoiGianTonDong || '0'}h
+            </span>
+            <span className={`text-[9px] px-1 rounded font-extrabold ${
+              aging.key === 'gt_8d_192h' ? 'bg-red-600 text-white animate-pulse' :
+              aging.key === '5_8d' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
+              aging.key === '3_5d' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
+              aging.key === '1_3d' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+              'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+            }`}>
+              {aging.label}
+            </span>
+          </div>
+        );
+      },
+      exportValue: (r) => `${r.thoiGianTonDong || 0}h`
+    },
+    {
+      key: 'canhBao',
+      header: 'Cảnh Báo',
+      align: 'center',
+      sortable: true,
+      render: (r) => {
+        const cb = r.canhBao || 'Bình thường';
+        const isUrgent = cb.toLowerCase().includes('192') || cb.toLowerCase().includes('120') || cb.toLowerCase().includes('khẩn');
+        return (
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+            isUrgent ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+            'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+          }`}>
+            {cb}
+          </span>
+        );
+      },
+      exportValue: (r) => r.canhBao || 'Bình thường'
+    },
+    {
+      key: 'trangThai',
+      header: 'Trạng Thái Chuyến Đi',
+      align: 'left',
+      sortable: true,
+      render: (r) => {
+        const hasTrip = (r.trangThai || '').includes('Đã có chuyến') || (r.trangThai || '').includes('Đang có chuyến');
+        return (
+          <span className={`px-2 py-0.5 rounded text-[10.5px] font-bold inline-flex items-center gap-1 ${
+            hasTrip 
+              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+          }`}>
+            {hasTrip ? 'Đã có chuyến đi' : 'Chưa có chuyến đi'}
+          </span>
+        );
+      },
+      exportValue: (r) => r.trangThai || '-'
+    },
+    {
+      key: 'phuongXa',
+      header: 'Địa Bàn Tuyến',
+      align: 'left',
+      sortable: true,
+      render: (r) => <span className="text-slate-600 dark:text-slate-400 text-xs">{r.phuongXa || '-'}</span>,
+      exportValue: (r) => r.phuongXa || '-'
+    },
+    {
+      key: 'loaiDon',
+      header: 'Loại Đơn',
+      align: 'center',
+      sortable: true,
+      render: (r) => (
+        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold">
+          {r.loaiDon || 'Giao'}
+        </span>
+      ),
+      exportValue: (r) => r.loaiDon || 'Giao'
+    }
+  ], []);
 
   // Dữ liệu bảng chi tiết được liên kết với Menu KPI
   const tableData = useMemo(() => {
@@ -555,17 +753,28 @@ export const BacklogGltTab: React.FC = () => {
                   )}
                 </button>
 
-                {/* NÚT BÁO CÁO TELEGRAM TỒN ĐỌNG 120H & 192H (Ẩn đối với nhân viên) */}
+                {/* NÚT BÁO CÁO TELEGRAM (Ẩn đối với nhân viên) */}
                 {!isStaff && (
-                  <button
-                    type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt' } }))}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold text-[11px] shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-[#229ED9]/50"
-                    title="Xuất và gửi báo cáo Telegram Tồn Đọng 120h & 192h cho 5 bưu cục"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Báo Cáo Telegram</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt' } }))}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-extrabold text-[11px] shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-[#229ED9]/50"
+                      title="Xuất và gửi báo cáo Telegram Tồn Đọng 120h & 192h cho 5 bưu cục"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Báo Cáo Tele GLT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('open-telegram-report', { detail: { reportType: 'glt_192h' } }))}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-extrabold text-[11px] shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-red-500 animate-pulse"
+                      title="Mở báo cáo Telegram nhánh riêng cho nhóm đơn hàng 192h (> 8 ngày) khẩn cấp nhất"
+                    >
+                      <AlertOctagon className="w-3.5 h-3.5 text-white" />
+                      <span>Báo Cáo Tele 192h</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -1073,29 +1282,107 @@ export const BacklogGltTab: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-1.5 py-2 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {row.lt_1d.toLocaleString('vi-VN')}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết: ${row.buuCuc} - Tồn < 1 Ngày (<24h)`,
+                            `Đơn hàng mới nhập kho trong vòng 24 giờ tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Cấp độ', value: '< 1 ngày (<24h)' }],
+                            r => r.buuCuc === row.buuCuc && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'lt_1d',
+                            `ton_dong_${row.buuCucShort}_lt1d`
+                          )}
+                          className="w-full text-center hover:underline hover:text-emerald-700 dark:hover:text-emerald-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn < 1 ngày"
+                        >
+                          {row.lt_1d.toLocaleString('vi-VN')}
+                        </button>
                       </td>
                       <td className="px-1.5 py-2 text-center font-mono font-bold text-amber-600">
-                        {row.p_1_3d.toLocaleString('vi-VN')}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết: ${row.buuCuc} - Tồn 1 - 3 Ngày (24-72h)`,
+                            `Đơn hàng tồn từ 24h đến 72h tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Cấp độ', value: '1 - 3 ngày (24-72h)' }],
+                            r => r.buuCuc === row.buuCuc && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '1_3d',
+                            `ton_dong_${row.buuCucShort}_1_3d`
+                          )}
+                          className="w-full text-center hover:underline hover:text-amber-700 dark:hover:text-amber-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn 1 - 3 ngày"
+                        >
+                          {row.p_1_3d.toLocaleString('vi-VN')}
+                        </button>
                       </td>
                       <td className="px-1.5 py-2 text-center font-mono font-bold text-orange-600">
-                        {row.p_3_5d.toLocaleString('vi-VN')}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết: ${row.buuCuc} - Tồn 3 - 5 Ngày (72-120h)`,
+                            `Đơn hàng tồn từ 72h đến 120h (bắt đầu trễ hạn) tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Cấp độ', value: '3 - 5 ngày (72-120h)' }],
+                            r => r.buuCuc === row.buuCuc && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '3_5d',
+                            `ton_dong_${row.buuCucShort}_3_5d`
+                          )}
+                          className="w-full text-center hover:underline hover:text-orange-700 dark:hover:text-orange-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn 3 - 5 ngày"
+                        >
+                          {row.p_3_5d.toLocaleString('vi-VN')}
+                        </button>
                       </td>
                       <td className="px-1.5 py-2 text-center font-mono font-bold text-rose-600">
-                        {row.p_5_8d.toLocaleString('vi-VN')}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết: ${row.buuCuc} - Tồn 5 - 8 Ngày (120-192h)`,
+                            `Đơn hàng quá hạn nghiêm trọng từ 120h đến 192h tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Cấp độ', value: '5 - 8 ngày (120-192h)' }],
+                            r => r.buuCuc === row.buuCuc && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '5_8d',
+                            `ton_dong_${row.buuCucShort}_5_8d`
+                          )}
+                          className="w-full text-center hover:underline hover:text-rose-700 dark:hover:text-rose-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn 5 - 8 ngày"
+                        >
+                          {row.p_5_8d.toLocaleString('vi-VN')}
+                        </button>
                       </td>
                       {/* CELL 192H TÁCH RIÊNG BIỆT KHẨN CẤP */}
                       <td className="px-1.5 py-2 text-center font-mono font-black border-x-2 border-red-500/50 bg-red-100/50 dark:bg-red-950/40">
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black ${
-                          row.p_gt_8d_192h > 0
-                            ? 'bg-red-600 text-white animate-pulse shadow-2xs'
-                            : 'text-slate-400'
-                        }`}>
-                          {row.p_gt_8d_192h.toLocaleString('vi-VN')}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `🚨 Bảng Kê Chi Tiết: ${row.buuCuc} - Đơn Quá Hạn > 8 Ngày (192h) Khẩn Cấp Nhất`,
+                            `Danh sách đơn hàng 192h khẩn cấp bắt buộc xử lý triệt để trong ngày tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Cấp độ', value: '🚨 > 8 ngày (192h) - Xử Lý Triệt Để' }],
+                            r => r.buuCuc === row.buuCuc && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'gt_8d_192h',
+                            `ton_dong_${row.buuCucShort}_192h_urgent`
+                          )}
+                          className="w-full text-center cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn > 8 ngày (192h)"
+                        >
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black hover:underline ${
+                            row.p_gt_8d_192h > 0
+                              ? 'bg-red-600 text-white animate-pulse shadow-2xs hover:bg-red-700'
+                              : 'text-slate-400'
+                          }`}>
+                            {row.p_gt_8d_192h.toLocaleString('vi-VN')}
+                          </span>
+                        </button>
                       </td>
                       <td className="px-2 py-2 text-center font-mono font-black text-slate-900 dark:text-white text-xs">
-                        {row.total.toLocaleString('vi-VN')}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết: ${row.buuCuc} - Tổng Đơn Tồn Đọng GLT`,
+                            `Toàn bộ đơn hàng tồn đọng tại ${row.buuCuc}`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Phân loại', value: 'Tất cả đơn tồn GLT' }],
+                            r => r.buuCuc === row.buuCuc,
+                            `ton_dong_${row.buuCucShort}_total`
+                          )}
+                          className="w-full text-center hover:underline hover:text-indigo-600 dark:hover:text-indigo-400 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết toàn bộ đơn tồn tại bưu cục này"
+                        >
+                          {row.total.toLocaleString('vi-VN')}
+                        </button>
                       </td>
                       <td className="px-1.5 py-2 text-center">
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
@@ -1134,23 +1421,103 @@ export const BacklogGltTab: React.FC = () => {
                       {agingMatrixData.totals.buuCuc}
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {agingMatrixData.totals.lt_1d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Toàn Khu Vực - Tồn < 1 Ngày (<24h)`,
+                          `Toàn bộ đơn hàng mới nhập kho trong vòng 24 giờ trên toàn mạng lưới Long An`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Cấp độ', value: '< 1 ngày (<24h)' }],
+                          r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'lt_1d',
+                          'ton_dong_toan_khu_vuc_lt1d'
+                        )}
+                        className="w-full text-center hover:underline hover:text-emerald-700 dark:hover:text-emerald-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn < 1 ngày"
+                      >
+                        {agingMatrixData.totals.lt_1d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-mono font-bold text-amber-600">
-                      {agingMatrixData.totals.p_1_3d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Toàn Khu Vực - Tồn 1 - 3 Ngày (24-72h)`,
+                          `Toàn bộ đơn hàng tồn từ 24h đến 72h trên toàn mạng lưới Long An`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Cấp độ', value: '1 - 3 ngày (24-72h)' }],
+                          r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '1_3d',
+                          'ton_dong_toan_khu_vuc_1_3d'
+                        )}
+                        className="w-full text-center hover:underline hover:text-amber-700 dark:hover:text-amber-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 1 - 3 ngày"
+                      >
+                        {agingMatrixData.totals.p_1_3d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-mono font-bold text-orange-600">
-                      {agingMatrixData.totals.p_3_5d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Toàn Khu Vực - Tồn 3 - 5 Ngày (72-120h)`,
+                          `Toàn bộ đơn hàng tồn từ 72h đến 120h (bắt đầu trễ hạn) trên toàn mạng lưới Long An`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Cấp độ', value: '3 - 5 ngày (72-120h)' }],
+                          r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '3_5d',
+                          'ton_dong_toan_khu_vuc_3_5d'
+                        )}
+                        className="w-full text-center hover:underline hover:text-orange-700 dark:hover:text-orange-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 3 - 5 ngày"
+                      >
+                        {agingMatrixData.totals.p_3_5d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-mono font-bold text-rose-600">
-                      {agingMatrixData.totals.p_5_8d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Toàn Khu Vực - Tồn 5 - 8 Ngày (120-192h)`,
+                          `Toàn bộ đơn hàng quá hạn nghiêm trọng từ 120h đến 192h trên toàn mạng lưới Long An`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Cấp độ', value: '5 - 8 ngày (120-192h)' }],
+                          r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '5_8d',
+                          'ton_dong_toan_khu_vuc_5_8d'
+                        )}
+                        className="w-full text-center hover:underline hover:text-rose-700 dark:hover:text-rose-300 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 5 - 8 ngày"
+                      >
+                        {agingMatrixData.totals.p_5_8d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     {/* TỔNG NHÓM 192H */}
                     <td className="px-1.5 py-2.5 text-center font-mono font-black border-x-2 border-red-500 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs sm:text-sm">
-                      {agingMatrixData.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `🚨 Bảng Kê Chi Tiết: Toàn Khu Vực - Đơn Tồn > 8 Ngày (192h) Khẩn Cấp Nhất`,
+                          `Toàn bộ đơn hàng 192h khẩn cấp bắt buộc xử lý triệt để trên toàn mạng lưới Long An`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Cấp độ', value: '🚨 > 8 ngày (192h) - Xử Lý Triệt Để' }],
+                          r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'gt_8d_192h',
+                          'ton_dong_toan_khu_vuc_192h_urgent'
+                        )}
+                        className="w-full text-center cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn > 8 ngày (192h)"
+                      >
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-black hover:underline bg-red-600 text-white animate-pulse shadow-2xs hover:bg-red-700">
+                          {agingMatrixData.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
+                        </span>
+                      </button>
                     </td>
                     <td className="px-2 py-2.5 text-center font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                      {agingMatrixData.totals.total.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Toàn Khu Vực - Tổng Đơn Tồn Đọng GLT`,
+                          `Toàn bộ đơn hàng tồn đọng GLT đang quản lý trên hệ thống`,
+                          [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Phân loại', value: 'Tất cả đơn tồn GLT' }],
+                          () => true,
+                          'ton_dong_toan_khu_vuc_total'
+                        )}
+                        className="w-full text-center hover:underline hover:text-indigo-600 dark:hover:text-indigo-400 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn tồn trên hệ thống"
+                      >
+                        {agingMatrixData.totals.total.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-bold text-rose-600">
                       {agingMatrixData.totals.overdueRate.toFixed(1)}%
@@ -1374,36 +1741,109 @@ export const BacklogGltTab: React.FC = () => {
                       row.riskLevel === 'danger' ? 'bg-red-50/30 dark:bg-red-950/20' : ''
                     }`}
                   >
-                    <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100">
+                    <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100 text-left">
                       <div className="flex items-center gap-1">
                         <Store className="w-3.5 h-3.5 text-purple-600 shrink-0" />
                         <span className="truncate">{row.buuCucShort}</span>
                       </div>
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-black text-purple-700 dark:text-purple-300 text-xs">
-                      {row.totalTts.toLocaleString('vi-VN')}
+                    <td className="px-1.5 py-2 text-center font-mono font-black text-purple-700 dark:text-purple-300 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.buuCuc} - Toàn Bộ Đơn TikTok Shop (TTS)`,
+                          `Tất cả các đơn hàng TikTok Shop đang tồn đọng tại ${row.buuCuc}`,
+                          [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đối tác', value: 'TikTok Shop (TTS)' }],
+                          r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS'),
+                          `ton_dong_tts_${row.buuCucShort}_all`
+                        )}
+                        className="w-full text-center hover:underline hover:text-purple-900 dark:hover:text-purple-200 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS tại bưu cục này"
+                      >
+                        {row.totalTts.toLocaleString('vi-VN')}
+                      </button>
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                    <td className="px-1.5 py-2 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                       {row.ttsShare.toFixed(1)}%
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-bold text-amber-600">
-                      {row.noTrip.toLocaleString('vi-VN')} <span className="text-[10px] font-normal text-slate-400">({row.noTripPct.toFixed(0)}%)</span>
+                    <td className="px-1.5 py-2 text-center font-mono font-bold text-amber-600">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.buuCuc} - Đơn TTS Chưa Có Chuyến Đi`,
+                          `Các đơn hàng TikTok Shop chưa được xếp chuyến đi tại ${row.buuCuc}`,
+                          [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đối tác', value: 'TTS' }, { label: 'Trạng thái', value: 'Chưa có chuyến đi' }],
+                          r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS') && !(r.trangThai || '').includes('Đã có chuyến') && !(r.trangThai || '').includes('Đang có chuyến'),
+                          `ton_dong_tts_${row.buuCucShort}_chua_co_chuyen`
+                        )}
+                        className="w-full text-center hover:underline hover:text-amber-700 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn TTS chưa có chuyến đi"
+                      >
+                        {row.noTrip.toLocaleString('vi-VN')} <span className="text-[10px] font-normal text-slate-400">({row.noTripPct.toFixed(0)}%)</span>
+                      </button>
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-bold text-orange-600">
-                      {row.priorityLate.toLocaleString('vi-VN')}
+                    <td className="px-1.5 py-2 text-center font-mono font-bold text-orange-600">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.buuCuc} - Đơn TTS Ưu Tiên Giao / Trễ Hạn`,
+                          `Các đơn hàng TikTok Shop cần ưu tiên giao gấp hoặc đã trễ tại ${row.buuCuc}`,
+                          [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đối tác', value: 'TTS' }, { label: 'Cảnh báo', value: 'Ưu tiên / Trễ' }],
+                          r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS') && (r.canhBao.includes('Ưu tiên') || r.loaiDon.includes('trễ') || r.canhBao.includes('trễ')),
+                          `ton_dong_tts_${row.buuCucShort}_uu_tien_tre`
+                        )}
+                        className="w-full text-center hover:underline hover:text-orange-700 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn TTS ưu tiên/trễ"
+                      >
+                        {row.priorityLate.toLocaleString('vi-VN')}
+                      </button>
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-bold text-rose-600">
-                      {row.overdue48h.toLocaleString('vi-VN')}
+                    <td className="px-1.5 py-2 text-center font-mono font-bold text-rose-600">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.buuCuc} - Đơn TTS Quá Hạn > 48h`,
+                          `Các đơn hàng TikTok Shop lưu kho quá 48 giờ vi phạm SLA tại ${row.buuCuc}`,
+                          [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đối tác', value: 'TTS' }, { label: 'Thời gian', value: '> 48h (Cảnh báo + Khẩn cấp)' }],
+                          r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS') && ((r.canhBao || '').includes('Cảnh báo') || (r.canhBao || '').includes('Khẩn cấp')),
+                          `ton_dong_tts_${row.buuCucShort}_overdue_48h`
+                        )}
+                        className="w-full text-center hover:underline hover:text-rose-700 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn TTS quá hạn > 48h"
+                      >
+                        {row.overdue48h.toLocaleString('vi-VN')}
+                      </button>
                     </td>
-                    <td className="px-1.5 py-2 text-right font-mono font-black text-red-600">
-                      {row.urgent.toLocaleString('vi-VN')}
+                    <td className="px-1.5 py-2 text-center font-mono font-black text-red-600">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `🚨 Bảng Kê Chi Tiết: ${row.buuCuc} - Đơn TTS Khẩn Cấp > 120h`,
+                          `Các đơn hàng TikTok Shop tồn lưu kho khẩn cấp trên 5 ngày (>120h) tại ${row.buuCuc}`,
+                          [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đối tác', value: 'TTS' }, { label: 'Cấp độ', value: '🚨 Khẩn cấp > 120h' }],
+                          r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS') && (r.canhBao || '').includes('Khẩn cấp'),
+                          `ton_dong_tts_${row.buuCucShort}_urgent_120h`
+                        )}
+                        className="w-full text-center hover:underline hover:text-red-700 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn TTS khẩn cấp > 120h"
+                      >
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-black bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+                          {row.urgent.toLocaleString('vi-VN')}
+                        </span>
+                      </button>
                     </td>
                     <td className="px-1.5 py-2 text-center">
                       {row.riskLevel === 'danger' ? (
                         <button
                           type="button"
-                          onClick={() => handleFilterTtsBuuCuc(row.buuCuc)}
-                          title="Bấm để lọc ngay danh sách đơn TTS của bưu cục này"
+                          onClick={() => handleOpenDrillDown(
+                            `🚨 Bảng Kê Chi Tiết Cảnh Báo SLA Đỏ: ${row.buuCuc}`,
+                            `Đơn hàng TikTok Shop tại bưu cục cảnh báo mức đỏ (${row.buuCuc})`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đánh giá SLA', value: 'Báo động đỏ' }],
+                            r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS'),
+                            `ton_dong_tts_${row.buuCucShort}_danger`
+                          )}
+                          title="Bấm để xem ngay danh sách đơn TTS của bưu cục này"
                           className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-red-600 text-white animate-pulse whitespace-nowrap cursor-pointer hover:bg-red-700"
                         >
                           BÁO ĐỘNG ĐỎ
@@ -1411,8 +1851,14 @@ export const BacklogGltTab: React.FC = () => {
                       ) : row.riskLevel === 'warning' ? (
                         <button
                           type="button"
-                          onClick={() => handleFilterTtsBuuCuc(row.buuCuc)}
-                          title="Bấm để lọc ngay danh sách đơn TTS của bưu cục này"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết Cảnh Báo SLA Vàng: ${row.buuCuc}`,
+                            `Đơn hàng TikTok Shop tại bưu cục nguy cơ cao (${row.buuCuc})`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đánh giá SLA', value: 'Nguy cơ cao' }],
+                            r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS'),
+                            `ton_dong_tts_${row.buuCucShort}_warning`
+                          )}
+                          title="Bấm để xem ngay danh sách đơn TTS của bưu cục này"
                           className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 whitespace-nowrap cursor-pointer hover:bg-amber-200"
                         >
                           NGUY CƠ CAO
@@ -1420,8 +1866,14 @@ export const BacklogGltTab: React.FC = () => {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => handleFilterTtsBuuCuc(row.buuCuc)}
-                          title="Bấm để lọc ngay danh sách đơn TTS của bưu cục này"
+                          onClick={() => handleOpenDrillDown(
+                            `Bảng Kê Chi Tiết SLA An Toàn: ${row.buuCuc}`,
+                            `Đơn hàng TikTok Shop tại bưu cục kiểm soát tốt (${row.buuCuc})`,
+                            [{ label: 'Bưu cục', value: row.buuCuc }, { label: 'Đánh giá SLA', value: 'Kiểm soát tốt' }],
+                            r => r.buuCuc === row.buuCuc && (r.khachHang || '').toUpperCase().includes('TTS'),
+                            `ton_dong_tts_${row.buuCucShort}_ok`
+                          )}
+                          title="Bấm để xem ngay danh sách đơn TTS của bưu cục này"
                           className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 whitespace-nowrap cursor-pointer hover:bg-emerald-200"
                         >
                           KIỂM SOÁT TỐT
@@ -1437,22 +1889,89 @@ export const BacklogGltTab: React.FC = () => {
                     {ttsAlertMatrixData.totals.buuCuc}
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-black text-purple-800 dark:text-purple-300 text-xs sm:text-sm">
-                    {ttsAlertMatrixData.totals.totalTts.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Khu Vực - Toàn Bộ Đơn TikTok Shop (TTS)`,
+                        `Tất cả các đơn hàng TikTok Shop đang tồn đọng trên toàn mạng lưới Long An`,
+                        [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Đối tác', value: 'TikTok Shop (TTS)' }],
+                        r => (r.khachHang || '').toUpperCase().includes('TTS'),
+                        'ton_dong_tts_toan_khu_vuc_all'
+                      )}
+                      className="w-full text-center hover:underline hover:text-purple-950 dark:hover:text-purple-100 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS toàn khu vực"
+                    >
+                      {ttsAlertMatrixData.totals.totalTts.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                     {ttsAlertMatrixData.totals.ttsShare.toFixed(1)}%
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-bold text-amber-700 dark:text-amber-400">
-                    {ttsAlertMatrixData.totals.noTrip.toLocaleString('vi-VN')} <span className="text-[10px] font-normal opacity-80">({ttsAlertMatrixData.totals.noTripPct.toFixed(0)}%)</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Khu Vực - Đơn TTS Chưa Có Chuyến Đi`,
+                        `Toàn bộ đơn hàng TikTok Shop chưa xếp chuyến đi trên mạng lưới Long An`,
+                        [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Đối tác', value: 'TTS' }, { label: 'Trạng thái', value: 'Chưa có chuyến đi' }],
+                        r => (r.khachHang || '').toUpperCase().includes('TTS') && !(r.trangThai || '').includes('Đã có chuyến') && !(r.trangThai || '').includes('Đang có chuyến'),
+                        'ton_dong_tts_toan_khu_vuc_chua_co_chuyen'
+                      )}
+                      className="w-full text-center hover:underline hover:text-amber-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS chưa có chuyến đi"
+                    >
+                      {ttsAlertMatrixData.totals.noTrip.toLocaleString('vi-VN')} <span className="text-[10px] font-normal opacity-80">({ttsAlertMatrixData.totals.noTripPct.toFixed(0)}%)</span>
+                    </button>
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-bold text-orange-700 dark:text-orange-400">
-                    {ttsAlertMatrixData.totals.priorityLate.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Khu Vực - Đơn TTS Ưu Tiên Giao / Trễ Hạn`,
+                        `Toàn bộ đơn hàng TikTok Shop cần ưu tiên giao gấp hoặc đã trễ hạn trên mạng lưới Long An`,
+                        [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Đối tác', value: 'TTS' }, { label: 'Cảnh báo', value: 'Ưu tiên / Trễ' }],
+                        r => (r.khachHang || '').toUpperCase().includes('TTS') && (r.canhBao.includes('Ưu tiên') || r.loaiDon.includes('trễ') || r.canhBao.includes('trễ')),
+                        'ton_dong_tts_toan_khu_vuc_uu_tien_tre'
+                      )}
+                      className="w-full text-center hover:underline hover:text-orange-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS ưu tiên/trễ"
+                    >
+                      {ttsAlertMatrixData.totals.priorityLate.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-bold text-rose-700 dark:text-rose-400">
-                    {ttsAlertMatrixData.totals.overdue48h.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Khu Vực - Đơn TTS Quá Hạn > 48h`,
+                        `Toàn bộ đơn hàng TikTok Shop lưu kho quá 48 giờ trên toàn mạng lưới Long An`,
+                        [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Đối tác', value: 'TTS' }, { label: 'Thời gian', value: '> 48h (Cảnh báo + Khẩn cấp)' }],
+                        r => (r.khachHang || '').toUpperCase().includes('TTS') && ((r.canhBao || '').includes('Cảnh báo') || (r.canhBao || '').includes('Khẩn cấp')),
+                        'ton_dong_tts_toan_khu_vuc_overdue_48h'
+                      )}
+                      className="w-full text-center hover:underline hover:text-rose-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS quá hạn > 48h"
+                    >
+                      {ttsAlertMatrixData.totals.overdue48h.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-1.5 py-2.5 text-center font-mono font-black text-red-700 dark:text-red-400">
-                    {ttsAlertMatrixData.totals.urgent.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `🚨 Bảng Kê Chi Tiết: Toàn Khu Vực - Đơn TTS Khẩn Cấp > 120h`,
+                        `Toàn bộ đơn hàng TikTok Shop tồn lưu kho khẩn cấp trên 5 ngày (>120h) trên mạng lưới Long An`,
+                        [{ label: 'Phạm vi', value: 'Toàn khu vực Long An' }, { label: 'Đối tác', value: 'TTS' }, { label: 'Cấp độ', value: '🚨 Khẩn cấp > 120h' }],
+                        r => (r.khachHang || '').toUpperCase().includes('TTS') && (r.canhBao || '').includes('Khẩn cấp'),
+                        'ton_dong_tts_toan_khu_vuc_urgent_120h'
+                      )}
+                      className="w-full text-center hover:underline hover:text-red-800 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn TTS khẩn cấp > 120h"
+                    >
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-black bg-red-600 text-white shadow-2xs">
+                        {ttsAlertMatrixData.totals.urgent.toLocaleString('vi-VN')}
+                      </span>
+                    </button>
                   </td>
                   <td className="px-1.5 py-2.5 text-center">
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-600 text-white whitespace-nowrap">
@@ -1566,7 +2085,6 @@ export const BacklogGltTab: React.FC = () => {
                   </th>
                   <th className="px-2.5 py-2.5 text-center text-rose-600 dark:text-rose-400">Quá Hạn %</th>
                   <th className="px-2.5 py-2.5 text-center">Áp Lực SLA</th>
-                  <th className="px-2.5 py-2.5 text-center">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1591,22 +2109,87 @@ export const BacklogGltTab: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono font-black text-slate-900 dark:text-white">
-                      {row.total.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: Nhóm Khách Hàng ${row.khachHang} (${row.partnerName})`,
+                          `Toàn bộ đơn hàng tồn đọng thuộc đối tác ${row.khachHang}`,
+                          [{ label: 'Đối tác', value: `${row.khachHang} (${row.partnerName})` }, { label: 'Phân loại', value: 'Tất cả đơn tồn' }],
+                          r => (r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase())),
+                          `ton_dong_kh_${row.khachHang.toLowerCase()}_total`
+                        )}
+                        className="w-full text-center hover:underline hover:text-indigo-600 dark:hover:text-indigo-400 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết toàn bộ đơn của đối tác này"
+                      >
+                        {row.total.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-2 py-2 text-center font-mono text-[11px] text-slate-500">
                       {row.sharePct.toFixed(1)}%
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10">
-                      {row.lt_1d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.khachHang} - Tồn < 1 Ngày (<24h)`,
+                          `Đơn hàng mới nhập kho trong 24 giờ của đối tác ${row.khachHang}`,
+                          [{ label: 'Đối tác', value: row.khachHang }, { label: 'Cấp độ', value: '< 1 ngày (<24h)' }],
+                          r => ((r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase()))) && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'lt_1d',
+                          `ton_dong_kh_${row.khachHang.toLowerCase()}_lt1d`
+                        )}
+                        className="w-full text-center hover:underline hover:text-emerald-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn < 1 ngày của đối tác này"
+                      >
+                        {row.lt_1d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono text-amber-700 dark:text-amber-400 bg-amber-50/20 dark:bg-amber-950/10">
-                      {row.p_1_3d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.khachHang} - Tồn 1 - 3 Ngày (24-72h)`,
+                          `Đơn hàng tồn từ 24h đến 72h của đối tác ${row.khachHang}`,
+                          [{ label: 'Đối tác', value: row.khachHang }, { label: 'Cấp độ', value: '1 - 3 ngày (24-72h)' }],
+                          r => ((r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase()))) && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '1_3d',
+                          `ton_dong_kh_${row.khachHang.toLowerCase()}_1_3d`
+                        )}
+                        className="w-full text-center hover:underline hover:text-amber-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn 1 - 3 ngày của đối tác này"
+                      >
+                        {row.p_1_3d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono text-orange-700 dark:text-orange-400 bg-orange-50/20 dark:bg-orange-950/10">
-                      {row.p_3_5d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.khachHang} - Tồn 3 - 5 Ngày (72-120h)`,
+                          `Đơn hàng tồn từ 72h đến 120h (bắt đầu trễ hạn) của đối tác ${row.khachHang}`,
+                          [{ label: 'Đối tác', value: row.khachHang }, { label: 'Cấp độ', value: '3 - 5 ngày (72-120h)' }],
+                          r => ((r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase()))) && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '3_5d',
+                          `ton_dong_kh_${row.khachHang.toLowerCase()}_3_5d`
+                        )}
+                        className="w-full text-center hover:underline hover:text-orange-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn 3 - 5 ngày của đối tác này"
+                      >
+                        {row.p_3_5d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono text-rose-700 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                      {row.p_5_8d.toLocaleString('vi-VN')}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDrillDown(
+                          `Bảng Kê Chi Tiết: ${row.khachHang} - Tồn 5 - 8 Ngày (120-192h)`,
+                          `Đơn hàng quá hạn nghiêm trọng từ 120h đến 192h của đối tác ${row.khachHang}`,
+                          [{ label: 'Đối tác', value: row.khachHang }, { label: 'Cấp độ', value: '5 - 8 ngày (120-192h)' }],
+                          r => ((r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase()))) && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '5_8d',
+                          `ton_dong_kh_${row.khachHang.toLowerCase()}_5_8d`
+                        )}
+                        className="w-full text-center hover:underline hover:text-rose-800 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                        title="Nhấn để xem bảng kê chi tiết đơn 5 - 8 ngày của đối tác này"
+                      >
+                        {row.p_5_8d.toLocaleString('vi-VN')}
+                      </button>
                     </td>
                     {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) */}
                     <td className={`px-3 py-2 text-center font-mono font-black border-x border-red-200 dark:border-red-900 ${
@@ -1614,7 +2197,26 @@ export const BacklogGltTab: React.FC = () => {
                         ? 'bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse font-extrabold' 
                         : 'text-slate-400 bg-slate-50/50 dark:bg-slate-800/40'
                     }`}>
-                      {row.p_gt_8d_192h > 0 ? `🚨 ${row.p_gt_8d_192h.toLocaleString('vi-VN')}` : '-'}
+                      {row.p_gt_8d_192h > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDrillDown(
+                            `🚨 Bảng Kê Chi Tiết: ${row.khachHang} - Đơn Quá Hạn > 8 Ngày (192h) Khẩn Cấp Nhất`,
+                            `Danh sách đơn hàng 192h của đối tác ${row.khachHang} bắt buộc xử lý triệt để trong ngày`,
+                            [{ label: 'Đối tác', value: row.khachHang }, { label: 'Cấp độ', value: '🚨 > 8 ngày (192h) - Xử Lý Triệt Để' }],
+                            r => ((r.khachHang || '').toUpperCase().includes(row.khachHang) || (row.khachHang === 'OTHER' && !['TTS', 'SHOPEE'].includes((r.khachHang || '').toUpperCase()))) && classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'gt_8d_192h',
+                            `ton_dong_kh_${row.khachHang.toLowerCase()}_192h_urgent`
+                          )}
+                          className="w-full text-center hover:underline cursor-pointer transition-transform active:scale-95"
+                          title="Nhấn để xem bảng kê chi tiết đơn > 8 ngày (192h) của đối tác này"
+                        >
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-black bg-red-600 text-white">
+                            🚨 {row.p_gt_8d_192h.toLocaleString('vi-VN')}
+                          </span>
+                        </button>
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-2.5 py-2 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
                       {row.overdueRate.toFixed(1)}%
@@ -1629,15 +2231,6 @@ export const BacklogGltTab: React.FC = () => {
                         {row.slaPressure}
                       </span>
                     </td>
-                    <td className="px-2.5 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleKpiCardClick(`customer:${row.khachHang}`)}
-                        className="px-2 py-0.5 text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 border border-indigo-200 dark:border-indigo-800 rounded transition-colors cursor-pointer"
-                      >
-                        Xem Đơn
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1647,25 +2240,103 @@ export const BacklogGltTab: React.FC = () => {
                     {customerAgingDetailed.totals.partnerName}
                   </td>
                   <td className="px-2.5 py-2.5 text-center font-mono text-sm font-black text-indigo-700 dark:text-indigo-300">
-                    {customerAgingDetailed.totals.total.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Tổng Tồn Toàn Mạng`,
+                        `Toàn bộ đơn hàng tồn đọng theo tất cả các kênh khách hàng`,
+                        [{ label: 'Phạm vi', value: 'Toàn bộ đối tác khách hàng' }, { label: 'Phân loại', value: 'Tất cả đơn tồn' }],
+                        () => true,
+                        'ton_dong_kh_toan_bo_total'
+                      )}
+                      className="w-full text-center hover:underline hover:text-indigo-900 dark:hover:text-indigo-200 font-mono font-black cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn tồn"
+                    >
+                      {customerAgingDetailed.totals.total.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-2 py-2.5 text-center font-mono text-[11px] text-slate-500">
                     100%
                   </td>
                   <td className="px-2.5 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-mono">
-                    {customerAgingDetailed.totals.lt_1d.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Tồn < 1 Ngày (<24h)`,
+                        `Toàn bộ đơn hàng mới nhập kho trong 24 giờ của tất cả các đối tác`,
+                        [{ label: 'Phạm vi', value: 'Tất cả đối tác' }, { label: 'Cấp độ', value: '< 1 ngày (<24h)' }],
+                        r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'lt_1d',
+                        'ton_dong_kh_toan_bo_lt1d'
+                      )}
+                      className="w-full text-center hover:underline hover:text-emerald-900 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn < 1 ngày"
+                    >
+                      {customerAgingDetailed.totals.lt_1d.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-2.5 py-2.5 text-center text-amber-700 dark:text-amber-400 font-mono">
-                    {customerAgingDetailed.totals.p_1_3d.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Tồn 1 - 3 Ngày (24-72h)`,
+                        `Toàn bộ đơn hàng tồn từ 24h đến 72h của tất cả các đối tác`,
+                        [{ label: 'Phạm vi', value: 'Tất cả đối tác' }, { label: 'Cấp độ', value: '1 - 3 ngày (24-72h)' }],
+                        r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '1_3d',
+                        'ton_dong_kh_toan_bo_1_3d'
+                      )}
+                      className="w-full text-center hover:underline hover:text-amber-900 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 1 - 3 ngày"
+                    >
+                      {customerAgingDetailed.totals.p_1_3d.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-2.5 py-2.5 text-center text-orange-700 dark:text-orange-400 font-mono">
-                    {customerAgingDetailed.totals.p_3_5d.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Tồn 3 - 5 Ngày (72-120h)`,
+                        `Toàn bộ đơn hàng tồn từ 72h đến 120h của tất cả các đối tác`,
+                        [{ label: 'Phạm vi', value: 'Tất cả đối tác' }, { label: 'Cấp độ', value: '3 - 5 ngày (72-120h)' }],
+                        r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '3_5d',
+                        'ton_dong_kh_toan_bo_3_5d'
+                      )}
+                      className="w-full text-center hover:underline hover:text-orange-900 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 3 - 5 ngày"
+                    >
+                      {customerAgingDetailed.totals.p_3_5d.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-2.5 py-2.5 text-center text-rose-700 dark:text-rose-400 font-mono">
-                    {customerAgingDetailed.totals.p_5_8d.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Tồn 5 - 8 Ngày (120-192h)`,
+                        `Toàn bộ đơn hàng quá hạn nghiêm trọng từ 120h đến 192h của tất cả đối tác`,
+                        [{ label: 'Phạm vi', value: 'Tất cả đối tác' }, { label: 'Cấp độ', value: '5 - 8 ngày (120-192h)' }],
+                        r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === '5_8d',
+                        'ton_dong_kh_toan_bo_5_8d'
+                      )}
+                      className="w-full text-center hover:underline hover:text-rose-900 font-mono font-bold cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn 5 - 8 ngày"
+                    >
+                      {customerAgingDetailed.totals.p_5_8d.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-3 py-2.5 text-center text-white bg-red-600 dark:bg-red-700 font-black font-mono border-x-2 border-red-700 text-sm">
-                    {customerAgingDetailed.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDrillDown(
+                        `🚨 Bảng Kê Chi Tiết: Toàn Bộ Nhóm Khách Hàng - Đơn Quá Hạn > 8 Ngày (192h) Khẩn Cấp Nhất`,
+                        `Toàn bộ đơn hàng 192h của tất cả các đối tác bắt buộc xử lý triệt để trong ngày`,
+                        [{ label: 'Phạm vi', value: 'Tất cả đối tác' }, { label: 'Cấp độ', value: '🚨 > 8 ngày (192h) - Xử Lý Triệt Để' }],
+                        r => classifyGltAging(r.thoiGianTonDong, r.canhBao).key === 'gt_8d_192h',
+                        'ton_dong_kh_toan_bo_192h_urgent'
+                      )}
+                      className="w-full text-center hover:underline cursor-pointer transition-transform active:scale-95"
+                      title="Nhấn để xem bảng kê chi tiết toàn bộ đơn > 8 ngày (192h)"
+                    >
+                      {customerAgingDetailed.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
+                    </button>
                   </td>
                   <td className="px-2.5 py-2.5 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
                     {customerAgingDetailed.totals.overdueRate.toFixed(1)}%
@@ -1674,15 +2345,6 @@ export const BacklogGltTab: React.FC = () => {
                     <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
                       {customerAgingDetailed.totals.slaPressure}
                     </span>
-                  </td>
-                  <td className="px-2.5 py-2.5 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedKpi('all')}
-                      className="px-2 py-0.5 text-[10.5px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 underline cursor-pointer"
-                    >
-                      Tất Cả
-                    </button>
                   </td>
                 </tr>
               </tfoot>
@@ -1862,6 +2524,22 @@ export const BacklogGltTab: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* =========================================================================
+          UNIFIED DRILL DOWN MODAL (HIỂN THỊ BẢNG KÊ CHI TIẾT KHI BẤM VÀO SỐ LƯỢNG)
+         ========================================================================= */}
+      <UnifiedDrillDownModal<BacklogGltRecord>
+        isOpen={drillDownState.isOpen}
+        onClose={closeDrillDown}
+        title={drillDownState.title}
+        subtitle={drillDownState.subtitle}
+        appliedFilters={drillDownState.appliedFilters}
+        data={drillDownState.data}
+        columns={drillDownColumns}
+        summaryKpis={drillDownState.summaryKpis}
+        exportFileName={drillDownState.exportFileName || 'ton_dong_glt_chi_tiet'}
+        searchPlaceholder="Tìm kiếm nhanh mã đơn, khách hàng, địa bàn, bưu cục..."
+      />
     </div>
   );
 };

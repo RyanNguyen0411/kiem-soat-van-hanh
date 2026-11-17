@@ -10,7 +10,8 @@ import {
   PackageX, 
   Truck, 
   Settings, 
-  Sparkles
+  Sparkles,
+  AlertOctagon
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +21,7 @@ import {
   testTelegramBotConnection, 
   sendMessageToTelegram, 
   buildGltTelegramReports, 
+  buildGlt192hTelegramReports,
   buildLcTelegramReports,
   formatTelegramError,
   DEFAULT_TELEGRAM_BOT_TOKEN,
@@ -29,7 +31,7 @@ import {
 import type { TelegramConfig } from '../../services/telegramService';
 
 interface TelegramReportModalProps {
-  initialReportType?: 'glt' | 'lc';
+  initialReportType?: 'glt' | 'glt_192h' | 'lc';
 }
 
 export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({ 
@@ -39,7 +41,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
   if (currentUser?.role === 'post_office_staff') return null;
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [reportType, setReportType] = useState<'glt' | 'lc'>(initialReportType);
+  const [reportType, setReportType] = useState<'glt' | 'glt_192h' | 'lc'>(initialReportType);
   const [showConfig, setShowConfig] = useState<boolean>(false);
 
   // Telegram Config State
@@ -81,6 +83,11 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
   // Sinh 5 báo cáo Tồn đọng GLT (120h & 192h)
   const gltReports = useMemo(() => {
     return buildGltTelegramReports(dataset.tonDongGlt || []);
+  }, [dataset.tonDongGlt]);
+
+  // Sinh 5 báo cáo riêng nhóm 192h (> 8 ngày - Khẩn cấp nhất)
+  const glt192hReports = useMemo(() => {
+    return buildGlt192hTelegramReports(dataset.tonDongGlt || []);
   }, [dataset.tonDongGlt]);
 
   // Sinh 5 báo cáo Tồn đọng Luân chuyển LC
@@ -147,7 +154,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
 
   // Gửi toàn bộ 5 bưu cục (5 tin nhắn riêng biệt tuần tự với khoảng nghỉ 350ms)
   const handleSendAllBatch = async () => {
-    const reports = reportType === 'glt' ? gltReports : lcReports;
+    const reports = reportType === 'glt' ? gltReports : reportType === 'glt_192h' ? glt192hReports : lcReports;
     setIsBatchSending(true);
     setBatchProgress({ current: 0, total: reports.length });
 
@@ -325,7 +332,7 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
 
           {/* REPORT TYPE SELECTOR TABS */}
           <div className="px-3 py-2 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2 text-xs font-bold">
+            <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
               {/* Tab 1: Tồn Đọng 120h & 192h */}
               <button
                 type="button"
@@ -343,7 +350,24 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                 </span>
               </button>
 
-              {/* Tab 2: Tồn Đọng LC */}
+              {/* Tab 2: Nhánh riêng Báo Cáo Đơn 192h (Khẩn Cấp Nhất) */}
+              <button
+                type="button"
+                onClick={() => setReportType('glt_192h')}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  reportType === 'glt_192h'
+                    ? 'bg-red-600 text-white shadow-xs font-black'
+                    : 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/60 hover:bg-red-50'
+                }`}
+              >
+                <AlertOctagon className="w-4 h-4" />
+                <span>🚨 Báo Cáo Riêng Đơn 192h (&gt;8N)</span>
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-black/25 text-white">
+                  Khẩn Cấp
+                </span>
+              </button>
+
+              {/* Tab 3: Tồn Đọng LC */}
               <button
                 type="button"
                 onClick={() => setReportType('lc')}
@@ -375,7 +399,11 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
               <div className="leading-snug">
                 {reportType === 'glt' ? (
                   <span>
-                    <strong>Quy chuẩn báo cáo GLT:</strong> Mỗi bưu cục gửi 1 tin nhắn riêng. Lọc chi tiết từng mã đơn <strong>TTS và Shopee</strong> theo nhóm cảnh báo xử lý <strong>192h trước, sau đó đến 120h</strong> (phân rõ có chuyến đi và chưa có chuyến đi, mỗi mã 1 hàng). Bưu cục không có đơn được ghi rõ "Không có".
+                    <strong>Quy chuẩn báo cáo GLT:</strong> Mỗi bưu cục gửi 1 tin nhắn riêng. Lọc chi tiết từng mã đơn <strong>toàn diện nguồn</strong> theo nhóm cảnh báo xử lý <strong>192h trước, sau đó đến 120h</strong> (phân rõ có chuyến đi và chưa có chuyến đi, mỗi mã 1 hàng). Bưu cục không có đơn được ghi rõ "Không có".
+                  </span>
+                ) : reportType === 'glt_192h' ? (
+                  <span>
+                    <strong>Quy chuẩn nhánh riêng 192h:</strong> Mỗi bưu cục gửi 1 tin nhắn riêng tập trung vào nhóm <strong>đơn hàng tồn đọng &gt; 8 ngày (192h) - Khẩn cấp nhất</strong> cần xử lý triệt để trong ngày. Phân rõ chi tiết mã đơn chưa có chuyến và đã có chuyến.
                   </span>
                 ) : (
                   <span>
@@ -433,6 +461,22 @@ export const TelegramReportModal: React.FC<TelegramReportModalProps> = ({
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                               Tổng: {item.totalAlertOrders} đơn
+                            </span>
+                          </>
+                        ) : reportType === 'glt_192h' ? (
+                          <>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black ${
+                              item.count192 > 0 
+                                ? 'bg-red-600 text-white animate-pulse shadow-2xs' 
+                                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            }`}>
+                              🚨 192h: {item.count192} đơn
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              Chưa chuyến: {item.orders192NoTrip?.length || 0}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                              Có chuyến: {item.orders192HasTrip?.length || 0}
                             </span>
                           </>
                         ) : (

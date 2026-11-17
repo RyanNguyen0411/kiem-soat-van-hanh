@@ -590,6 +590,77 @@ export function buildGltTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBran
   });
 }
 
+/**
+ * Xây dựng báo cáo Telegram CHUYÊN BIỆT RIÊNG cho nhóm đơn hàng 192h (> 8 ngày) cho 5 bưu cục
+ * - Quét các đơn hàng vượt mốc 192h khẩn cấp nhất, bắt buộc xử lý triệt để trong ngày
+ * - Phân rõ nhóm chưa có chuyến đi và đã có chuyến đi
+ * - Mỗi mã đơn hiển thị rõ mã vận đơn, khách hàng, giờ tồn, địa bàn
+ */
+export function buildGlt192hTelegramReports(tonDongGlt: BacklogGltRecord[]): GltBranchReport[] {
+  return LONG_AN_POST_OFFICES.map(po => {
+    const branchRecords = tonDongGlt.filter(d => {
+      const normalized = normalizePostOfficeName(d.buuCuc);
+      return normalized === po.name || d.maBC === po.code;
+    });
+
+    // Cột mốc 192h (> 8 ngày / 192h) - Khẩn cấp nhất
+    const rec192 = branchRecords.filter(d => {
+      const g = classifyGltAging(d.thoiGianTonDong, d.canhBao);
+      return g.key === 'gt_8d_192h';
+    });
+    const rec192HasTrip = rec192.filter(d => 
+      (d.trangThai || '').includes('Đã có chuyến') || (d.trangThai || '').includes('Đang có chuyến')
+    );
+    const rec192NoTrip = rec192.filter(d => 
+      !(d.trangThai || '').includes('Đã có chuyến') && !(d.trangThai || '').includes('Đang có chuyến')
+    );
+
+    let msg = `🚨 <b>BÁO CÁO TỒN ĐỌNG KHẨN CẤP: ĐƠN 192H (&gt; 8 NGÀY)</b>\n`;
+    msg += `🏢 <b>Bưu cục:</b> <code>${po.name}</code> (Mã: <code>${po.code}</code>)\n`;
+    msg += `📊 <b>Tổng đơn 192h cần xử lý triệt để:</b> <b>${rec192.length} đơn</b> (Chưa chuyến: ${rec192NoTrip.length} | Đang chuyến: ${rec192HasTrip.length})\n`;
+    msg += `----------------------------------------\n`;
+
+    if (rec192.length === 0) {
+      msg += `✅ <b>Bưu cục không có đơn tồn đọng thuộc nhóm 192h.</b> Duy trì kiểm soát tốt!\n`;
+    } else {
+      msg += `🔴 <b>DANH SÁCH ĐƠN 192H BẮT BUỘC XỬ LÝ TRONG NGÀY:</b>\n`;
+      if (rec192NoTrip.length > 0) {
+        msg += `<b>• Chưa có chuyến đi trong ca (${rec192NoTrip.length} đơn):</b>\n`;
+        rec192NoTrip.forEach((item, idx) => {
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.thoiGianTonDong || '>192'}h | ${item.phuongXa || item.loaiDon}\n`;
+        });
+      }
+      if (rec192HasTrip.length > 0) {
+        msg += `<b>• Đang/Đã có chuyến đi (${rec192HasTrip.length} đơn):</b>\n`;
+        rec192HasTrip.forEach((item, idx) => {
+          msg += `${idx + 1}. <code>${item.maDonHang}</code> | ${item.khachHang || 'OTHER'} | ${item.thoiGianTonDong || '>192'}h | ${item.phuongXa || item.loaiDon}\n`;
+        });
+      }
+    }
+
+    msg += `----------------------------------------\n`;
+    msg += `⚠️ <b>CHỈ ĐẠO CỦA AM ĐỐI VỚI ĐƠN 192H:</b>\n`;
+    msg += `1. Đơn 192h (> 8 ngày) là mức độ khẩn cấp nhất, tuyệt đối không để dồn ứ sang ngày tiếp theo.\n`;
+    msg += `2. NVXL và Quản lý bưu cục tập trung gán và push phát ngay trong ngày cho từng NVPTTT.\n`;
+    msg += `3. Tất cả phải đủ Log gọi và POD đúng quy định =&gt; Sai phạm sẽ truy thu và xử lý theo log thao tác.`;
+
+    return {
+      buuCuc: po.name,
+      maBC: po.code,
+      totalAlertOrders: rec192.length,
+      count192: rec192.length,
+      count120: 0,
+      hasOrders192: rec192.length > 0,
+      hasOrders120: false,
+      orders192NoTrip: rec192NoTrip,
+      orders192HasTrip: rec192HasTrip,
+      orders120NoTrip: [],
+      orders120HasTrip: [],
+      message: msg
+    };
+  });
+}
+
 export interface LcBranchReport {
   buuCuc: string;
   maBC: string;
