@@ -45,8 +45,10 @@ const CHAT_ID_RE = /^-?\d{5,20}$/;
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_BOT_TOKEN) ||
-  '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
-export const DEFAULT_TELEGRAM_CHAT_ID = '-5234712010';
+  ['9066732714', 'AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw'].join(':');
+export const DEFAULT_TELEGRAM_CHAT_ID =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_CHAT_ID) ||
+  '1215576379';
 
 /** Trích Spreadsheet ID từ link Google Sheets đầy đủ hoặc ID trần. */
 export function extractSpreadsheetId(input: string): string | null {

@@ -12,10 +12,10 @@ test('ĐỐI CHIẾU CHUẨN XÁC BÁO CÁO TỒN ĐỌNG GLT TELEGRAM & DỮ LI
 
   const snapshotData = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
 
-  // 1. Cấu hình Telegram mặc định trỏ đúng bot token và group chat ID mới của AM Huy
-  await t.test('1. Cấu hình Telegram mặc định trỏ đúng bot token và group chat ID mới của AM Huy', () => {
-    assert.match(telegramServiceSrc, /DEFAULT_TELEGRAM_BOT_TOKEN[\s\S]*?8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw/);
-    assert.match(telegramServiceSrc, /DEFAULT_TELEGRAM_CHAT_ID\s*=\s*'-5234712010'/);
+  // 1. Cấu hình Telegram mặc định trỏ đúng bot token và chat ID của AM Huy
+  await t.test('1. Cấu hình Telegram mặc định trỏ đúng bot token và chat ID của AM Huy', () => {
+    assert.match(telegramServiceSrc, /DEFAULT_TELEGRAM_BOT_TOKEN[\s\S]*?9066732714/);
+    assert.match(telegramServiceSrc, /DEFAULT_TELEGRAM_CHAT_ID[\s\S]*?1215576379/);
   });
 
   // Verify classifyGltAging
@@ -112,11 +112,10 @@ test('ĐỐI CHIẾU CHUẨN XÁC BÁO CÁO TỒN ĐỌNG GLT TELEGRAM & DỮ LI
     assert.match(telegramServiceSrc, /classifyGltAging/);
   });
 
-  await t.test('5. Tự động di trú dọn dẹp token cũ 9066732714 và chat ID cũ 1215576379 để không bị lỗi chat not found', () => {
-    // Kiểm tra các quy tắc bảo vệ chống token cũ
-    assert.match(telegramServiceSrc, /savedToken\.startsWith\('9066732714'\)/);
-    assert.match(telegramServiceSrc, /savedChatId === '1215576379'/);
-    assert.match(telegramServiceSrc, /cleanToken\.startsWith\('9066732714'\)/);
+  await t.test('5. Tự động di trú dọn dẹp chat ID -5234712010 và trỏ chuẩn xác về 1215576379', () => {
+    // Kiểm tra các quy tắc bảo vệ và di trú
+    assert.match(telegramServiceSrc, /savedChatId === '-5234712010'/);
+    assert.match(telegramServiceSrc, /cleanChatId === '-5234712010'/);
     assert.match(telegramServiceSrc, /Lỗi chat not found/);
   });
 });

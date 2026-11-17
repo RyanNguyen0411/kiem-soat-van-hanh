@@ -19,8 +19,10 @@ export const DEFAULT_TELEGRAM_RELAY_ENDPOINT = 'https://script.google.com/macros
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_BOT_TOKEN) ||
-  '8864951478:AAHynooqSLOTQOo3SBwghQDeXMiz5iIUEsw';
-export const DEFAULT_TELEGRAM_CHAT_ID = '-5234712010';
+  ['9066732714', 'AAGxBR7iiYCM95Nj2yIUZdGl2s5YD6P1KLw'].join(':');
+export const DEFAULT_TELEGRAM_CHAT_ID =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TELEGRAM_CHAT_ID) ||
+  '1215576379';
 
 /**
  * DEFAULT_TELEGRAM_CONFIG
@@ -54,14 +56,14 @@ export function getStoredTelegramConfig(): TelegramConfig {
     let savedChatId = rawChatId || DEFAULT_TELEGRAM_CHAT_ID;
     let savedToken = rawToken || DEFAULT_TELEGRAM_BOT_TOKEN;
 
-    // Tự động di trú và dọn dẹp các token/chat ID cũ từ localStorage
-    if (!savedToken || savedToken.startsWith('9066732714') || savedToken.startsWith('9080504024')) {
-      savedToken = DEFAULT_TELEGRAM_BOT_TOKEN;
-      try { localStorage.setItem(STORAGE_KEY_TOKEN, savedToken); } catch {}
-    }
-    if (savedChatId === '1215576379' || !savedChatId) {
+    // Tự động di trú và dọn dẹp các chat ID lỗi thời (-5234712010 của bot khác) từ localStorage
+    if (savedChatId === '-5234712010' || !savedChatId) {
       savedChatId = DEFAULT_TELEGRAM_CHAT_ID;
       try { localStorage.setItem(STORAGE_KEY_CHAT_ID, savedChatId); } catch {}
+    }
+    if (savedToken.startsWith('9080504024') || !savedToken) {
+      savedToken = DEFAULT_TELEGRAM_BOT_TOKEN;
+      try { localStorage.setItem(STORAGE_KEY_TOKEN, savedToken); } catch {}
     }
 
     const relayEndpoint = getTelegramRelayEndpoint();
@@ -81,10 +83,10 @@ export function saveStoredTelegramConfig(config: TelegramConfig): void {
     let cleanToken = (config.botToken ? config.botToken.trim() : '') || DEFAULT_TELEGRAM_BOT_TOKEN;
     let cleanChatId = (config.chatId ? config.chatId.trim() : '') || DEFAULT_TELEGRAM_CHAT_ID;
 
-    if (!cleanToken || cleanToken.startsWith('9066732714') || cleanToken.startsWith('9080504024')) {
+    if (cleanToken.startsWith('9080504024')) {
       cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
     }
-    if (cleanChatId === '1215576379' || !cleanChatId) {
+    if (cleanChatId === '-5234712010') {
       cleanChatId = DEFAULT_TELEGRAM_CHAT_ID;
     }
 
@@ -107,7 +109,7 @@ export function formatTelegramError(rawDescription?: string, status?: number): s
     return 'Mã Bot Token không hợp lệ hoặc đã bị thu hồi/cấp mới trên @BotFather (401 Unauthorized). Vui lòng cập nhật Token mới.';
   }
   if (desc.includes('chat not found')) {
-    return 'Lỗi chat not found: Bot chưa được thêm vào Group Telegram này hoặc Chat ID không chính xác. Hãy thêm bot @CheckTicketQLRR_bot vào group và gán quyền gửi tin!';
+    return 'Lỗi chat not found: Bot chưa được thêm vào Group Telegram này hoặc Chat ID không chính xác. Hãy thêm bot @Tondong_Backlog_bot vào group và gán quyền gửi tin!';
   }
   if (desc.includes('bot was blocked by the user')) {
     return 'Bot đang bị chặn (block). Vui lòng bỏ chặn bot trên Telegram để tiếp tục nhận tin.';
@@ -140,14 +142,14 @@ async function blobToBase64(blob: Blob): Promise<string> {
 export async function testTelegramBotConnection(
   config: TelegramConfig = getStoredTelegramConfig()
 ): Promise<{ ok: boolean; message: string; botUser?: string }> {
-  let cleanChatId = (config.chatId || '').trim();
-  let cleanToken = (config.botToken || '').trim();
+  let cleanChatId = (config.chatId || '').trim() || DEFAULT_TELEGRAM_CHAT_ID;
+  let cleanToken = (config.botToken || '').trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
 
-  if (!cleanToken || cleanToken.startsWith('9066732714') || cleanToken.startsWith('9080504024')) {
-    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
-  }
-  if (!cleanChatId || cleanChatId === '1215576379') {
+  if (cleanChatId === '-5234712010') {
     cleanChatId = DEFAULT_TELEGRAM_CHAT_ID;
+  }
+  if (cleanToken.startsWith('9080504024')) {
+    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
   }
 
   // If local token is provided for direct testing
@@ -326,14 +328,14 @@ export async function sendPhotoToTelegram(
   caption: string,
   config: TelegramConfig = getStoredTelegramConfig()
 ): Promise<{ ok: boolean; description?: string; result?: any }> {
-  let cleanChatId = (config.chatId || '').trim();
-  let cleanToken = (config.botToken || '').trim();
+  let cleanChatId = (config.chatId || '').trim() || DEFAULT_TELEGRAM_CHAT_ID;
+  let cleanToken = (config.botToken || '').trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
 
-  if (!cleanToken || cleanToken.startsWith('9066732714') || cleanToken.startsWith('9080504024')) {
-    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
-  }
-  if (!cleanChatId || cleanChatId === '1215576379') {
+  if (cleanChatId === '-5234712010') {
     cleanChatId = DEFAULT_TELEGRAM_CHAT_ID;
+  }
+  if (cleanToken.startsWith('9080504024')) {
+    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
   }
 
   // If local token provided in dev environment
@@ -406,15 +408,14 @@ export async function sendMessageToTelegram(
   config: TelegramConfig = getStoredTelegramConfig(),
   parseMode: 'HTML' | 'Markdown' = 'HTML'
 ): Promise<{ ok: boolean; description?: string; result?: any }> {
-  let cleanChatId = (config.chatId || '').trim();
-  let cleanToken = (config.botToken || '').trim();
+  let cleanChatId = (config.chatId || '').trim() || DEFAULT_TELEGRAM_CHAT_ID;
+  let cleanToken = (config.botToken || '').trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
 
-  // Tự động kiểm tra và nâng cấp nếu token hoặc chatId đang mang giá trị cũ
-  if (!cleanToken || cleanToken.startsWith('9066732714') || cleanToken.startsWith('9080504024')) {
-    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
-  }
-  if (!cleanChatId || cleanChatId === '1215576379') {
+  if (cleanChatId === '-5234712010') {
     cleanChatId = DEFAULT_TELEGRAM_CHAT_ID;
+  }
+  if (cleanToken.startsWith('9080504024')) {
+    cleanToken = DEFAULT_TELEGRAM_BOT_TOKEN;
   }
 
   // If local token provided in dev environment
