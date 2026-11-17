@@ -7,14 +7,14 @@ const ROOT_DIR = process.cwd();
 
 test('TỐI ƯU KHÔNG GIAN DỮ LIỆU DASHBOARD (DATA-DENSE EXECUTIVE VIEW)', async (t) => {
   
-  await t.test('1. File src/index.css chứa quy tắc thu nhỏ bảng và text cân đối', () => {
+  await t.test('1. File src/index.css chứa quy tắc tăng kích thước chữ trong bảng báo cáo (CHỈ BẢNG, KHÔNG TĂNG TẤT CẢ)', () => {
     const cssPath = path.join(ROOT_DIR, 'src/index.css');
     assert.ok(fs.existsSync(cssPath), 'src/index.css phải tồn tại');
 
     const cssContent = fs.readFileSync(cssPath, 'utf8');
-    assert.match(cssContent, /main table\s*\{[^}]*font-size:\s*11px !important/);
-    assert.match(cssContent, /main table thead th\s*\{[^}]*padding-top:\s*6px !important/);
-    assert.match(cssContent, /main table tbody td\s*\{[^}]*padding-top:\s*5px !important/);
+    assert.match(cssContent, /main table,\s*table\s*\{[^}]*font-size:\s*13px !important/);
+    assert.match(cssContent, /main table thead th,\s*table thead th\s*\{[^}]*font-size:\s*12\.5px !important/);
+    assert.match(cssContent, /main table tbody td,\s*main table tfoot td,\s*table tbody td,\s*table tfoot td\s*\{[^}]*font-size:\s*13px !important/);
     assert.match(cssContent, /main table td \.font-mono/);
   });
 

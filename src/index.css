@@ -89,49 +89,76 @@ body,
   }
 }
 
-/* 2. Tối ưu toàn bộ Bảng Dữ Liệu: font chữ tinh gọn, khoảng cách dòng gọn gàng */
-main table {
-  font-size: 11px !important;
-  line-height: 1.35 !important;
+/* =========================================================================
+   2. TĂNG KÍCH THƯỚC NỘI DUNG CHỮ TRONG TẤT CẢ CÁC BẢNG BÁO CÁO CỦA DASHBOARD
+   (LƯU Ý QUAN TRỌNG: CHỈ TĂNG KÍCH THƯỚC NỘI DUNG CHỮ TRONG BẢNG. KHÔNG TĂNG TẤT CẢ)
+   ========================================================================= */
+main table,
+table {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
 }
 
-main table thead th {
+main table thead th,
+table thead th {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.3 !important;
+}
+
+main table tbody td,
+main table tfoot td,
+table tbody td,
+table tfoot td {
   padding-top: 6px !important;
   padding-bottom: 6px !important;
   padding-left: 8px !important;
   padding-right: 8px !important;
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.02em !important;
-  line-height: 1.25 !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
 }
 
-main table tbody td {
-  padding-top: 5px !important;
-  padding-bottom: 5px !important;
-  padding-left: 8px !important;
-  padding-right: 8px !important;
-  font-size: 11px !important;
-  line-height: 1.35 !important;
+main table tbody tr,
+table tbody tr {
+  min-height: 32px !important;
 }
 
-main table tbody tr {
-  min-height: 28px !important;
-}
-
-/* Tối ưu số liệu trong bảng: font monospace rõ nét */
+/* Tăng kích thước số liệu và chữ in đậm trong bảng: rõ nét, dễ đọc */
 main table td .font-mono,
-main table td strong {
-  font-size: 11.5px !important;
+main table td strong,
+main table td b,
+table td .font-mono,
+table td strong,
+table td b {
+  font-size: 13px !important;
 }
 
-/* Tối ưu nhãn / badge trong bảng */
-main table td span[class*="rounded"] {
-  font-size: 10px !important;
-  padding-top: 1px !important;
-  padding-bottom: 1px !important;
-  padding-left: 5px !important;
-  padding-right: 5px !important;
+/* Tăng kích thước nhãn / badge trong bảng */
+main table td span[class*="rounded"],
+table td span[class*="rounded"] {
+  font-size: 11.5px !important;
+  padding-top: 1.5px !important;
+  padding-bottom: 1.5px !important;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+/* Tăng kích thước subtext / ghi chú phụ trong ô bảng */
+main table td [class*="text-[10px]"],
+main table td [class*="text-[9"],
+main table td .text-\[10px\],
+main table td .text-\[11px\],
+main table td .text-\[9\.5px\],
+main table td .text-\[9px\],
+table td [class*="text-[10px]"],
+table td .text-\[10px\],
+table td .text-\[11px\] {
+  font-size: 11.5px !important;
 }
 
 /* 3. Tối ưu kích thước Text & Thẻ Card trong Dashboard (Thu nhỏ cân đối, không lạm dụng) */
@@ -164,9 +191,19 @@ main h4 {
   line-height: 1.3 !important;
 }
 
-/* Form input, select trong bảng & bộ lọc */
+/* Form input, select trong bảng */
 main table select,
 main table input,
+table select,
+table input {
+  font-size: 12.5px !important;
+  padding-top: 3.5px !important;
+  padding-bottom: 3.5px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Form select ngoài bảng trong bộ lọc */
 main .bg-slate-900 select,
 main .bg-slate-800 select {
   font-size: 11px !important;

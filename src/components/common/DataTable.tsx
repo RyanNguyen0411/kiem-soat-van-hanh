@@ -226,7 +226,7 @@ export function DataTable<T extends Record<string, any>>({
         onScroll={!pagination ? handleTableScroll : undefined}
         className={`overflow-x-auto ${maxHeight ? `${maxHeight} overflow-y-auto custom-scrollbar` : ''}`}
       >
-        <table className={`w-full text-left border-collapse text-xs ${noWrap ? 'whitespace-nowrap' : ''}`}>
+        <table className={`w-full text-left border-collapse text-[13px] ${noWrap ? 'whitespace-nowrap' : ''}`}>
           <thead className={stickyHeader ? 'sticky top-0 z-20 shadow-xs' : ''}>
             <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
               {renderExpandedRow && (
