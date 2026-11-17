@@ -696,23 +696,36 @@ export async function loadDataset(): Promise<DatasetLoadResult> {
     const reader = createHeaderReader(rows[0]);
     tonDongGlt = rows.slice(1)
       .filter(r => {
-        const bc = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
-        const orderId = reader.getCol(r, ['mã đơn hàng', 'ma don hang']);
-        return Boolean(bc && orderId);
+        // Quét toàn bộ dòng: chỉ cần có mã đơn hàng hợp lệ để không sót dữ liệu
+        const orderId = reader.getCol(r, ['mã đơn hàng', 'ma don hang', 'mã đơn', 'ma don', 'tracking_id', 'orderid']) || r[2] || r[1] || r[0];
+        const trimmed = (orderId || '').trim();
+        return Boolean(trimmed && trimmed.length >= 4 && !trimmed.toLowerCase().includes('mã đơn') && !trimmed.toLowerCase().includes('order'));
       })
       .map(r => {
-        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc']);
-        const meta = lookupPostOffice(buuCucRaw);
+        const rawOrderId = cleanVietnameseText(
+          reader.getCol(r, ['mã đơn hàng', 'ma don hang', 'mã đơn', 'ma don', 'tracking_id', 'orderid']) || r[2] || ''
+        );
+        const buuCucRaw = reader.getCol(r, ['bưu cục', 'buu cuc', 'tên bc', 'ten bc', 'kho', 'bưu cục phát']) || r[0] || r[1] || '';
+        const maBcRaw = r[1] || '';
+        const meta = lookupPostOffice({ code: maBcRaw, name: buuCucRaw });
+        
+        const loaiDonRaw = reader.getCol(r, ['loại đơn', 'loai don', 'loại hàng', 'loai hang']) || r[3] || 'Khác';
+        const khachHangRaw = (reader.getCol(r, ['khách hàng', 'khach hang', 'khachhang', 'partner']) || r[4] || 'OTHER').trim().toUpperCase();
+        const phuongXaRaw = reader.getCol(r, ['phường/xã', 'phuong/xa', 'phường xã', 'phuong xa', 'địa chỉ', 'dia chi']) || r[5] || '';
+        const trangThaiRaw = reader.getCol(r, ['trạng thái', 'trang thai', 'trạng thái chuyến đi']) || r[6] || '';
+        const thoiGianRaw = reader.getCol(r, ['thời gian tồn đọng', 'thoi gian ton dong', 'thời gian tồn', 'tuổi tồn']) || r[7] || '';
+        const canhBaoRaw = reader.getCol(r, ['cảnh báo', 'canh bao', 'mức cảnh báo']) || r[8] || '';
+
         return {
           buuCuc: meta.standardName,
           maBC: meta.standardCode,
-          maDonHang: cleanVietnameseText(reader.getCol(r, ['mã đơn hàng', 'ma don hang'])),
-          loaiDon: reader.getCol(r, ['loại đơn', 'loai don']) || 'Khác',
-          khachHang: reader.getCol(r, ['khách hàng', 'khach hang']) || 'OTHER',
-          phuongXa: reader.getCol(r, ['phường/xã', 'phuong/xa']) || '',
-          trangThai: reader.getCol(r, ['trạng thái', 'trang thai']) || '',
-          thoiGianTonDong: reader.getCol(r, ['thời gian tồn đọng', 'thoi gian ton dong']) || '',
-          canhBao: reader.getCol(r, ['cảnh báo', 'canh bao']) || ''
+          maDonHang: rawOrderId,
+          loaiDon: loaiDonRaw,
+          khachHang: khachHangRaw || 'OTHER',
+          phuongXa: phuongXaRaw,
+          trangThai: trangThaiRaw,
+          thoiGianTonDong: thoiGianRaw,
+          canhBao: canhBaoRaw
         };
       });
 

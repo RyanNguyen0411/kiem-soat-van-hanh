@@ -35,7 +35,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend 
+  Legend,
+  ComposedChart,
+  Line
 } from 'recharts';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +46,11 @@ import { normalizeOrderId, dedupeGltRecords, computeGltBacklogBreakdown } from '
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
 import { IndividualFilterDropdown } from '../components/common/IndividualFilterDropdown';
+import { 
+  classifyGltAging, 
+  computePostOfficeAgingMatrix, 
+  computeCustomerAgingMatrix
+} from '../utils/gltAgingEngine';
 
 export const BacklogGltTab: React.FC = () => {
   const { dataset, selectedBuuCucGlobal, setSelectedBuuCucGlobal } = useDashboard();
@@ -143,7 +150,7 @@ export const BacklogGltTab: React.FC = () => {
   }, [matchedRawRows]);
 
   // State chọn nhóm KPI làm menu điều hướng danh sách chi tiết
-  type KpiGroup = 'all' | 'giao' | 'lay' | 'tra' | 'uutien' | 'chuacochuyen' | 'overdue' | 'tts';
+  type KpiGroup = 'all' | 'giao' | 'lay' | 'tra' | 'uutien' | 'chuacochuyen' | 'overdue' | 'tts' | 'urgent192h' | string;
   const [selectedKpi, setSelectedKpi] = useState<KpiGroup>('all');
   const [showKpiCards, setShowKpiCards] = useState<boolean>(true);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -156,6 +163,10 @@ export const BacklogGltTab: React.FC = () => {
   };
 
   const selectedKpiLabel = useMemo(() => {
+    if (selectedKpi.startsWith('customer:')) {
+      const cust = selectedKpi.replace('customer:', '');
+      return `Đơn Hàng Đối Tác / Sàn: ${cust}`;
+    }
     switch (selectedKpi) {
       case 'giao': return 'Đơn Giao Tồn';
       case 'lay': return 'Đơn Lấy Tồn';
@@ -164,15 +175,17 @@ export const BacklogGltTab: React.FC = () => {
       case 'chuacochuyen': return 'Chưa Có Chuyến Đi';
       case 'overdue': return 'Quá Hạn > 120h';
       case 'tts': return 'Đơn Hàng TikTok Shop (TTS)';
+      case 'urgent192h': return '🚨 Đơn Khẩn Cấp > 8 Ngày (192h) - Xử Lý Triệt Để';
       default: return 'Tổng Tồn GLT (Snapshot Hiện Hành)';
     }
   }, [selectedKpi]);
 
-  // Tab KPIs — Chuẩn hóa đếm mã đơn duy nhất (Set<normalizeOrderId(maDonHang)>) và phân tách đủ 4 nhóm GLT (Giao, Ưu tiên/Trễ, Lấy, Trả)
+  // Tab KPIs — Chuẩn hóa đếm mã đơn duy nhất (Set<normalizeOrderId(maDonHang)>) và phân tách đủ 4 nhóm GLT + nhóm 192h khẩn cấp nhất
   const tabKPIs = useMemo(() => {
     let chuaCoChuyen = 0;
     let urgentOverdue = 0;
     let ttsCount = 0;
+    let urgent192hCount = 0;
 
     for (let i = 0; i < filteredData.length; i++) {
       const r = filteredData[i];
@@ -184,6 +197,10 @@ export const BacklogGltTab: React.FC = () => {
       }
       if (r.khachHang === 'TTS') {
         ttsCount++;
+      }
+      const aging = classifyGltAging(r.thoiGianTonDong, r.canhBao);
+      if (aging.isUrgent192h) {
+        urgent192hCount++;
       }
     }
 
@@ -202,12 +219,17 @@ export const BacklogGltTab: React.FC = () => {
       emptyOrderIdRowsIgnored: gltBreakdown.emptyOrderIdRowsIgnored,
       chuaCoChuyen,
       urgentOverdue,
-      ttsCount
+      ttsCount,
+      urgent192hCount
     };
   }, [filteredData, gltBreakdown]);
 
   // Dữ liệu bảng chi tiết được liên kết với Menu KPI
   const tableData = useMemo(() => {
+    if (selectedKpi.startsWith('customer:')) {
+      const cust = selectedKpi.replace('customer:', '').trim().toUpperCase();
+      return filteredData.filter(r => (r.khachHang || 'OTHER').trim().toUpperCase() === cust);
+    }
     if (selectedKpi === 'giao') {
       return filteredData.filter(r => r.loaiDon === 'Giao');
     }
@@ -231,6 +253,9 @@ export const BacklogGltTab: React.FC = () => {
     }
     if (selectedKpi === 'tts') {
       return filteredData.filter(r => r.khachHang === 'TTS');
+    }
+    if (selectedKpi === 'urgent192h') {
+      return filteredData.filter(r => classifyGltAging(r.thoiGianTonDong, r.canhBao).isUrgent192h);
     }
     return filteredData;
   }, [filteredData, selectedKpi]);
@@ -264,140 +289,49 @@ export const BacklogGltTab: React.FC = () => {
   const TYPE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   // =========================================================================
-  // BÁO CÁO 1: MA TRẬN MỨC CẢNH BÁO THEO TỪNG BƯU CỤC
+  // BÁO CÁO 1: MA TRẬN PHÂN CẤP ĐỘ TUỔI TỒN QUY ĐỔI GIỜ -> NGÀY (CÓ CỘT 192H)
   // =========================================================================
+  const agingMatrixData = useMemo(() => {
+    const buuCucList = [...new Set(dataset.tonDongGlt.map(r => r.buuCuc))].filter(Boolean);
+    return computePostOfficeAgingMatrix(filteredData, buuCucList);
+  }, [dataset.tonDongGlt, filteredData]);
+
+  // Tương thích ngược cho các điểm cần alertMatrixData
   const alertMatrixData = useMemo(() => {
-    const buuCucList = [...new Set(dataset.tonDongGlt.map(r => r.buuCuc))].filter(Boolean);
-    const rows = buuCucList.map(bc => {
-      const records = filteredData.filter(r => r.buuCuc === bc);
-      const total = records.length;
-      const hangMoi = records.filter(r => r.canhBao.includes('Hàng mới')).length;
-      const tonDong = records.filter(r => 
-        r.canhBao.includes('Tồn đọng 12_24') || 
-        r.canhBao.includes('Tồn đọng 24_36') || 
-        r.canhBao.includes('Tồn đọng 36_48')
-      ).length;
-      const canhBao = records.filter(r => 
-        r.canhBao.includes('48_72') || 
-        r.canhBao.includes('72_96') || 
-        r.canhBao.includes('96_120')
-      ).length;
-      const khanCap = records.filter(r => 
-        r.canhBao.includes('120_192') || 
-        r.canhBao.includes('quá hạn') ||
-        r.canhBao.includes('Đơn đã quá hạn')
-      ).length;
-      const riskRate = total > 0 ? ((canhBao + khanCap) / total) * 100 : 0;
-      
-      let riskLevel: 'danger' | 'warning' | 'normal' | 'safe' = 'safe';
-      if (khanCap >= 50 || riskRate >= 15) riskLevel = 'danger';
-      else if (khanCap >= 10 || riskRate >= 10) riskLevel = 'warning';
-      else if (riskRate > 0) riskLevel = 'normal';
-
-      return {
-        buuCuc: bc,
-        buuCucShort: bc.replace('(LAN) ', ''),
-        total,
-        hangMoi,
-        tonDong,
-        canhBao,
-        khanCap,
-        riskRate,
-        riskLevel
-      };
-    }).sort((a, b) => b.total - a.total);
-
-    const totals = rows.reduce((acc, cur) => ({
-      buuCuc: 'Toàn Khu Vực',
-      buuCucShort: 'Toàn Khu Vực',
-      total: acc.total + cur.total,
-      hangMoi: acc.hangMoi + cur.hangMoi,
-      tonDong: acc.tonDong + cur.tonDong,
-      canhBao: acc.canhBao + cur.canhBao,
-      khanCap: acc.khanCap + cur.khanCap,
-      riskRate: 0,
-      riskLevel: 'warning' as const
-    }), { 
-      buuCuc: 'Toàn Khu Vực', 
-      buuCucShort: 'Toàn Khu Vực', 
-      total: 0, 
-      hangMoi: 0, 
-      tonDong: 0, 
-      canhBao: 0, 
-      khanCap: 0,
-      riskRate: 0,
-      riskLevel: 'warning' as const
-    });
-
-    totals.riskRate = totals.total > 0 ? ((totals.canhBao + totals.khanCap) / totals.total) * 100 : 0;
-
-    return { rows, totals };
-  }, [dataset.tonDongGlt, filteredData]);
+    return {
+      rows: agingMatrixData.rows.map(r => ({
+        buuCuc: r.buuCuc,
+        buuCucShort: r.buuCucShort,
+        total: r.total,
+        hangMoi: r.lt_1d,
+        tonDong: r.p_1_3d,
+        canhBao: r.p_3_5d,
+        khanCap: r.p_5_8d + r.p_gt_8d_192h,
+        riskRate: r.overdueRate,
+        riskLevel: r.riskLevel
+      })),
+      totals: {
+        buuCuc: agingMatrixData.totals.buuCuc,
+        buuCucShort: agingMatrixData.totals.buuCucShort,
+        total: agingMatrixData.totals.total,
+        hangMoi: agingMatrixData.totals.lt_1d,
+        tonDong: agingMatrixData.totals.p_1_3d,
+        canhBao: agingMatrixData.totals.p_3_5d,
+        khanCap: agingMatrixData.totals.p_5_8d + agingMatrixData.totals.p_gt_8d_192h,
+        riskRate: agingMatrixData.totals.overdueRate,
+        riskLevel: agingMatrixData.totals.riskLevel
+      }
+    };
+  }, [agingMatrixData]);
 
   // =========================================================================
-  // BÁO CÁO 2: MA TRẬN KHÁCH HÀNG / SÀN TMĐT THEO TỪNG BƯU CỤC
+  // BÁO CÁO 2: BẢNG KÊ CHI TIẾT & BIỂU ĐỒ CỘT KẾT HỢP ĐƯỜNG NHÓM KHÁCH HÀNG
   // =========================================================================
-  const customerMatrixData = useMemo(() => {
-    const buuCucList = [...new Set(dataset.tonDongGlt.map(r => r.buuCuc))].filter(Boolean);
-    const rows = buuCucList.map(bc => {
-      const records = filteredData.filter(r => r.buuCuc === bc);
-      const total = records.length;
-      const tts = records.filter(r => r.khachHang === 'TTS').length;
-      const shopee = records.filter(r => r.khachHang === 'SHOPEE').length;
-      const other = records.filter(r => r.khachHang === 'OTHER').length;
-      
-      const ttsPct = total > 0 ? (tts / total) * 100 : 0;
-      const shopeePct = total > 0 ? (shopee / total) * 100 : 0;
-      const otherPct = total > 0 ? (other / total) * 100 : 0;
+  const customerAgingDetailed = useMemo(() => {
+    return computeCustomerAgingMatrix(filteredData, tabKPIs.totalCount);
+  }, [filteredData, tabKPIs.totalCount]);
 
-      let mainPartner = 'TTS';
-      if (shopee >= tts && shopee >= other) mainPartner = 'SHOPEE';
-      else if (other >= tts && other >= shopee) mainPartner = 'OTHER';
 
-      return {
-        buuCuc: bc,
-        buuCucShort: bc.replace('(LAN) ', ''),
-        total,
-        tts,
-        ttsPct,
-        shopee,
-        shopeePct,
-        other,
-        otherPct,
-        mainPartner
-      };
-    }).sort((a, b) => b.total - a.total);
-
-    const totals = rows.reduce((acc, cur) => ({
-      buuCuc: 'Toàn Khu Vực',
-      buuCucShort: 'Toàn Khu Vực',
-      total: acc.total + cur.total,
-      tts: acc.tts + cur.tts,
-      shopee: acc.shopee + cur.shopee,
-      other: acc.other + cur.other,
-      ttsPct: 0,
-      shopeePct: 0,
-      otherPct: 0,
-      mainPartner: 'TTS'
-    }), { 
-      buuCuc: 'Toàn Khu Vực', 
-      buuCucShort: 'Toàn Khu Vực', 
-      total: 0, 
-      tts: 0, 
-      shopee: 0, 
-      other: 0,
-      ttsPct: 0,
-      shopeePct: 0,
-      otherPct: 0,
-      mainPartner: 'TTS'
-    });
-
-    totals.ttsPct = totals.total > 0 ? (totals.tts / totals.total) * 100 : 0;
-    totals.shopeePct = totals.total > 0 ? (totals.shopee / totals.total) * 100 : 0;
-    totals.otherPct = totals.total > 0 ? (totals.other / totals.total) * 100 : 0;
-
-    return { rows, totals };
-  }, [dataset.tonDongGlt, filteredData]);
   // =========================================================================
   // MA TRẬN & CẢNH BÁO TRỌNG TÂM: ĐƠN HÀNG TIKTOK SHOP (TTS)
   // =========================================================================
@@ -545,9 +479,21 @@ export const BacklogGltTab: React.FC = () => {
     },
     {
       key: 'thoiGianTonDong',
-      header: 'Tuổi Tồn',
+      header: 'Tuổi Tồn (Cấp Độ)',
       align: 'center',
-      render: r => <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono font-bold text-[11px]">{r.thoiGianTonDong}h</span>
+      render: r => {
+        const aging = classifyGltAging(r.thoiGianTonDong, r.canhBao);
+        return (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono font-bold text-[11px] text-slate-800 dark:text-slate-200">
+              {r.thoiGianTonDong}h
+            </span>
+            <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-bold ${aging.badgeClass}`}>
+              {aging.isUrgent192h ? '🚨 ' + aging.shortLabel : aging.shortLabel}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'canhBao',
@@ -743,16 +689,16 @@ export const BacklogGltTab: React.FC = () => {
           </button>
         </div>
 
-        {/* Hàng 2: Menu 8 Thẻ KPI Tồn Đọng GLT (4 nhóm chuẩn Giao / Ưu tiên-Trễ / Lấy / Trả cộng khớp 100% + 3 thẻ SLA/TTS) */}
+        {/* Hàng 2: Menu Thẻ KPI Tồn Đọng GLT (Bổ sung Thẻ 192h Khẩn Cấp Nhất - Xử Lý Triệt Để) */}
         {showKpiCards && (
           <div className="py-1.5 px-3 md:px-6 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
-            <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+            <div className="w-full max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-1.5">
             {/* 1. Tổng Tồn GLT (Snapshot hiện hành) */}
             <button
               type="button"
               onClick={() => handleKpiCardClick('all')}
               title="Nhấn để xem toàn bộ danh sách đơn tồn GLT (Snapshot hiện hành - đếm theo mã đơn duy nhất)"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'all'
                   ? 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-400/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -779,7 +725,7 @@ export const BacklogGltTab: React.FC = () => {
               type="button"
               onClick={() => handleKpiCardClick('giao')}
               title="Nhấn để xem chi tiết danh sách Đơn Giao Tồn"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'giao'
                   ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-500 ring-2 ring-blue-500/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -806,7 +752,7 @@ export const BacklogGltTab: React.FC = () => {
               type="button"
               onClick={() => handleKpiCardClick('uutien')}
               title={`Nhấn để xem chi tiết Đơn Ưu Tiên Giao / Đã Trễ (Đã trễ: ${tabKPIs.donUuTienDaTre.toLocaleString('vi-VN')} | Trong ngày: ${tabKPIs.donUuTienTrongNgay.toLocaleString('vi-VN')})`}
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'uutien'
                   ? 'bg-red-50/90 dark:bg-red-950/60 border-red-500 ring-2 ring-red-500/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -824,7 +770,7 @@ export const BacklogGltTab: React.FC = () => {
                 {tabKPIs.donUuTienTre.toLocaleString('vi-VN')}
               </div>
               <div className="text-[9px] text-red-500 font-medium truncate">
-                Trễ: {tabKPIs.donUuTienDaTre.toLocaleString('vi-VN')} • Ngày: {tabKPIs.donUuTienTrongNgay.toLocaleString('vi-VN')}
+                Trễ: {tabKPIs.donUuTienDaTre.toLocaleString('vi-VN')}
               </div>
             </button>
 
@@ -833,7 +779,7 @@ export const BacklogGltTab: React.FC = () => {
               type="button"
               onClick={() => handleKpiCardClick('lay')}
               title="Nhấn để xem chi tiết danh sách Đơn Lấy Tồn"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'lay'
                   ? 'bg-emerald-50/90 dark:bg-emerald-950/60 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -860,7 +806,7 @@ export const BacklogGltTab: React.FC = () => {
               type="button"
               onClick={() => handleKpiCardClick('tra')}
               title="Nhấn để xem chi tiết danh sách Đơn Trả Tồn"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'tra'
                   ? 'bg-sky-50/90 dark:bg-sky-950/60 border-sky-500 ring-2 ring-sky-500/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -882,12 +828,12 @@ export const BacklogGltTab: React.FC = () => {
               </div>
             </button>
 
-            {/* 5. Chưa Có Chuyến Đi */}
+            {/* 6. Chưa Có Chuyến Đi */}
             <button
               type="button"
               onClick={() => handleKpiCardClick('chuacochuyen')}
               title="Nhấn để xem chi tiết Đơn Hàng Chưa Có Chuyến Đi"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'chuacochuyen'
                   ? 'bg-amber-50/90 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-500/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-slate-600 hover:shadow-2xs'
@@ -909,39 +855,12 @@ export const BacklogGltTab: React.FC = () => {
               </div>
             </button>
 
-            {/* 6. Quá Hạn > 120h */}
-            <button
-              type="button"
-              onClick={() => handleKpiCardClick('overdue')}
-              title="Nhấn để xem chi tiết Đơn Hàng Báo Động Quá Hạn > 120h"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
-                selectedKpi === 'overdue'
-                  ? 'bg-rose-50/90 dark:bg-rose-950/60 border-rose-600 ring-2 ring-rose-600/40 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-red-200 dark:border-red-900/60 hover:border-red-400 dark:hover:border-red-800 hover:shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tight">
-                <span className={selectedKpi === 'overdue' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}>
-                  Quá Hạn &gt; 120h
-                </span>
-                <span className={`text-[9px] ${selectedKpi === 'overdue' ? 'text-rose-600 font-bold' : 'text-slate-400 group-hover:text-rose-600'} transition-colors`}>
-                  {selectedKpi === 'overdue' ? 'Đang lọc ↓' : 'Xem ↓'}
-                </span>
-              </div>
-              <div className="text-sm lg:text-base font-black text-red-600 mt-0.5 truncate">
-                {tabKPIs.urgentOverdue.toLocaleString('vi-VN')}
-              </div>
-              <div className="text-[9px] text-red-500 font-bold truncate">
-                Báo động khẩn cấp
-              </div>
-            </button>
-
             {/* 7. Trọng Điểm: TikTok Shop (TTS) */}
             <button
               type="button"
               onClick={() => handleKpiCardClick('tts')}
-              title="Nhấn để xem riêng danh sách 4.485 đơn hàng TikTok Shop (TTS)"
-              className={`px-2.5 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+              title="Nhấn để xem riêng danh sách các đơn hàng TikTok Shop (TTS)"
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
                 selectedKpi === 'tts'
                   ? 'bg-purple-600 text-white border-purple-600 ring-2 ring-purple-400/40 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border-purple-300 dark:border-purple-900/70 hover:border-purple-500 dark:hover:border-purple-700 hover:shadow-2xs'
@@ -963,10 +882,39 @@ export const BacklogGltTab: React.FC = () => {
                 {((tabKPIs.ttsCount / tabKPIs.totalCount) * 100 || 0).toFixed(1)}% toàn khu vực
               </div>
             </button>
+
+            {/* 8. KHẨN CẤP NHẤT: NHÓM 192H (> 8 NGÀY) - CẦN XỬ LÝ TRIỆT ĐỂ */}
+            <button
+              type="button"
+              onClick={() => handleKpiCardClick('urgent192h')}
+              title="Bấm để lọc riêng danh sách các đơn rơi vào nhóm 192h (> 8 ngày) - Mức độ khẩn cấp nhất toàn mạng lưới, cần xử lý triệt để!"
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all group cursor-pointer ${
+                selectedKpi === 'urgent192h'
+                  ? 'bg-red-700 text-white border-red-800 ring-2 ring-red-400 shadow-md animate-pulse'
+                  : 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-900 hover:border-red-500 hover:shadow-xs'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tight">
+                <span className={selectedKpi === 'urgent192h' ? 'text-white flex items-center gap-1' : 'text-red-700 dark:text-red-400 flex items-center gap-1'}>
+                  <AlertOctagon className="w-3 h-3 text-red-500 animate-pulse" />
+                  <span>Tồn 192h (&gt;8N)</span>
+                </span>
+                <span className={`text-[8.5px] px-1 py-0.2 rounded font-black ${
+                  selectedKpi === 'urgent192h' ? 'bg-white text-red-700' : 'bg-red-600 text-white'
+                }`}>
+                  TRIỆT ĐỂ
+                </span>
+              </div>
+              <div className={`text-sm lg:text-base font-black mt-0.5 truncate ${selectedKpi === 'urgent192h' ? 'text-white' : 'text-red-600 dark:text-red-400'}`}>
+                {tabKPIs.urgent192hCount.toLocaleString('vi-VN')}
+              </div>
+              <div className={`text-[9px] font-bold truncate ${selectedKpi === 'urgent192h' ? 'text-red-100' : 'text-red-600/90'}`}>
+                Khẩn cấp nhất 🚨
+              </div>
+            </button>
           </div>
         </div>
         )}
-
       </div>
 
       <div className="p-3 md:p-5 space-y-4 max-w-[1600px] mx-auto">
@@ -1044,64 +992,78 @@ export const BacklogGltTab: React.FC = () => {
         </div>
 
         {/* =========================================================================
-            BÁO CÁO 1: THỐNG KÊ & BIỂU ĐỒ MỨC CẢNH BÁO TỒN ĐỌNG THEO BƯU CỤC
+            BÁO CÁO 1: THỐNG KÊ & BIỂU ĐỒ CẤP ĐỘ TUỔI TỒN QUY ĐỔI THEO NGÀY & BƯU CỤC
            ========================================================================= */}
         <div id="section-alert-report" className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 scroll-mt-16">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Báo Cáo 1: Thống Kê Mức Cảnh Báo Tồn Đọng Theo Bưu Cục
+                  Báo Cáo 1: Phân Cấp Độ Tồn Đọng Quy Đổi Theo Ngày &amp; Bưu Cục
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
-                  Phân Tích Rủi Ro Lưu Kho
+                  Quy Đổi Giờ → Ngày
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white animate-pulse">
+                  🚨 TÁCH RIÊNG CỘT 192H
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Đo lường chi tiết đơn hàng theo các mốc tuổi tồn: Hàng mới (0-12h), Tồn đọng (12-48h), Cảnh báo (48-120h) và Khẩn cấp (&gt;120h)
+                Đo lường chi tiết đơn hàng theo 5 cấp độ ngày: <strong>&lt; 1 ngày (&lt;24h)</strong>, <strong>1-3 ngày (24-72h)</strong>, <strong>3-5 ngày (72-120h)</strong>, <strong>5-8 ngày (120-192h)</strong> và <strong>&gt; 8 ngày (192h - Khẩn cấp nhất, cần xử lý triệt để)</strong>.
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-400">Đơn khẩn cấp toàn khu vực:</span>
-              <span className="ml-1.5 text-sm font-black text-red-600">{alertMatrixData.totals.khanCap.toLocaleString('vi-VN')} đơn</span>
+            <div className="text-right flex items-center gap-2 sm:flex-col sm:items-end">
+              <span className="text-xs text-slate-400">Đơn 192h (&gt;8 ngày) khẩn cấp:</span>
+              <span className="text-sm font-black text-red-600 bg-red-50 dark:bg-red-950/60 px-2 py-0.5 rounded border border-red-300 dark:border-red-900">
+                {agingMatrixData.totals.p_gt_8d_192h.toLocaleString('vi-VN')} đơn (Triệt để)
+              </span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
-            {/* Bảng Ma Trận Chi Tiết (8 Cột trên XL, 100% không thanh trượt ngang) */}
+            {/* Bảng Ma Trận Chi Tiết Cấp Độ Ngày (100% không thanh trượt ngang, tách riêng cột 192h) */}
             <div className="xl:col-span-8 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
               <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                 <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
                   <tr>
-                    <th className="px-2 py-2 w-[18%]">Bưu Cục</th>
-                    <th className="px-1.5 py-2 text-right text-emerald-600 dark:text-emerald-400 w-[11%]">
-                      <span className="block font-bold">Mới</span>
-                      <span className="text-[10px] font-normal opacity-75">(0-12h)</span>
+                    <th className="px-2 py-2 w-[16%]">Bưu Cục</th>
+                    <th className="px-1.5 py-2 text-right text-emerald-600 dark:text-emerald-400 w-[10%]">
+                      <span className="block font-bold">&lt; 1 ngày</span>
+                      <span className="text-[9.5px] font-normal opacity-75">(&lt;24h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-amber-600 w-[11%]">
-                      <span className="block font-bold">Tồn</span>
-                      <span className="text-[10px] font-normal opacity-75">(12-48h)</span>
+                    <th className="px-1.5 py-2 text-right text-amber-600 w-[10%]">
+                      <span className="block font-bold">1 - 3 ngày</span>
+                      <span className="text-[9.5px] font-normal opacity-75">(24-72h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-orange-600 w-[11%]">
-                      <span className="block font-bold">Cảnh Báo</span>
-                      <span className="text-[10px] font-normal opacity-75">(48-120h)</span>
+                    <th className="px-1.5 py-2 text-right text-orange-600 w-[10%]">
+                      <span className="block font-bold">3 - 5 ngày</span>
+                      <span className="text-[9.5px] font-normal opacity-75">(72-120h)</span>
                     </th>
-                    <th className="px-1.5 py-2 text-right text-red-600 w-[11%]">
-                      <span className="block font-bold">Khẩn Cấp</span>
-                      <span className="text-[10px] font-normal opacity-75">(&gt;120h)</span>
+                    <th className="px-1.5 py-2 text-right text-rose-600 w-[10%]">
+                      <span className="block font-bold">5 - 8 ngày</span>
+                      <span className="text-[9.5px] font-normal opacity-75">(120-192h)</span>
                     </th>
-                    <th className="px-2 py-2 text-right text-slate-900 dark:text-white font-black w-[13%]">Tổng Tồn</th>
-                    <th className="px-1.5 py-2 text-center w-[12%]">% Quá Hạn</th>
-                    <th className="px-1.5 py-2 text-center w-[13%]">Mức Rủi Ro</th>
+                    {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) - KHẨN CẤP NHẤT */}
+                    <th className="px-1.5 py-2 text-right bg-red-600/10 dark:bg-red-950/50 border-x-2 border-red-500 text-red-700 dark:text-red-400 font-black w-[13%]">
+                      <div className="flex items-center justify-end gap-1">
+                        <AlertOctagon className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                        <span className="block uppercase text-[10.5px]">&gt; 8 ngày (192h)</span>
+                      </div>
+                      <span className="text-[9px] font-extrabold text-red-600 block leading-tight">XỬ LÝ TRIỆT ĐỂ</span>
+                    </th>
+                    <th className="px-2 py-2 text-right text-slate-900 dark:text-white font-black w-[11%]">Tổng Tồn</th>
+                    <th className="px-1.5 py-2 text-center w-[10%]">% Quá Hạn</th>
+                    <th className="px-1.5 py-2 text-center w-[10%]">Rủi Ro</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
-                  {alertMatrixData.rows.map((row) => (
+                  {agingMatrixData.rows.map((row) => (
                     <tr 
                       key={row.buuCuc} 
                       className={`hover:bg-slate-50 dark:hover:bg-slate-750/60 transition-colors ${
-                        row.riskLevel === 'danger' ? 'bg-red-50/20 dark:bg-red-950/10' : ''
+                        row.p_gt_8d_192h > 0 ? 'bg-red-50/30 dark:bg-red-950/20' :
+                        row.riskLevel === 'danger' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
                       }`}
                     >
                       <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100">
@@ -1111,32 +1073,46 @@ export const BacklogGltTab: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-1.5 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {row.hangMoi.toLocaleString('vi-VN')}
+                        {row.lt_1d.toLocaleString('vi-VN')}
                       </td>
                       <td className="px-1.5 py-2 text-right font-mono font-bold text-amber-600">
-                        {row.tonDong.toLocaleString('vi-VN')}
+                        {row.p_1_3d.toLocaleString('vi-VN')}
                       </td>
                       <td className="px-1.5 py-2 text-right font-mono font-bold text-orange-600">
-                        {row.canhBao.toLocaleString('vi-VN')}
+                        {row.p_3_5d.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-1.5 py-2 text-right font-mono font-bold text-red-600">
-                        {row.khanCap.toLocaleString('vi-VN')}
+                      <td className="px-1.5 py-2 text-right font-mono font-bold text-rose-600">
+                        {row.p_5_8d.toLocaleString('vi-VN')}
+                      </td>
+                      {/* CELL 192H TÁCH RIÊNG BIỆT KHẨN CẤP */}
+                      <td className="px-1.5 py-2 text-right font-mono font-black border-x-2 border-red-500/50 bg-red-100/50 dark:bg-red-950/40">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black ${
+                          row.p_gt_8d_192h > 0
+                            ? 'bg-red-600 text-white animate-pulse shadow-2xs'
+                            : 'text-slate-400'
+                        }`}>
+                          {row.p_gt_8d_192h.toLocaleString('vi-VN')}
+                        </span>
                       </td>
                       <td className="px-2 py-2 text-right font-mono font-black text-slate-900 dark:text-white text-xs">
                         {row.total.toLocaleString('vi-VN')}
                       </td>
                       <td className="px-1.5 py-2 text-center">
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                          row.riskRate >= 15 ? 'text-red-700 bg-red-100 dark:bg-red-950 dark:text-red-300' :
-                          row.riskRate >= 8 ? 'text-amber-700 bg-amber-100 dark:bg-amber-950 dark:text-amber-300' :
+                          row.overdueRate >= 15 ? 'text-red-700 bg-red-100 dark:bg-red-950 dark:text-red-300' :
+                          row.overdueRate >= 8 ? 'text-amber-700 bg-amber-100 dark:bg-amber-950 dark:text-amber-300' :
                           'text-emerald-700 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300'
                         }`}>
-                          {row.riskRate.toFixed(1)}%
+                          {row.overdueRate.toFixed(1)}%
                         </span>
                       </td>
                       <td className="px-1.5 py-2 text-center">
-                        {row.riskLevel === 'danger' ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-red-600 text-white whitespace-nowrap">
+                        {row.p_gt_8d_192h > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-red-600 text-white whitespace-nowrap animate-pulse">
+                            🚨 Cần Xử Lý 192h
+                          </span>
+                        ) : row.riskLevel === 'danger' ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-rose-600 text-white whitespace-nowrap">
                             Báo Động Đỏ
                           </span>
                         ) : row.riskLevel === 'warning' ? (
@@ -1155,29 +1131,33 @@ export const BacklogGltTab: React.FC = () => {
                 <tfoot className="bg-slate-100/90 dark:bg-slate-750 text-slate-900 dark:text-white font-extrabold border-t-2 border-slate-300 dark:border-slate-650">
                   <tr>
                     <td className="px-2 py-2.5 uppercase tracking-wider text-[11px] font-bold">
-                      {alertMatrixData.totals.buuCuc}
+                      {agingMatrixData.totals.buuCuc}
                     </td>
                     <td className="px-1.5 py-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {alertMatrixData.totals.hangMoi.toLocaleString('vi-VN')}
+                      {agingMatrixData.totals.lt_1d.toLocaleString('vi-VN')}
                     </td>
                     <td className="px-1.5 py-2.5 text-right font-mono font-bold text-amber-600">
-                      {alertMatrixData.totals.tonDong.toLocaleString('vi-VN')}
+                      {agingMatrixData.totals.p_1_3d.toLocaleString('vi-VN')}
                     </td>
                     <td className="px-1.5 py-2.5 text-right font-mono font-bold text-orange-600">
-                      {alertMatrixData.totals.canhBao.toLocaleString('vi-VN')}
+                      {agingMatrixData.totals.p_3_5d.toLocaleString('vi-VN')}
                     </td>
-                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-red-600">
-                      {alertMatrixData.totals.khanCap.toLocaleString('vi-VN')}
+                    <td className="px-1.5 py-2.5 text-right font-mono font-bold text-rose-600">
+                      {agingMatrixData.totals.p_5_8d.toLocaleString('vi-VN')}
+                    </td>
+                    {/* TỔNG NHÓM 192H */}
+                    <td className="px-1.5 py-2.5 text-right font-mono font-black border-x-2 border-red-500 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs sm:text-sm">
+                      {agingMatrixData.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
                     </td>
                     <td className="px-2 py-2.5 text-right font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                      {alertMatrixData.totals.total.toLocaleString('vi-VN')}
+                      {agingMatrixData.totals.total.toLocaleString('vi-VN')}
                     </td>
                     <td className="px-1.5 py-2.5 text-center font-bold text-rose-600">
-                      {alertMatrixData.totals.riskRate.toFixed(1)}%
+                      {agingMatrixData.totals.overdueRate.toFixed(1)}%
                     </td>
                     <td className="px-1.5 py-2.5 text-center">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 whitespace-nowrap">
-                        Toàn Khu Vực
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-red-600 text-white whitespace-nowrap">
+                        Ưu Tiên Triệt Để
                       </span>
                     </td>
                   </tr>
@@ -1185,47 +1165,52 @@ export const BacklogGltTab: React.FC = () => {
               </table>
             </div>
 
-            {/* Biểu Đồ Trực Quan Xếp Chồng (4 Cột trên XL) */}
+            {/* Biểu Đồ Trực Quan Xếp Chồng 5 Nhóm Tuổi Tồn Ngày */}
             <div className="xl:col-span-4 bg-slate-50/70 dark:bg-slate-750/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                  Biểu Đồ Phân Bổ Mức Cảnh Báo
+                  Biểu Đồ Cấp Độ Ngày Theo Bưu Cục
                 </span>
-                <span className="text-[10px] text-slate-400">Cột xếp chồng theo Bưu cục</span>
+                <span className="text-[10px] text-slate-400">Xếp chồng theo 5 mốc ngày</span>
               </div>
-              <div className="h-60">
-                {alertMatrixData.rows.length === 0 ? (
+              <div className="h-64">
+                {(agingMatrixData.rows.length === 0 || alertMatrixData.rows.length === 0) ? (
                   <ChartEmptyState 
-                    title="Không có dữ liệu mức cảnh báo" 
-                    subtitle="Không tìm thấy dữ liệu cảnh báo tồn cho bộ lọc hiện tại" 
-                    heightClass="h-60" 
+                    title="Không có dữ liệu cấp độ ngày" 
+                    subtitle="Không tìm thấy dữ liệu tồn quy đổi theo ngày cho bộ lọc hiện tại" 
+                    heightClass="h-64" 
                   />
                 ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={alertMatrixData.rows} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <BarChart data={agingMatrixData.rows} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
                     <XAxis dataKey="buuCucShort" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip 
                       formatter={(v: any, name: any) => [
                         `${Number(v).toLocaleString('vi-VN')} đơn`,
-                        name === 'hangMoi' ? 'Mới (0-12h)' :
-                        name === 'tonDong' ? 'Tồn đọng (12-48h)' :
-                        name === 'canhBao' ? 'Cảnh báo (48-120h)' : 'Khẩn cấp (>120h)'
+                        name === 'lt_1d' ? '< 1 ngày (<24h)' :
+                        name === 'p_1_3d' ? '1 - 3 ngày (24-72h)' :
+                        name === 'p_3_5d' ? '3 - 5 ngày (72-120h)' :
+                        name === 'p_5_8d' ? '5 - 8 ngày (120-192h)' :
+                        '> 8 ngày (192h - Triệt để)'
                       ]}
                     />
                     <Legend 
-                      wrapperStyle={{ fontSize: 10, paddingTop: 6 }} 
+                      wrapperStyle={{ fontSize: 9.5, paddingTop: 6 }} 
                       formatter={(val) => 
-                        val === 'hangMoi' ? 'Mới (0-12h)' :
-                        val === 'tonDong' ? 'Tồn (12-48h)' :
-                        val === 'canhBao' ? 'Cảnh báo (48-120h)' : 'Khẩn cấp (>120h)'
+                        val === 'lt_1d' ? '< 1N' :
+                        val === 'p_1_3d' ? '1-3N' :
+                        val === 'p_3_5d' ? '3-5N' :
+                        val === 'p_5_8d' ? '5-8N' :
+                        '> 8N (192h)'
                       }
                     />
-                    <Bar dataKey="hangMoi" stackId="a" fill="#10B981" />
-                    <Bar dataKey="tonDong" stackId="a" fill="#F59E0B" />
-                    <Bar dataKey="canhBao" stackId="a" fill="#F97316" />
-                    <Bar dataKey="khanCap" stackId="a" fill="#EF4444" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="lt_1d" stackId="aging" fill="#10B981" />
+                    <Bar dataKey="p_1_3d" stackId="aging" fill="#F59E0B" />
+                    <Bar dataKey="p_3_5d" stackId="aging" fill="#F97316" />
+                    <Bar dataKey="p_5_8d" stackId="aging" fill="#E11D48" />
+                    <Bar dataKey="p_gt_8d_192h" stackId="aging" fill="#DC2626" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
                 )}
@@ -1233,40 +1218,40 @@ export const BacklogGltTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Khối Nhận Xét & Đánh Giá Vận Hành Logic Mức Cảnh Báo */}
+          {/* Khối Nhận Xét & Đánh Giá Vận Hành Logic Mức Cảnh Báo & 192h */}
           <div className="bg-gradient-to-r from-rose-50/80 via-amber-50/40 to-slate-50 dark:from-rose-950/30 dark:via-slate-800/60 dark:to-slate-800 border border-rose-200 dark:border-rose-900 rounded-xl p-3.5 space-y-2 text-xs text-slate-700 dark:text-slate-300">
             <div className="flex items-center gap-1.5 font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wide">
               <Lightbulb className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>Đánh Giá & Nhận Định Thực Tế Vận Hành (Mức Cảnh Báo)</span>
+              <span>Chỉ Đạo Trọng Tâm: Xử Lý Triệt Để Đơn Nhóm 192h (&gt; 8 Ngày)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11.5px] leading-relaxed">
-              <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-rose-100 dark:border-rose-950 shadow-2xs space-y-1">
+              <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-red-200 dark:border-red-950 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1 font-bold text-red-600">
                   <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
-                  <span>Điểm Nóng Nghẽn: (LAN) Rạch Kiến</span>
+                  <span>Xử Lý Triệt Để Nhóm 192h</span>
                 </div>
                 <p>
-                  Rạch Kiến đang là điểm thắt cổ chai lớn nhất khu vực khi ôm <strong>4.428 đơn tồn (40.5% toàn khu vực)</strong> và <strong>117/167 đơn khẩn cấp &gt;120h (70.1%)</strong>. Tỷ lệ đơn rủi ro quá hạn đạt <strong>15.7%</strong> (695 đơn). Nguyên nhân cốt lõi do áp lực dồn toa ca đêm và địa bàn tuyến xã rộng, thiếu bưu tá cơ động chi viện.
+                  Đơn hàng rơi vào <strong>nhóm 192h tức là đã lưu kho trên 8 ngày</strong>, mức độ vi phạm khẩn cấp nhất toàn mạng lưới. Trưởng bưu cục phải trực tiếp rà soát từng vận đơn 192h, thực hiện hoàn tất thủ tục giao gấp hoặc hoàn hàng về shop, <strong>tuyệt đối không để đơn 192h kéo dài thêm</strong>.
                 </p>
               </div>
 
               <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-amber-100 dark:border-amber-950 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1 font-bold text-amber-600">
                   <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span>Tồn Kho Lưu Cữu: (LAN) Cần Đước 1</span>
+                  <span>Chặn Nguy Cơ Đơn 5 - 8 Ngày (120-192h)</span>
                 </div>
                 <p>
-                  Mặc dù số lượng đơn không lớn (535 đơn), nhưng <strong>100% đơn tại Cần Đước 1 là hàng tồn lưu cữu từ các ca trước</strong> (449 đơn tồn 12-48h, 76 đơn cảnh báo và 10 đơn khẩn cấp), <strong>0 đơn mới trong ngày</strong>. Cần giải phóng dứt điểm các ca giao lại lần 2-3 và đơn hẹn khách kéo dài.
+                  Nhóm đơn từ <strong>5 đến 8 ngày</strong> là nguồn chuyển tiếp trực tiếp vào nhóm 192h nếu không được xử lý dứt điểm. Cần lên danh sách phát lại ca 1 và phân bổ bưu tá cứng tuyến để gỡ sạch trước khi chạm mốc 192h.
                 </p>
               </div>
 
               <div className="bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-950 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hình Mẫu: Cần Đước 1 &amp; Cần Giuộc</span>
+                  <span>Giải Phóng Đơn Trong Vòng 24h - 72h</span>
                 </div>
                 <p>
-                  <strong>Cần Đước 1</strong> đạt hiệu suất lưu chuyển xuất sắc: <strong>0 đơn cảnh báo và 0 đơn khẩn cấp</strong> (75% là hàng mới trong ca). <strong>Cần Giuộc</strong> quản lý khối lượng lớn (2.230 đơn) nhưng kiểm soát khẩn cấp cực tốt chỉ 6 đơn (0.3%). Đề xuất rút 3 bưu tá từ Cần Đước 1 sang tăng viện Rạch Kiến xử lý 117 đơn quá hạn.
+                  Duy trì tỷ lệ hàng mới <strong>&lt; 1 ngày (&gt; 65%)</strong> để giảm áp lực tích lũy tồn lưu kho. Bưu cục cần quét phân luồng ngay khi hàng cập bến và ưu tiên hàng giao lần đầu trong ca.
                 </p>
               </div>
             </div>
@@ -1520,168 +1505,276 @@ export const BacklogGltTab: React.FC = () => {
         </div>
 
         {/* =========================================================================
-            BÁO CÁO 2: THỐNG KÊ & BIỂU ĐỒ TỒN ĐỌNG THEO KHÁCH HÀNG / SÀN TMĐT THEO BƯU CỤC
+            BÁO CÁO 2: BẢNG KÊ CHI TIẾT & BIỂU ĐỒ CỘT - ĐƯỜNG NHÓM KHÁCH HÀNG (THEO CẤP ĐỘ NGÀY & CỘT 192H)
            ========================================================================= */}
-        <div id="section-customer-report" className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 scroll-mt-16">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
+        <div id="section-customer-report" className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 scroll-mt-16">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-indigo-600 shrink-0" />
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Báo Cáo 2: Thống Kê Tồn Đọng Theo Khách Hàng &amp; Sàn TMĐT Theo Bưu Cục
+                  Báo Cáo 2: Bảng Kê Chi Tiết &amp; Biểu Đồ Cột - Đường Nhóm Khách Hàng
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-                  Áp Lực SLA Đối Tác
+                  Cấp Độ Ngày &amp; 192h Triệt Để
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Đo lường cơ cấu nguồn đơn sàn (TikTok Shop, Shopee, Khách lẻ ngoài sàn) và rủi ro vi phạm thời gian cam kết giao hàng (SLA)
+                Quy đổi tuổi tồn thành 5 cấp độ ngày, tách riêng cột 192h (&gt;8 ngày) khẩn cấp nhất và kết hợp biểu đồ Cột - Đường theo dõi áp lực SLA
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-400">Tỷ trọng đơn sàn (TTS + Shopee):</span>
-              <span className="ml-1.5 text-sm font-black text-indigo-600">
-                {(customerMatrixData.totals.ttsPct + customerMatrixData.totals.shopeePct).toFixed(1)}% ({(customerMatrixData.totals.tts + customerMatrixData.totals.shopee).toLocaleString('vi-VN')} đơn)
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-right">
+                <div className="text-[10px] text-red-600 dark:text-red-400 font-semibold uppercase">Đơn 192h Toàn Mạng:</div>
+                <div className="text-sm font-black text-red-700 dark:text-red-300">
+                  {customerAgingDetailed.totals.p_gt_8d_192h.toLocaleString('vi-VN')} đơn
+                </div>
+              </div>
+              <div className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-900 text-right">
+                <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold uppercase">Quá Hạn (&gt;3N):</div>
+                <div className="text-sm font-black text-indigo-700 dark:text-indigo-300">
+                  {customerAgingDetailed.totals.overdueRate.toFixed(1)}% ({customerAgingDetailed.totals.overdueCount.toLocaleString('vi-VN')} đơn)
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* Bảng Ma Trận Chi Tiết Khách Hàng (7 Cột rộng) */}
-            <div className="lg:col-span-7 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-              <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-                <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
-                  <tr>
-                    <th className="px-3 py-2.5">Bưu Cục</th>
-                    <th className="px-2.5 py-2.5 text-right text-purple-600 dark:text-purple-400">TikTok Shop (TTS)</th>
-                    <th className="px-2.5 py-2.5 text-right text-orange-600">Shopee</th>
-                    <th className="px-2.5 py-2.5 text-right text-slate-600 dark:text-slate-300">Khách Khác (OTHER)</th>
-                    <th className="px-3 py-2.5 text-right text-slate-900 dark:text-white font-extrabold">Tổng Tồn</th>
-                    <th className="px-2.5 py-2.5 text-center">Kênh Chủ Lực</th>
-                    <th className="px-2.5 py-2.5 text-center">Áp Lực SLA Sàn</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
-                  {customerMatrixData.rows.map((row) => (
-                    <tr key={row.buuCuc} className="hover:bg-slate-50 dark:hover:bg-slate-750/60 transition-colors">
-                      <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                        <Store className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{row.buuCucShort}</span>
-                      </td>
-                      <td className="px-2.5 py-2 text-right">
-                        <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{row.tts.toLocaleString('vi-VN')}</span>
-                        <span className="ml-1 text-[10px] text-slate-400">({row.ttsPct.toFixed(0)}%)</span>
-                      </td>
-                      <td className="px-2.5 py-2 text-right">
-                        <span className="font-mono font-bold text-orange-600">{row.shopee.toLocaleString('vi-VN')}</span>
-                        <span className="ml-1 text-[10px] text-slate-400">({row.shopeePct.toFixed(0)}%)</span>
-                      </td>
-                      <td className="px-2.5 py-2 text-right">
-                        <span className="font-mono font-medium text-slate-600 dark:text-slate-300">{row.other.toLocaleString('vi-VN')}</span>
-                        <span className="ml-1 text-[10px] text-slate-400">({row.otherPct.toFixed(0)}%)</span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono font-black text-slate-900 dark:text-white">
-                        {row.total.toLocaleString('vi-VN')}
-                      </td>
-                      <td className="px-2.5 py-2 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10.5px] font-bold ${
-                          row.mainPartner === 'SHOPEE' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
-                          row.mainPartner === 'TTS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
-                          'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                        }`}>
-                          {row.mainPartner}
-                        </span>
-                      </td>
-                      <td className="px-2.5 py-2 text-center">
-                        {row.shopee > 1000 || (row.tts + row.shopee) > 2000 ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
-                            Rất Cao (Cần Ưu Tiên)
-                          </span>
-                        ) : (row.tts + row.shopee) > 1000 ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                            Trung Bình
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                            Trong Tầm Kiểm Soát
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-slate-100/90 dark:bg-slate-750 text-slate-900 dark:text-white font-extrabold border-t-2 border-slate-300 dark:border-slate-650">
-                  <tr>
-                    <td className="px-3 py-2.5 uppercase tracking-wider text-[11px]">
-                      {customerMatrixData.totals.buuCuc}
+          {/* Bảng Kê Chi Tiết Nhóm Khách Hàng Theo 5 Cấp Độ Ngày (Tách Riêng Cột 192h) */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+              <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold">
+                <tr>
+                  <th className="px-3 py-2.5">Nhóm Khách Hàng / Đối Tác</th>
+                  <th className="px-2.5 py-2.5 text-center">Phân Loại</th>
+                  <th className="px-2.5 py-2.5 text-right font-extrabold text-slate-900 dark:text-white">Tổng Tồn</th>
+                  <th className="px-2 py-2.5 text-right text-slate-500">Tỷ Trọng</th>
+                  <th className="px-2.5 py-2.5 text-right text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">
+                    &lt; 1 Ngày (&lt;24h)
+                  </th>
+                  <th className="px-2.5 py-2.5 text-right text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30">
+                    1 - 3 Ngày (24-72h)
+                  </th>
+                  <th className="px-2.5 py-2.5 text-right text-orange-700 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-950/30">
+                    3 - 5 Ngày (72-120h)
+                  </th>
+                  <th className="px-2.5 py-2.5 text-right text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30">
+                    5 - 8 Ngày (120-192h)
+                  </th>
+                  {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) - MỨC ĐỘ KHẨN CẤP NHẤT */}
+                  <th className="px-3 py-2.5 text-right text-white bg-red-600 dark:bg-red-700 font-black border-x-2 border-red-700 shadow-inner">
+                    🚨 &gt; 8 Ngày (192h)
+                  </th>
+                  <th className="px-2.5 py-2.5 text-right text-rose-600 dark:text-rose-400">Quá Hạn %</th>
+                  <th className="px-2.5 py-2.5 text-center">Áp Lực SLA</th>
+                  <th className="px-2.5 py-2.5 text-center">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
+                {customerAgingDetailed.rows.map((row) => (
+                  <tr 
+                    key={row.khachHang} 
+                    className="hover:bg-slate-50 dark:hover:bg-slate-750/60 transition-colors"
+                  >
+                    <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span className="font-mono text-indigo-700 dark:text-indigo-300 font-extrabold">{row.khachHang}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">({row.partnerName})</span>
                     </td>
-                    <td className="px-2.5 py-2.5 text-right text-purple-600 dark:text-purple-400 font-mono">
-                      {customerMatrixData.totals.tts.toLocaleString('vi-VN')} ({customerMatrixData.totals.ttsPct.toFixed(1)}%)
-                    </td>
-                    <td className="px-2.5 py-2.5 text-right text-orange-600 font-mono">
-                      {customerMatrixData.totals.shopee.toLocaleString('vi-VN')} ({customerMatrixData.totals.shopeePct.toFixed(1)}%)
-                    </td>
-                    <td className="px-2.5 py-2.5 text-right text-slate-600 dark:text-slate-300 font-mono">
-                      {customerMatrixData.totals.other.toLocaleString('vi-VN')} ({customerMatrixData.totals.otherPct.toFixed(1)}%)
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-slate-900 dark:text-white text-sm">
-                      {customerMatrixData.totals.total.toLocaleString('vi-VN')}
-                    </td>
-                    <td className="px-2.5 py-2.5 text-center text-indigo-600">
-                      TTS &amp; Shopee
-                    </td>
-                    <td className="px-2.5 py-2.5 text-center">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
-                        78.4% Đơn Sàn
+                    <td className="px-2.5 py-2 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        row.khachHang === 'TTS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                        row.khachHang === 'SHOPEE' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
+                        row.khachHang === 'OTHER' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {row.categoryBadge}
                       </span>
                     </td>
+                    <td className="px-2.5 py-2 text-right font-mono font-black text-slate-900 dark:text-white">
+                      {row.total.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="px-2 py-2 text-right font-mono text-[11px] text-slate-500">
+                      {row.sharePct.toFixed(1)}%
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10">
+                      {row.lt_1d.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono text-amber-700 dark:text-amber-400 bg-amber-50/20 dark:bg-amber-950/10">
+                      {row.p_1_3d.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono text-orange-700 dark:text-orange-400 bg-orange-50/20 dark:bg-orange-950/10">
+                      {row.p_3_5d.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono text-rose-700 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
+                      {row.p_5_8d.toLocaleString('vi-VN')}
+                    </td>
+                    {/* CỘT TÁCH RIÊNG DÀNH CHO NHÓM 192H (> 8 NGÀY) */}
+                    <td className={`px-3 py-2 text-right font-mono font-black border-x border-red-200 dark:border-red-900 ${
+                      row.p_gt_8d_192h > 0 
+                        ? 'bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 animate-pulse font-extrabold' 
+                        : 'text-slate-400 bg-slate-50/50 dark:bg-slate-800/40'
+                    }`}>
+                      {row.p_gt_8d_192h > 0 ? `🚨 ${row.p_gt_8d_192h.toLocaleString('vi-VN')}` : '-'}
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {row.overdueRate.toFixed(1)}%
+                    </td>
+                    <td className="px-2.5 py-2 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        row.slaPressure === 'Rất Cao (Khẩn)' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+                        row.slaPressure === 'Cao' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
+                        row.slaPressure === 'Trung Bình' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      }`}>
+                        {row.slaPressure}
+                      </span>
+                    </td>
+                    <td className="px-2.5 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleKpiCardClick(`customer:${row.khachHang}`)}
+                        className="px-2 py-0.5 text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 border border-indigo-200 dark:border-indigo-800 rounded transition-colors cursor-pointer"
+                      >
+                        Xem Đơn
+                      </button>
+                    </td>
                   </tr>
-                </tfoot>
-              </table>
+                ))}
+              </tbody>
+              <tfoot className="bg-slate-100/95 dark:bg-slate-750 text-slate-900 dark:text-white font-extrabold border-t-2 border-slate-300 dark:border-slate-650">
+                <tr>
+                  <td className="px-3 py-2.5 uppercase tracking-wider text-[11px] font-black" colSpan={2}>
+                    {customerAgingDetailed.totals.partnerName}
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right font-mono text-sm font-black text-indigo-700 dark:text-indigo-300">
+                    {customerAgingDetailed.totals.total.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2 py-2.5 text-right font-mono text-[11px] text-slate-500">
+                    100%
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right text-emerald-700 dark:text-emerald-400 font-mono">
+                    {customerAgingDetailed.totals.lt_1d.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right text-amber-700 dark:text-amber-400 font-mono">
+                    {customerAgingDetailed.totals.p_1_3d.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right text-orange-700 dark:text-orange-400 font-mono">
+                    {customerAgingDetailed.totals.p_3_5d.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right text-rose-700 dark:text-rose-400 font-mono">
+                    {customerAgingDetailed.totals.p_5_8d.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-white bg-red-600 dark:bg-red-700 font-black font-mono border-x-2 border-red-700 text-sm">
+                    {customerAgingDetailed.totals.p_gt_8d_192h.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="px-2.5 py-2.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                    {customerAgingDetailed.totals.overdueRate.toFixed(1)}%
+                  </td>
+                  <td className="px-2.5 py-2.5 text-center">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+                      {customerAgingDetailed.totals.slaPressure}
+                    </span>
+                  </td>
+                  <td className="px-2.5 py-2.5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedKpi('all')}
+                      className="px-2 py-0.5 text-[10.5px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 underline cursor-pointer"
+                    >
+                      Tất Cả
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Biểu Đồ Cột Kết Hợp Đường (ComposedChart): Cột Số Lượng Đơn Tồn & Đường Tỷ Lệ Quá Hạn % */}
+          <div className="bg-slate-50/80 dark:bg-slate-750/40 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                  Biểu Đồ Cột Kết Hợp Đường Nhóm Khách Hàng (Tồn Đọng Theo Cấp Độ &amp; Tỷ Lệ Quá Hạn)
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                <span className="flex items-center gap-1 font-bold text-red-600">
+                  <span className="w-2.5 h-2.5 rounded-xs bg-red-600 inline-block" /> Cột đỏ: Đơn 192h (&gt;8N) Triệt Để
+                </span>
+                <span className="flex items-center gap-1 font-bold text-purple-600 dark:text-purple-400">
+                  <span className="w-3 h-0.5 bg-purple-600 inline-block" /> Đường tím: Tỷ Lệ Quá Hạn % (Trục Phải)
+                </span>
+              </div>
             </div>
 
-            {/* Biểu Đồ Trực Quan Xếp Chồng Khách Hàng (5 Cột rộng) */}
-            <div className="lg:col-span-5 bg-slate-50/70 dark:bg-slate-750/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                  Biểu Đồ Cơ Cấu Đối Tác / Sàn TMĐT
-                </span>
-                <span className="text-[10px] text-slate-400">Số lượng đơn theo kênh</span>
-              </div>
-              <div className="h-60">
-                {customerMatrixData.rows.length === 0 ? (
-                  <ChartEmptyState 
-                    title="Không có dữ liệu đối tác / TMĐT" 
-                    subtitle="Không tìm thấy dữ liệu phân kênh sàn cho bộ lọc hiện tại" 
-                    heightClass="h-60" 
-                  />
-                ) : (
+            <div className="h-72">
+              {customerAgingDetailed.chartData.length === 0 ? (
+                <ChartEmptyState 
+                  title="Không có dữ liệu đối tác / TMĐT" 
+                  subtitle="Không tìm thấy dữ liệu phân kênh sàn cho bộ lọc hiện tại" 
+                  heightClass="h-72" 
+                />
+              ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={customerMatrixData.rows} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <ComposedChart data={customerAgingDetailed.chartData} margin={{ top: 15, right: 35, left: -10, bottom: 15 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
-                    <XAxis dataKey="buuCucShort" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10.5, fontWeight: 700 }} />
+                    <YAxis 
+                      yAxisId="left" 
+                      orientation="left" 
+                      tick={{ fontSize: 10 }}
+                      label={{ value: 'Số Lượng Đơn', angle: -90, position: 'insideLeft', offset: 12, style: { fontSize: 10, fill: '#64748B' } }}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      tick={{ fontSize: 10 }} 
+                      unit="%" 
+                      domain={[0, 100]}
+                      label={{ value: 'Tỷ Lệ Quá Hạn (%)', angle: 90, position: 'insideRight', offset: 12, style: { fontSize: 10, fill: '#7C3AED', fontWeight: 'bold' } }}
+                    />
                     <Tooltip 
                       formatter={(v: any, name: any) => [
-                        `${Number(v).toLocaleString('vi-VN')} đơn`,
-                        name === 'tts' ? 'TikTok Shop (TTS)' :
-                        name === 'shopee' ? 'Shopee' : 'Khách Khác (OTHER)'
+                        name === 'overdueRate' ? `${Number(v).toFixed(1)}%` : `${Number(v).toLocaleString('vi-VN')} đơn`,
+                        name === 'lt_1d' ? '< 1 Ngày (<24h)' :
+                        name === 'p_1_3d' ? '1 - 3 Ngày (24-72h)' :
+                        name === 'p_3_5d' ? '3 - 5 Ngày (72-120h)' :
+                        name === 'p_5_8d' ? '5 - 8 Ngày (120-192h)' :
+                        name === 'p_gt_8d_192h' ? '🚨 > 8 Ngày (192h - Triệt Để)' :
+                        name === 'overdueRate' ? 'Tỷ Lệ Quá Hạn (%)' : name
                       ]}
                     />
                     <Legend 
-                      wrapperStyle={{ fontSize: 10, paddingTop: 6 }} 
+                      wrapperStyle={{ fontSize: 10.5, paddingTop: 6 }} 
                       formatter={(val) => 
-                        val === 'tts' ? 'TikTok Shop' :
-                        val === 'shopee' ? 'Shopee' : 'Khách Khác'
+                        val === 'lt_1d' ? '< 1N' :
+                        val === 'p_1_3d' ? '1-3N' :
+                        val === 'p_3_5d' ? '3-5N' :
+                        val === 'p_5_8d' ? '5-8N' :
+                        val === 'p_gt_8d_192h' ? '🚨 >8N (192h)' :
+                        val === 'overdueRate' ? 'Tỷ Lệ Quá Hạn %' : val
                       }
                     />
-                    <Bar dataKey="tts" stackId="b" fill="#8B5CF6" />
-                    <Bar dataKey="shopee" stackId="b" fill="#F97316" />
-                    <Bar dataKey="other" stackId="b" fill="#64748B" radius={[3, 3, 0, 0]} />
-                  </BarChart>
+                    {/* Các cột xếp chồng theo 5 cấp độ ngày */}
+                    <Bar yAxisId="left" dataKey="lt_1d" stackId="aging" fill="#10B981" />
+                    <Bar yAxisId="left" dataKey="p_1_3d" stackId="aging" fill="#F59E0B" />
+                    <Bar yAxisId="left" dataKey="p_3_5d" stackId="aging" fill="#F97316" />
+                    <Bar yAxisId="left" dataKey="p_5_8d" stackId="aging" fill="#E11D48" />
+                    <Bar yAxisId="left" dataKey="p_gt_8d_192h" stackId="aging" fill="#DC2626" radius={[3, 3, 0, 0]} />
+                    {/* Đường tỷ lệ quá hạn % trên trục Y Phải */}
+                    <Line 
+                      yAxisId="right" 
+                      type="monotone" 
+                      dataKey="overdueRate" 
+                      stroke="#7C3AED" 
+                      strokeWidth={2.5} 
+                      dot={{ r: 4, fill: '#7C3AED' }} 
+                      activeDot={{ r: 6 }} 
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
