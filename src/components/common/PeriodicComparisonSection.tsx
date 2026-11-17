@@ -957,23 +957,23 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-              <th className="px-3.5 py-2.5">
-                <div className="flex items-center gap-1.5">
+              <th className="px-3.5 py-2.5 text-center">
+                <div className="flex items-center justify-center gap-1.5 w-full">
                   <span>Kỳ Vận Hành</span>
                   <span className="text-[10px] font-normal text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950/60 px-1.5 py-0.2 rounded">
                     Nhấn để mở rộng ngày
                   </span>
                 </div>
               </th>
-              <th className="px-3 py-2.5 text-right">Volume</th>
-              <th className="px-3 py-2.5 text-right">SLĐ Gán</th>
-              <th className="px-3 py-2.5 text-right">% Gán</th>
-              <th className="px-3 py-2.5 text-right">SLĐ GTC</th>
-              <th className="px-3 py-2.5 text-right">% GTC (Chuẩn)</th>
-              <th className="px-3 py-2.5 text-right">% Chuyển Trả</th>
-              <th className="px-3 py-2.5 text-right">Leadtime (h)</th>
-              <th className="px-3 py-2.5 text-right">Tồn Ca</th>
-              <th className="px-3 py-2.5 text-right">Tổng Lương (VNĐ)</th>
+              <th className="px-3 py-2.5 text-center">Volume</th>
+              <th className="px-3 py-2.5 text-center">SLĐ Gán</th>
+              <th className="px-3 py-2.5 text-center">% Gán</th>
+              <th className="px-3 py-2.5 text-center">SLĐ GTC</th>
+              <th className="px-3 py-2.5 text-center">% GTC (Chuẩn)</th>
+              <th className="px-3 py-2.5 text-center">% Chuyển Trả</th>
+              <th className="px-3 py-2.5 text-center">Leadtime (h)</th>
+              <th className="px-3 py-2.5 text-center">Tồn Ca</th>
+              <th className="px-3 py-2.5 text-center">Tổng Lương (VNĐ)</th>
               <th className="px-3 py-2.5 text-center">Bưu Tá</th>
             </tr>
           </thead>
@@ -1105,17 +1105,17 @@ export const PeriodicComparisonSection: React.FC<PeriodicComparisonProps> = ({
                               <table className="w-full text-xs text-left">
                                 <thead>
                                   <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                                    <th className="px-3 py-2">Ngày Vận Hành</th>
-                                    <th className="px-2 py-2">Thứ</th>
-                                    <th className="px-3 py-2 text-right">Volume</th>
-                                    <th className="px-3 py-2 text-right">SLĐ Gán</th>
-                                    <th className="px-2 py-2 text-right">% Gán</th>
-                                    <th className="px-3 py-2 text-right">SLĐ GTC</th>
-                                    <th className="px-3 py-2 text-right">% GTC (Chuẩn)</th>
-                                    <th className="px-2 py-2 text-right">% Chuyển Trả</th>
-                                    <th className="px-2 py-2 text-right">Leadtime (h)</th>
-                                    <th className="px-3 py-2 text-right">Tồn Đọng</th>
-                                    <th className="px-3 py-2 text-right">Quỹ Lương (VNĐ)</th>
+                                    <th className="px-3 py-2 text-center">Ngày Vận Hành</th>
+                                    <th className="px-2 py-2 text-center">Thứ</th>
+                                    <th className="px-3 py-2 text-center">Volume</th>
+                                    <th className="px-3 py-2 text-center">SLĐ Gán</th>
+                                    <th className="px-2 py-2 text-center">% Gán</th>
+                                    <th className="px-3 py-2 text-center">SLĐ GTC</th>
+                                    <th className="px-3 py-2 text-center">% GTC (Chuẩn)</th>
+                                    <th className="px-2 py-2 text-center">% Chuyển Trả</th>
+                                    <th className="px-2 py-2 text-center">Leadtime (h)</th>
+                                    <th className="px-3 py-2 text-center">Tồn Đọng</th>
+                                    <th className="px-3 py-2 text-center">Quỹ Lương (VNĐ)</th>
                                     <th className="px-2 py-2 text-center">Bưu Tá</th>
                                   </tr>
                                 </thead>

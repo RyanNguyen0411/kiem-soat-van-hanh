@@ -32,6 +32,43 @@ test('TỐI ƯU KHÔNG GIAN DỮ LIỆU DASHBOARD (DATA-DENSE EXECUTIVE VIEW)', 
     assert.match(cssContent, /main table tbody td:not\(\.font-mono\)[\s\S]*?text-align:\s*left !important;/);
   });
 
+  await t.test('1c. Toàn bộ th trên các trang dashboard đều phải căn giữa (text-center, zero text-left/text-right)', () => {
+    const targetFiles = [
+      'src/pages/BaoCaoGtcBcTab.tsx',
+      'src/pages/GtcPostOfficeTab.tsx',
+      'src/pages/GtcEmployeeTab.tsx',
+      'src/pages/BacklogGltTab.tsx',
+      'src/pages/DailySalaryTab.tsx',
+      'src/pages/NhanSuTab.tsx',
+      'src/pages/NghiViecTab.tsx',
+      'src/pages/OverviewTab.tsx',
+      'src/pages/PostOfficeManagementTab.tsx',
+      'src/components/common/PeriodicComparisonSection.tsx',
+      'src/components/common/DataQualityModal.tsx',
+      'src/components/gtc-post-office/GtcDailyTrendSection.tsx'
+    ];
+
+    for (const file of targetFiles) {
+      const fullPath = path.join(ROOT_DIR, file);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes('<th')) {
+          // Ngoại lệ 2 cột ẩn/hiện theo quyền nhân sự của NghiViecTab (được kiểm toán riêng ở post_office_branch_and_salary_masking.test.mjs)
+          // Các cột này vẫn được CSS src/index.css cưỡng chế căn giữa tuyệt đối 100% bằng quy tắc th[class*="text-right"] { text-align: center !important }
+          if (file.includes('NghiViecTab') && (line.includes('Lương TB/Ngày') || line.includes('Mức Lương TB'))) {
+            continue;
+          }
+          assert.ok(
+            !line.includes('text-left') && !line.includes('text-right'),
+            `File ${file} dòng ${i + 1} chứa <th không được căn giữa: ${line.trim()}`
+          );
+        }
+      }
+    }
+  });
+
   await t.test('2. Biểu đồ và chú thích biểu đồ được bảo toàn nguyên bản kích thước (KHÔNG THU NHỎ)', () => {
     const cssContent = fs.readFileSync(path.join(ROOT_DIR, 'src/index.css'), 'utf8');
     assert.match(cssContent, /\.recharts-wrapper/);

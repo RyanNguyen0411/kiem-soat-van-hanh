@@ -54,7 +54,7 @@ const FormattedMessage: React.FC<{ text: string; isUser: boolean }> = ({ text, i
           <thead className="bg-purple-50/70 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 font-bold border-b border-purple-100 dark:border-slate-700">
             <tr>
               {headers.map((h, i) => (
-                <th key={i} className="py-2 px-3 text-center sm:text-left font-bold">
+                <th key={i} className="py-2 px-3 text-center font-bold">
                   {renderInlineText(h)}
                 </th>
               ))}

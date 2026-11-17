@@ -795,11 +795,11 @@ export const OperationalCalendarDrawer: React.FC<OperationalCalendarDrawerProps>
                         <table className="w-full text-left border-collapse text-[10.5px]">
                           <thead className="bg-slate-100 dark:bg-slate-800 font-bold text-[10px] text-slate-700 dark:text-slate-200">
                             <tr>
-                              <th className="p-1.5">Bưu Cục</th>
-                              <th className="p-1.5 text-right">Dự Báo Đơn/Ngày</th>
-                              <th className="p-1.5 text-right">Tăng Trưởng</th>
+                              <th className="p-1.5 text-center">Bưu Cục</th>
+                              <th className="p-1.5 text-center">Dự Báo Đơn/Ngày</th>
+                              <th className="p-1.5 text-center">Tăng Trưởng</th>
                               <th className="p-1.5 text-center">Thuê CTV</th>
-                              <th className="p-1.5">Nguy Cơ Quá Tải</th>
+                              <th className="p-1.5 text-center">Nguy Cơ Quá Tải</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[10.5px]">

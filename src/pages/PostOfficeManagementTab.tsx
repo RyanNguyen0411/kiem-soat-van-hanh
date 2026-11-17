@@ -709,13 +709,13 @@ export const PostOfficeManagementTab: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10.5px] border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Bưu Cục Quản Lý</th>
-                <th className="py-3 px-4">User Đăng Nhập</th>
-                <th className="py-3 px-4">Mật Khẩu Hiện Tại</th>
+                <th className="py-3 px-4 text-center">Bưu Cục Quản Lý</th>
+                <th className="py-3 px-4 text-center">User Đăng Nhập</th>
+                <th className="py-3 px-4 text-center">Mật Khẩu Hiện Tại</th>
                 <th className="py-3 px-4 text-center">Trạng Thái</th>
                 <th className="py-3 px-4 text-center">Số Lần Sai</th>
                 <th className="py-3 px-4 text-center">Số Tab Được Cấp</th>
-                <th className="py-3 px-4 text-right">Thao Tác Của AM</th>
+                <th className="py-3 px-4 text-center">Thao Tác Của AM</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -1331,13 +1331,13 @@ export const PostOfficeManagementTab: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10.5px] sticky top-0 z-10 border-b border-slate-800">
               <tr>
-                <th className="py-2.5 px-4">Thời Gian</th>
-                <th className="py-2.5 px-4">Bưu Cục</th>
-                <th className="py-2.5 px-4">User</th>
-                <th className="py-2.5 px-4">Trạng Thái</th>
-                <th className="py-2.5 px-4">Thiết Bị / Nền Tảng</th>
-                <th className="py-2.5 px-4">IP Mạng</th>
-                <th className="py-2.5 px-4">Ghi Chú Chi Tiết</th>
+                <th className="py-2.5 px-4 text-center">Thời Gian</th>
+                <th className="py-2.5 px-4 text-center">Bưu Cục</th>
+                <th className="py-2.5 px-4 text-center">User</th>
+                <th className="py-2.5 px-4 text-center">Trạng Thái</th>
+                <th className="py-2.5 px-4 text-center">Thiết Bị / Nền Tảng</th>
+                <th className="py-2.5 px-4 text-center">IP Mạng</th>
+                <th className="py-2.5 px-4 text-center">Ghi Chú Chi Tiết</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -1696,10 +1696,10 @@ export const PostOfficeManagementTab: React.FC = () => {
                 <table className="w-full text-left text-[11px] text-slate-300">
                   <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                     <tr>
-                      <th className="py-2 px-3">Thời gian</th>
-                      <th className="py-2 px-3">Kết quả</th>
-                      <th className="py-2 px-3">Thiết bị</th>
-                      <th className="py-2 px-3">IP</th>
+                      <th className="py-2 px-3 text-center">Thời gian</th>
+                      <th className="py-2 px-3 text-center">Kết quả</th>
+                      <th className="py-2 px-3 text-center">Thiết bị</th>
+                      <th className="py-2 px-3 text-center">IP</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">

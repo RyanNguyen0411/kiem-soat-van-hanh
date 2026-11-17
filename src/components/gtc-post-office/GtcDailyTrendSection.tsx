@@ -1107,38 +1107,38 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                 <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
                     <th className="py-2 px-3 text-center w-10">STT</th>
-                    <th className="py-2 px-3">Bưu Cục</th>
+                    <th className="py-2 px-3 text-center">Bưu Cục</th>
                     {activeKpiDrillDown === 'volume' && (
                       <>
-                        <th className="py-2 px-3 text-right">Tổng Volume</th>
-                        <th className="py-2 px-3 text-right">Tỷ Trọng Vol</th>
-                        <th className="py-2 px-3 text-right">SLĐ Gán</th>
-                        <th className="py-2 px-3 text-right">%Gán</th>
+                        <th className="py-2 px-3 text-center">Tổng Volume</th>
+                        <th className="py-2 px-3 text-center">Tỷ Trọng Vol</th>
+                        <th className="py-2 px-3 text-center">SLĐ Gán</th>
+                        <th className="py-2 px-3 text-center">%Gán</th>
                         <th className="py-2 px-3 text-center">Tiến Độ Gán</th>
                       </>
                     )}
                     {activeKpiDrillDown === 'gtc' && (
                       <>
-                        <th className="py-2 px-3 text-right">SLĐ GTC</th>
-                        <th className="py-2 px-3 text-right">Tổng Volume</th>
-                        <th className="py-2 px-3 text-right">%GTC Đạt</th>
-                        <th className="py-2 px-3 text-right">Đóng Góp GTC</th>
+                        <th className="py-2 px-3 text-center">SLĐ GTC</th>
+                        <th className="py-2 px-3 text-center">Tổng Volume</th>
+                        <th className="py-2 px-3 text-center">%GTC Đạt</th>
+                        <th className="py-2 px-3 text-center">Đóng Góp GTC</th>
                         <th className="py-2 px-3 text-center">Hiệu Suất</th>
                       </>
                     )}
                     {activeKpiDrillDown === 'rate' && (
                       <>
-                        <th className="py-2 px-3 text-right">%GTC Thực Tế</th>
-                        <th className="py-2 px-3 text-right">SLĐ GTC / Volume</th>
+                        <th className="py-2 px-3 text-center">%GTC Thực Tế</th>
+                        <th className="py-2 px-3 text-center">SLĐ GTC / Volume</th>
                         <th className="py-2 px-3 text-center">Đánh Giá Chuẩn</th>
-                        <th className="py-2 px-3 text-right">So Với Chuẩn 80%</th>
+                        <th className="py-2 px-3 text-center">So Với Chuẩn 80%</th>
                       </>
                     )}
                     {activeKpiDrillDown === 'tondong' && (
                       <>
-                        <th className="py-2 px-3 text-right">Số Tồn Đọng</th>
-                        <th className="py-2 px-3 text-right">Tổng Volume</th>
-                        <th className="py-2 px-3 text-right">Tỷ Lệ Tồn</th>
+                        <th className="py-2 px-3 text-center">Số Tồn Đọng</th>
+                        <th className="py-2 px-3 text-center">Tổng Volume</th>
+                        <th className="py-2 px-3 text-center">Tỷ Lệ Tồn</th>
                         <th className="py-2 px-3 text-center">Mức Cảnh Báo</th>
                       </>
                     )}
@@ -1786,11 +1786,11 @@ export const GtcDailyTrendSection: React.FC<GtcDailyTrendSectionProps> = ({
                 <table className="w-full text-[10px] text-left border-collapse">
                   <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                     <tr>
-                      <th className="py-1 px-1.5 text-left w-[36%]">Bưu Cục / Loại Hàng</th>
-                      <th className="py-1 px-1 text-right w-[16%]">Vol</th>
-                      <th className="py-1 px-1 text-right w-[16%]">GTC</th>
-                      <th className="py-1 px-1 text-right w-[16%]">%GTC</th>
-                      <th className="py-1 px-1 text-right w-[16%]">Tồn</th>
+                      <th className="py-1 px-1.5 text-center w-[36%]">Bưu Cục / Loại Hàng</th>
+                      <th className="py-1 px-1 text-center w-[16%]">Vol</th>
+                      <th className="py-1 px-1 text-center w-[16%]">GTC</th>
+                      <th className="py-1 px-1 text-center w-[16%]">%GTC</th>
+                      <th className="py-1 px-1 text-center w-[16%]">Tồn</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-750">

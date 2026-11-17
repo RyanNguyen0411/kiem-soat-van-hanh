@@ -1332,22 +1332,22 @@ export function NghiViecTab() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-slate-100/90 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px] sticky top-0 z-10">
                     <tr>
-                      <th className="p-2 w-[18%]">Chu Kỳ</th>
+                      <th className="p-2 w-[18%] text-center">Chu Kỳ</th>
                       {OFFICIAL_POST_OFFICES.map(po => {
                         if (!matrixSelectedPos.includes(po)) return null;
                         const short = po.replace('(LAN) ', '');
                         return (
-                          <th key={po} className="p-2 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                          <th key={po} className="p-2 text-center">
+                            <div className="flex items-center justify-center gap-1 w-full">
                               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PO_COLORS[po] }} />
                               <span>{short}</span>
                             </div>
                           </th>
                         );
                       })}
-                      <th className="p-2 text-right w-[14%]">Tổng Kỳ</th>
+                      <th className="p-2 text-center w-[14%]">Tổng Kỳ</th>
                       <th className="p-2 text-center w-[16%]">Điểm Nóng</th>
-                      <th className="p-2 text-right w-[14%]">% Toàn Khu Vực</th>
+                      <th className="p-2 text-center w-[14%]">% Toàn Khu Vực</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1589,12 +1589,12 @@ export function NghiViecTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
                   <tr>
-                    <th className="p-2 w-[30%]">Bưu Cục</th>
-                    <th className="p-2 text-right w-[14%]">Tổng Nghỉ</th>
-                    <th className="p-2 text-right w-[14%]">Tỷ Trọng</th>
-                    <th className="p-2 text-right w-[14%]">&lt;1T (G01)</th>
-                    <th className="p-2 text-right w-[14%]">&lt;3 Tháng</th>
-                    <th className="p-2 text-right w-[14%]">Vi Phạm COD</th>
+                    <th className="p-2 w-[30%] text-center">Bưu Cục</th>
+                    <th className="p-2 text-center w-[14%]">Tổng Nghỉ</th>
+                    <th className="p-2 text-center w-[14%]">Tỷ Trọng</th>
+                    <th className="p-2 text-center w-[14%]">&lt;1T (G01)</th>
+                    <th className="p-2 text-center w-[14%]">&lt;3 Tháng</th>
+                    <th className="p-2 text-center w-[14%]">Vi Phạm COD</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -1737,10 +1737,10 @@ export function NghiViecTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
                   <tr>
-                    <th className={`p-2 ${isStaff ? 'w-[40%]' : 'w-[34%]'}`}>Nhóm Thâm Niên</th>
-                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Số Ca Nghỉ</th>
-                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Tỷ Trọng</th>
-                    <th className={`p-2 text-right ${isStaff ? 'w-[20%]' : 'w-[18%]'}`}>Ngày Làm TB</th>
+                    <th className={`p-2 text-center ${isStaff ? 'w-[40%]' : 'w-[34%]'}`}>Nhóm Thâm Niên</th>
+                    <th className={`p-2 text-center ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Số Ca Nghỉ</th>
+                    <th className={`p-2 text-center ${isStaff ? 'w-[20%]' : 'w-[15%]'}`}>Tỷ Trọng</th>
+                    <th className={`p-2 text-center ${isStaff ? 'w-[20%]' : 'w-[18%]'}`}>Ngày Làm TB</th>
                     {!isStaff && <th className="p-2 text-right w-[18%]">Lương TB/Ngày</th>}
                   </tr>
                 </thead>
@@ -1895,11 +1895,11 @@ export function NghiViecTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-100/80 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
                   <tr>
-                    <th className="p-2 w-[34%]">Nhóm Lý Do</th>
-                    <th className="p-2 text-right w-[15%]">Số Ca Nghỉ</th>
-                    <th className="p-2 text-right w-[15%]">Tỷ Trọng</th>
-                    <th className="p-2 text-right w-[18%]">Ngày Làm TB</th>
-                    <th className="p-2 w-[18%]">Điểm Nóng</th>
+                    <th className="p-2 w-[34%] text-center">Nhóm Lý Do</th>
+                    <th className="p-2 text-center w-[15%]">Số Ca Nghỉ</th>
+                    <th className="p-2 text-center w-[15%]">Tỷ Trọng</th>
+                    <th className="p-2 text-center w-[18%]">Ngày Làm TB</th>
+                    <th className="p-2 w-[18%] text-center">Điểm Nóng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
@@ -2034,16 +2034,16 @@ export function NghiViecTab() {
             <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-bold text-[11px]">
               <tr>
                 <th className="p-2.5 text-center w-[4%]">STT</th>
-                <th className="p-2.5 w-[8%]">Mã NV</th>
-                <th className="p-2.5 w-[14%]">Họ và Tên</th>
-                <th className="p-2.5 w-[13%]">Bưu Cục</th>
-                <th className="p-2.5 w-[10%]">Thâm Niên</th>
+                <th className="p-2.5 text-center w-[8%]">Mã NV</th>
+                <th className="p-2.5 text-center w-[14%]">Họ và Tên</th>
+                <th className="p-2.5 text-center w-[13%]">Bưu Cục</th>
+                <th className="p-2.5 text-center w-[10%]">Thâm Niên</th>
                 <th className="p-2.5 text-center w-[9%]">Ngày Vào</th>
                 <th className="p-2.5 text-center w-[9%]">Ngày Nghỉ</th>
-                <th className="p-2.5 text-right w-[9%]">Số Ngày Làm</th>
-                <th className="p-2.5 text-right w-[8%]">Sản Lượng TB</th>
+                <th className="p-2.5 text-center w-[9%]">Số Ngày Làm</th>
+                <th className="p-2.5 text-center w-[8%]">Sản Lượng TB</th>
                 {!isStaff && <th className="p-2.5 text-right w-[9%]">Mức Lương TB</th>}
-                <th className="p-2.5 w-[16%]">Lý Do Nghỉ Việc</th>
+                <th className="p-2.5 text-center w-[16%]">Lý Do Nghỉ Việc</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">

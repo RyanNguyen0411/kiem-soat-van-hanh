@@ -1700,7 +1700,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                                   <tr className="font-bold border-b border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                                     <th className="px-2 py-2 text-center w-12">STT</th>
                                     <th className="px-3 py-2 text-center">Mã NV</th>
-                                    <th className="px-3 py-2 text-left">Họ Tên</th>
+                                    <th className="px-3 py-2 text-center">Họ Tên</th>
                                     <th className="px-3 py-2 text-center">Tổng Đơn</th>
                                     <th className="px-3 py-2 text-center">Tổng Đơn GTC</th>
                                     <th className="px-3 py-2 text-center">% GTC</th>
@@ -1822,10 +1822,10 @@ export const GtcPostOfficeTab: React.FC = () => {
                               {/* 2. Họ & Tên */}
                               <th 
                                 onClick={() => handleSortEmp('tenNV')}
-                                className="px-3 py-2 cursor-pointer select-none hover:bg-orange-100/60 dark:hover:bg-slate-700 transition-colors text-left"
+                                className="px-3 py-2 cursor-pointer select-none hover:bg-orange-100/60 dark:hover:bg-slate-700 transition-colors text-center"
                                 title="Nhấn để lọc A-Z hoặc Z-A theo Họ & Tên"
                               >
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center justify-center gap-1 w-full">
                                   <span>Họ & Tên</span>
                                   {empSortField === 'tenNV' ? (
                                     empSortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-orange-600" /> : <ArrowDown className="w-3.5 h-3.5 text-orange-600" />
@@ -2152,10 +2152,10 @@ export const GtcPostOfficeTab: React.FC = () => {
                             <div className="overflow-x-auto max-h-56 overflow-y-auto rounded border border-slate-200 dark:border-slate-700">
                               <table className="w-full text-xs text-left">
                                 <thead className="sticky top-0 bg-slate-100 dark:bg-slate-750">
-                                  <tr className="font-bold border-b border-slate-200 text-slate-700 dark:text-slate-300">
+                                    <tr className="font-bold border-b border-slate-200 text-slate-700 dark:text-slate-300">
                                     <th className="px-2 py-1.5 text-center w-12">STT</th>
                                     <th className="px-3 py-1.5 text-center">Mã NV</th>
-                                    <th className="px-3 py-1.5 text-left">Họ Tên</th>
+                                    <th className="px-3 py-1.5 text-center">Họ Tên</th>
                                     <th className="px-3 py-1.5 text-center">Tổng Đơn</th>
                                     <th className="px-3 py-1.5 text-center">Tổng Đơn GTC</th>
                                     <th className="px-3 py-1.5 text-center">% GTC</th>
@@ -2427,7 +2427,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                 <thead className="bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-bold">
                   <tr>
                     <th className="px-3 py-2 text-center">Mã NV</th>
-                    <th className="px-3 py-2">Họ & Tên Nhân Viên</th>
+                    <th className="px-3 py-2 text-center">Họ & Tên Nhân Viên</th>
                     <th className="px-3 py-2 text-center">Bưu Cục</th>
                     <th className="px-3 py-2 text-center text-red-600 font-black">Số Ngày Không Gán</th>
                     <th className="px-3 py-2 text-center">Tổng Đơn Tuần</th>
@@ -2552,7 +2552,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                 <thead className="bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-bold">
                   <tr>
                     <th className="px-3 py-2 text-center">Mã NV</th>
-                    <th className="px-3 py-2">Họ & Tên Nhân Viên</th>
+                    <th className="px-3 py-2 text-center">Họ & Tên Nhân Viên</th>
                     <th className="px-3 py-2 text-center">Bưu Cục</th>
                     <th className="px-3 py-2 text-center font-black text-rose-600">SLĐ Gán Tuần</th>
                     <th className="px-3 py-2 text-center font-black text-rose-600">SLĐ GTC Tuần</th>
@@ -2669,7 +2669,7 @@ export const GtcPostOfficeTab: React.FC = () => {
                 <thead className="bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 font-bold">
                   <tr>
                     <th className="px-3 py-2 text-center">Mã NV</th>
-                    <th className="px-3 py-2">Họ & Tên Nhân Viên</th>
+                    <th className="px-3 py-2 text-center">Họ & Tên Nhân Viên</th>
                     <th className="px-3 py-2 text-center">Bưu Cục</th>
                     <th className="px-3 py-2 text-center">Tổng Đơn Gán</th>
                     <th className="px-3 py-2 text-center">Tổng Đơn GTC</th>

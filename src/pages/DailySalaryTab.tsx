@@ -2586,13 +2586,13 @@ export const DailySalaryTab: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead className="sticky top-0 z-20 shadow-xs">
               <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700">
-                <th className="sticky left-0 z-30 bg-slate-100 dark:bg-slate-750 px-3.5 py-2.5 font-bold uppercase tracking-wider min-w-[200px] border-r border-slate-200 dark:border-slate-700">
+                <th className="sticky left-0 z-30 bg-slate-100 dark:bg-slate-750 px-3.5 py-2.5 font-bold uppercase tracking-wider min-w-[200px] border-r border-slate-200 dark:border-slate-700 text-center">
                   Bưu Cục / Bưu Tá
                 </th>
-                <th className="px-3 py-2.5 text-right font-bold min-w-[100px] border-r border-slate-200 dark:border-slate-700">
+                <th className="px-3 py-2.5 text-center font-bold min-w-[100px] border-r border-slate-200 dark:border-slate-700">
                   Tổng Lương
                 </th>
-                <th className="px-3 py-2.5 text-right font-bold min-w-[90px] border-r border-slate-200 dark:border-slate-700">
+                <th className="px-3 py-2.5 text-center font-bold min-w-[90px] border-r border-slate-200 dark:border-slate-700">
                   Lương TB/Ngày
                 </th>
                 <th className="px-2.5 py-2.5 text-center font-bold min-w-[60px] border-r border-slate-200 dark:border-slate-700">
@@ -2939,15 +2939,15 @@ export const DailySalaryTab: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                <th className="px-3 py-2 font-bold">Bưu Cục</th>
+                <th className="px-3 py-2 text-center font-bold">Bưu Cục</th>
                 <th className="px-2 py-2 text-center font-bold">Bưu Tá</th>
                 <th className="px-2 py-2 text-center font-bold">Tổng Công</th>
-                <th className="px-3 py-2 text-right font-bold">Tổng Quỹ Lương</th>
-                <th className="px-3 py-2 text-right font-bold text-orange-600">Lương TB / Công</th>
-                <th className="px-3 py-2 text-right font-bold">So Chuẩn KV</th>
-                <th className="px-3 py-2 text-right font-bold">Chi Phí / Đơn</th>
+                <th className="px-3 py-2 text-center font-bold">Tổng Quỹ Lương</th>
+                <th className="px-3 py-2 text-center font-bold text-orange-600">Lương TB / Công</th>
+                <th className="px-3 py-2 text-center font-bold">So Chuẩn KV</th>
+                <th className="px-3 py-2 text-center font-bold">Chi Phí / Đơn</th>
                 <th className="px-2 py-2 text-center font-bold">Năng Suất</th>
-                <th className="px-3 py-2 text-right font-bold">Phân Hóa Min-Max</th>
+                <th className="px-3 py-2 text-center font-bold">Phân Hóa Min-Max</th>
                 <th className="px-2 py-2 text-center font-bold">%GTC</th>
                 <th className="px-2 py-2 text-center font-bold">Tồn Đọng</th>
                 <th className="px-3 py-2 text-center font-bold">Trạng Thái Đánh Giá</th>
@@ -3151,15 +3151,15 @@ export const DailySalaryTab: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                <th className="px-3.5 py-2 font-bold">Bưu Cục</th>
+                <th className="px-3.5 py-2 text-center font-bold">Bưu Cục</th>
                 <th className="px-2.5 py-2 text-center font-bold">Bưu Tá</th>
                 <th className="px-2.5 py-2 text-center font-bold">Số Công</th>
-                <th className="px-3 py-2 text-right font-bold text-blue-600">Đơn Giao TL</th>
-                <th className="px-3 py-2 text-right font-bold text-purple-600">Đơn Lấy TL (LTC)</th>
-                <th className="px-3 py-2 text-right font-bold">Tỷ Lệ Lấy (LTC/Gán)</th>
-                <th className="px-3 py-2 text-right font-bold">Tổng Đơn Tính Lương</th>
-                <th className="px-3 py-2 text-right font-bold">Tổng Quỹ Lương</th>
-                <th className="px-3 py-2 text-right font-bold">Chi Phí / Đơn (CP)</th>
+                <th className="px-3 py-2 text-center font-bold text-blue-600">Đơn Giao TL</th>
+                <th className="px-3 py-2 text-center font-bold text-purple-600">Đơn Lấy TL (LTC)</th>
+                <th className="px-3 py-2 text-center font-bold">Tỷ Lệ Lấy (LTC/Gán)</th>
+                <th className="px-3 py-2 text-center font-bold">Tổng Đơn Tính Lương</th>
+                <th className="px-3 py-2 text-center font-bold">Tổng Quỹ Lương</th>
+                <th className="px-3 py-2 text-center font-bold">Chi Phí / Đơn (CP)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -3270,11 +3270,11 @@ export const DailySalaryTab: React.FC = () => {
               <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
                 <tr>
                   <th className="px-2 py-1.5 text-center font-bold w-7">#</th>
-                  <th className="px-2 py-1.5 font-bold">Bưu Tá (ID & Họ Tên)</th>
-                  <th className="px-2 py-1.5 font-bold w-20">Bưu Cục</th>
+                  <th className="px-2 py-1.5 text-center font-bold">Bưu Tá (ID & Họ Tên)</th>
+                  <th className="px-2 py-1.5 text-center font-bold w-20">Bưu Cục</th>
                   <th className="px-2 py-1.5 text-center font-bold w-12">Công</th>
-                  <th className="px-2 py-1.5 text-right font-bold w-24">Lương TB/Ngày</th>
-                  <th className="px-2 py-1.5 text-right font-bold text-orange-600 w-24">Tổng Lương</th>
+                  <th className="px-2 py-1.5 text-center font-bold w-24">Lương TB/Ngày</th>
+                  <th className="px-2 py-1.5 text-center font-bold text-orange-600 w-24">Tổng Lương</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -3332,11 +3332,11 @@ export const DailySalaryTab: React.FC = () => {
               <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
                 <tr>
                   <th className="px-2 py-1.5 text-center font-bold w-7">#</th>
-                  <th className="px-2 py-1.5 font-bold">Bưu Tá (ID & Họ Tên)</th>
-                  <th className="px-2 py-1.5 font-bold w-20">Bưu Cục</th>
+                  <th className="px-2 py-1.5 text-center font-bold">Bưu Tá (ID & Họ Tên)</th>
+                  <th className="px-2 py-1.5 text-center font-bold w-20">Bưu Cục</th>
                   <th className="px-2 py-1.5 text-center font-bold w-12">Công</th>
-                  <th className="px-2 py-1.5 text-right font-bold w-24">Lương TB/Ngày</th>
-                  <th className="px-2 py-1.5 text-right font-bold text-rose-600 w-24">Tổng Lương</th>
+                  <th className="px-2 py-1.5 text-center font-bold w-24">Lương TB/Ngày</th>
+                  <th className="px-2 py-1.5 text-center font-bold text-rose-600 w-24">Tổng Lương</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -3505,15 +3505,15 @@ export const DailySalaryTab: React.FC = () => {
                 <thead className="sticky top-0 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 z-10 shadow-xs">
                   <tr>
                     <th className="px-2 py-1.5 text-center font-bold w-8">#</th>
-                    <th className="px-2.5 py-1.5 font-bold">Mã NV</th>
-                    <th className="px-3 py-1.5 font-bold">Họ Tên Bưu Tá</th>
-                    <th className="px-2.5 py-1.5 font-bold">Bưu Cục</th>
-                    <th className="px-2.5 py-1.5 text-right font-bold">Thâm Niên</th>
+                    <th className="px-2.5 py-1.5 text-center font-bold">Mã NV</th>
+                    <th className="px-3 py-1.5 text-center font-bold">Họ Tên Bưu Tá</th>
+                    <th className="px-2.5 py-1.5 text-center font-bold">Bưu Cục</th>
+                    <th className="px-2.5 py-1.5 text-center font-bold">Thâm Niên</th>
                     <th className="px-2.5 py-1.5 text-center font-bold">Số Công</th>
-                    <th className="px-3 py-1.5 text-right font-bold">Lương TB/Ngày</th>
-                    <th className="px-3 py-1.5 text-right font-bold text-orange-600">Tổng Lương</th>
-                    <th className="px-2.5 py-1.5 text-right font-bold text-blue-600">Giao TL</th>
-                    <th className="px-2.5 py-1.5 text-right font-bold text-purple-600">Lấy LTC</th>
+                    <th className="px-3 py-1.5 text-center font-bold">Lương TB/Ngày</th>
+                    <th className="px-3 py-1.5 text-center font-bold text-orange-600">Tổng Lương</th>
+                    <th className="px-2.5 py-1.5 text-center font-bold text-blue-600">Giao TL</th>
+                    <th className="px-2.5 py-1.5 text-center font-bold text-purple-600">Lấy LTC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">

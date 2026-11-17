@@ -474,11 +474,11 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-100 dark:bg-slate-800 font-extrabold text-slate-700 dark:text-slate-300">
                     <tr>
-                      <th className="p-2.5">Chỉ Số Vận Hành</th>
-                      <th className="p-2.5 text-right">Dashboard</th>
-                      <th className="p-2.5 text-right">Dữ Liệu Nguồn</th>
+                      <th className="p-2.5 text-center">Chỉ Số Vận Hành</th>
+                      <th className="p-2.5 text-center">Dashboard</th>
+                      <th className="p-2.5 text-center">Dữ Liệu Nguồn</th>
                       <th className="p-2.5 text-center">Trạng Thái</th>
-                      <th className="p-2.5">Nguyên Tắc Kiểm Toán</th>
+                      <th className="p-2.5 text-center">Nguyên Tắc Kiểm Toán</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
@@ -618,12 +618,12 @@ Thời gian kiểm định: ${new Date().toLocaleString('vi-VN')}
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-100 dark:bg-slate-800 font-extrabold text-slate-700 dark:text-slate-300">
                     <tr>
-                      <th className="p-2.5">Bưu Cục Quản Trị</th>
-                      <th className="p-2.5 text-right">Volume</th>
-                      <th className="p-2.5 text-right">SLĐ GTC</th>
-                      <th className="p-2.5 text-right">%GTC Chuẩn</th>
-                      <th className="p-2.5 text-right">Tồn GLT</th>
-                      <th className="p-2.5 text-right">Tồn LC</th>
+                      <th className="p-2.5 text-center">Bưu Cục Quản Trị</th>
+                      <th className="p-2.5 text-center">Volume</th>
+                      <th className="p-2.5 text-center">SLĐ GTC</th>
+                      <th className="p-2.5 text-center">%GTC Chuẩn</th>
+                      <th className="p-2.5 text-center">Tồn GLT</th>
+                      <th className="p-2.5 text-center">Tồn LC</th>
                       <th className="p-2.5 text-center">NS Hiện Hữu</th>
                       <th className="p-2.5 text-center">NS Đã Nghỉ</th>
                     </tr>

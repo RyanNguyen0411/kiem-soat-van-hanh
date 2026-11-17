@@ -667,7 +667,7 @@ export const NhanSuTab: React.FC = () => {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
               <tr>
-                <th className="py-3 px-4 text-left font-bold">Bưu Cục</th>
+                <th className="py-3 px-4 text-center font-bold">Bưu Cục</th>
                 <th className="py-3 px-3 text-center font-bold">Tổng NV</th>
                 <th className="py-3 px-3 text-center font-bold text-orange-600 dark:text-orange-400">NVPTTT (Bưu tá)</th>
                 <th className="py-3 px-3 text-center font-bold text-blue-600 dark:text-blue-400">NVXL (Xử lý)</th>
@@ -933,11 +933,11 @@ export const NhanSuTab: React.FC = () => {
             <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
               <tr>
                 <th className="py-2.5 px-3 text-center font-bold">Mã Nhóm</th>
-                <th className="py-2.5 px-4 text-left font-bold">Tên Nhóm Thâm Niên</th>
+                <th className="py-2.5 px-4 text-center font-bold">Tên Nhóm Thâm Niên</th>
                 <th className="py-2.5 px-3 text-center font-bold">Khoảng Thời Gian</th>
                 <th className="py-2.5 px-3 text-center font-bold">Số Lượng NV</th>
                 <th className="py-2.5 px-3 text-center font-bold">Tỷ Lệ (%)</th>
-                <th className="py-2.5 px-4 text-left font-bold">Bưu Cục Tập Trung Nhiều Nhất</th>
+                <th className="py-2.5 px-4 text-center font-bold">Bưu Cục Tập Trung Nhiều Nhất</th>
                 <th className="py-2.5 px-4 text-center font-bold">Đánh Giá Mức Độ Ổn Định &amp; Rủi Ro</th>
                 <th className="py-2.5 px-3 text-center font-bold">Chi Tiết</th>
               </tr>
@@ -1127,9 +1127,9 @@ export const NhanSuTab: React.FC = () => {
                                     <tr>
                                       <th className="py-2 px-3 text-center w-10">STT</th>
                                       <th className="py-2 px-3 text-center">Mã NV</th>
-                                      <th className="py-2 px-4">Họ &amp; Tên</th>
-                                      <th className="py-2 px-3">Bưu Cục</th>
-                                      <th className="py-2 px-3">Chức Vụ</th>
+                                      <th className="py-2 px-4 text-center">Họ &amp; Tên</th>
+                                      <th className="py-2 px-3 text-center">Bưu Cục</th>
+                                      <th className="py-2 px-3 text-center">Chức Vụ</th>
                                       <th className="py-2 px-3 text-center">Loại HĐ</th>
                                       <th className="py-2 px-3 text-center">Ngày Vào Làm</th>
                                       <th className="py-2 px-3 text-center">Thâm Niên Thực Tế</th>
@@ -1290,9 +1290,9 @@ export const NhanSuTab: React.FC = () => {
               <tr>
                 <th className="py-3 px-3 text-center font-bold">STT</th>
                 <th className="py-3 px-3 text-center font-bold">Mã NV</th>
-                <th className="py-3 px-4 text-left font-bold">Họ & Tên</th>
-                <th className="py-3 px-3 text-left font-bold">Chức Vụ</th>
-                <th className="py-3 px-3 text-left font-bold">Bưu Cục</th>
+                <th className="py-3 px-4 text-center font-bold">Họ & Tên</th>
+                <th className="py-3 px-3 text-center font-bold">Chức Vụ</th>
+                <th className="py-3 px-3 text-center font-bold">Bưu Cục</th>
                 <th className="py-3 px-3 text-center font-bold">Loại HĐ</th>
                 <th className="py-3 px-3 text-center font-bold">Ngày Vào Làm</th>
                 <th className="py-3 px-3 text-center font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40">

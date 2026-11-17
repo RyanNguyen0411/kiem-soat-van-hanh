@@ -105,7 +105,16 @@ table {
 /* 1. TIÊU ĐỀ CỦA BẢNG THÌ CĂN GIỮA (100% THEAD TH TOÀN HỆ THỐNG) */
 main table thead th,
 table thead th,
-.data-table-container thead th {
+main table th,
+table th,
+.data-table-container thead th,
+.data-table-container th,
+th[class*="text-left"],
+th[class*="text-right"],
+th[class*="text-start"],
+th[class*="text-end"],
+th.text-left,
+th.text-right {
   padding-top: 7px !important;
   padding-bottom: 7px !important;
   padding-left: 8px !important;
@@ -115,15 +124,40 @@ table thead th,
   letter-spacing: 0.02em !important;
   line-height: 1.3 !important;
   text-align: center !important;
+  vertical-align: middle !important;
 }
 
 main table thead th > div,
 table thead th > div,
+main table thead th div,
+table thead th div,
 main table thead th span,
 table thead th span,
-.data-table-container thead th > div {
+main table th div,
+table th div,
+main table th span,
+table th span,
+.data-table-container thead th > div,
+.data-table-container thead th div {
   text-align: center !important;
   justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+main table thead th .flex,
+table thead th .flex,
+main table th .flex,
+table th .flex,
+main table thead th [class*="flex"],
+table thead th [class*="flex"],
+main table th [class*="flex"],
+table th [class*="flex"] {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 /* 2. SỐ LIỆU Ở TẤT CẢ CÁC BẢNG BÁO CÁO ĐỀU PHẢI CĂN GIỮA */

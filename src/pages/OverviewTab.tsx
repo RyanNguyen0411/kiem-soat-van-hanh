@@ -3758,13 +3758,13 @@ export const OverviewTab: React.FC = () => {
           <table className="w-full text-xs text-left border-collapse table-fixed">
             <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-2.5 px-2.5 w-[17%]">Bưu Cục &amp; Xếp Hạng</th>
+                <th className="py-2.5 px-2.5 w-[17%] text-center">Bưu Cục &amp; Xếp Hạng</th>
                 <th className="py-2.5 px-2 w-[11%] text-center">Volume &amp; % Gán</th>
                 <th className="py-2.5 px-2 w-[11%] text-center">% GTC &amp; So Target</th>
                 <th className="py-2.5 px-2 w-[13%] text-center">Tồn Đọng (GLT + LC)</th>
                 <th className="py-2.5 px-2 w-[11%] text-center">Nhân Sự &amp; Chuyên Cần</th>
                 <th className="py-2.5 px-2 w-[10%] text-center">Hiệu Quả Ca 2</th>
-                <th className="py-2.5 px-2.5 w-[18%] text-left">Định Hướng &amp; Chỉ Đạo AM</th>
+                <th className="py-2.5 px-2.5 w-[18%] text-center">Định Hướng &amp; Chỉ Đạo AM</th>
                 <th className="py-2.5 px-1.5 w-[9%] text-center">Chi Tiết</th>
               </tr>
             </thead>
@@ -4163,7 +4163,7 @@ export const OverviewTab: React.FC = () => {
           <table className="w-full text-xs text-left border-collapse table-fixed">
             <thead className="bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-2.5 px-3 w-[18%]">Bưu Cục</th>
+                <th className="py-2.5 px-3 w-[18%] text-center">Bưu Cục</th>
                 <th className="py-2.5 px-2 w-[12%] text-center">Tổng Tồn (GLT+LC)</th>
                 <th className="py-2.5 px-2 w-[12%] text-center">&lt; 72h (Trong SLA)</th>
                 <th className="py-2.5 px-2 w-[12%] text-center">72h - 120h (Cận hạn)</th>
@@ -4264,11 +4264,11 @@ export const OverviewTab: React.FC = () => {
           <table className="w-full text-xs text-left border-collapse table-fixed">
             <thead className="bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-2.5 px-3 w-[17%]">Bưu Cục &amp; Vị Thế</th>
+                <th className="py-2.5 px-3 w-[17%] text-center">Bưu Cục &amp; Vị Thế</th>
                 <th className="py-2.5 px-2.5 w-[14%] text-center">Chỉ Số Trọng Yếu</th>
                 <th className="py-2.5 px-2.5 w-[13%] text-center">Hiệu Suất &amp; Chi Phí</th>
-                <th className="py-2.5 px-3 w-[28%] text-left">Bóc Tách Bản Chất &amp; Nguyên Nhân Gốc</th>
-                <th className="py-2.5 px-3 w-[28%] text-left">Chỉ Đạo Hành Động Tức Thì Của AM</th>
+                <th className="py-2.5 px-3 w-[28%] text-center">Bóc Tách Bản Chất &amp; Nguyên Nhân Gốc</th>
+                <th className="py-2.5 px-3 w-[28%] text-center">Chỉ Đạo Hành Động Tức Thì Của AM</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">

@@ -1291,10 +1291,10 @@ export const BaoCaoGtcBcTab: React.FC = () => {
               <thead className="bg-rose-50/95 dark:bg-slate-850 backdrop-blur-xs text-rose-900 dark:text-rose-200 font-bold border-b border-rose-200 dark:border-slate-700 sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-2.5 px-2 text-center w-[4%] min-w-[40px] whitespace-normal break-words leading-tight align-middle">STT</th>
-                  <th className="py-2.5 px-3 text-left w-[14%] min-w-[120px] whitespace-normal break-words leading-tight align-middle">Bưu Cục</th>
+                  <th className="py-2.5 px-3 text-center w-[14%] min-w-[120px] whitespace-normal break-words leading-tight align-middle">Bưu Cục</th>
                   <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
-                  <th className="py-2.5 px-4 text-left w-[20%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ & Tên</th>
-                  <th className="py-2.5 px-3 text-left w-[13%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Chức Vụ / HĐ</th>
+                  <th className="py-2.5 px-4 text-center w-[20%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ & Tên</th>
+                  <th className="py-2.5 px-3 text-center w-[13%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Chức Vụ / HĐ</th>
                   <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Ngày</th>
                   <th className="py-2.5 px-3 text-center w-[14%] min-w-[125px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Nghỉ Trong Tháng</th>
                   <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Đi Làm</th>
@@ -1486,7 +1486,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                       <tr>
                         <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
                         <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
-                        <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ Tên</th>
+                        <th className="py-2.5 px-4 text-center w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ Tên</th>
                         <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">Tổng Đơn</th>
                         <th className="py-2.5 px-3 text-center w-[12%] min-w-[100px] whitespace-normal break-words leading-tight align-middle">Tổng Đơn GTC</th>
                         <th className="py-2.5 px-3 text-center w-[11%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">% GTC</th>
@@ -1669,7 +1669,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                         <tr>
                           <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
                           <th className="py-2.5 px-3 text-center w-[10%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[22%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                          <th className="py-2.5 px-4 text-center w-[22%] min-w-[160px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
                           <th className="py-2.5 px-3 text-center w-[12%] min-w-[90px] whitespace-normal break-words leading-tight align-middle">Loại Hợp Đồng</th>
                           <th className="py-2.5 px-3 text-center w-[15%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Làm Việc</th>
                           <th className="py-2.5 px-3 text-center w-[18%] min-w-[130px] whitespace-normal break-words leading-tight align-middle">Chức Năng Vận Hành</th>
@@ -1762,7 +1762,7 @@ export const BaoCaoGtcBcTab: React.FC = () => {
                         <tr>
                           <th className="py-2.5 px-2 text-center w-[5%] min-w-[45px] whitespace-normal break-words leading-tight align-middle">STT</th>
                           <th className="py-2.5 px-3 text-center w-[9%] min-w-[75px] whitespace-normal break-words leading-tight align-middle">Mã NV</th>
-                          <th className="py-2.5 px-4 text-left w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
+                          <th className="py-2.5 px-4 text-center w-[24%] min-w-[170px] whitespace-normal break-words leading-tight align-middle">Họ &amp; Tên</th>
                           <th className="py-2.5 px-3 text-center w-[11%] min-w-[85px] whitespace-normal break-words leading-tight align-middle">Hợp Đồng</th>
                           <th className="py-2.5 px-3 text-center w-[14%] min-w-[110px] whitespace-normal break-words leading-tight align-middle">Trạng Thái Ngày</th>
                           <th className="py-2.5 px-3 text-center w-[14%] min-w-[115px] whitespace-normal break-words leading-tight align-middle">Số Ngày Đã Nghỉ Trong Tháng</th>

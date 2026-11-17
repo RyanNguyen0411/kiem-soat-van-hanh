@@ -1356,13 +1356,13 @@ export const BacklogGltTab: React.FC = () => {
             <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
               <thead className="bg-purple-100/70 dark:bg-purple-950/60 text-purple-950 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800 font-bold">
                 <tr>
-                  <th className="px-2 py-2.5 w-[18%]">Bưu Cục</th>
-                  <th className="px-1.5 py-2.5 text-right text-purple-700 dark:text-purple-300 w-[12%]">Tổng TTS</th>
-                  <th className="px-1.5 py-2.5 text-right text-slate-700 dark:text-slate-300 w-[12%]">% Trong Kho</th>
-                  <th className="px-1.5 py-2.5 text-right text-amber-700 dark:text-amber-400 w-[13%]">Chưa Có Chuyến</th>
-                  <th className="px-1.5 py-2.5 text-right text-orange-600 w-[13%]">Ưu Tiên / Trễ</th>
-                  <th className="px-1.5 py-2.5 text-right text-rose-600 w-[11%]">Quá Hạn &gt;48h</th>
-                  <th className="px-1.5 py-2.5 text-right text-red-600 w-[11%]">&gt;120h Khẩn Cấp</th>
+                  <th className="px-2 py-2.5 text-center w-[18%]">Bưu Cục</th>
+                  <th className="px-1.5 py-2.5 text-center text-purple-700 dark:text-purple-300 w-[12%]">Tổng TTS</th>
+                  <th className="px-1.5 py-2.5 text-center text-slate-700 dark:text-slate-300 w-[12%]">% Trong Kho</th>
+                  <th className="px-1.5 py-2.5 text-center text-amber-700 dark:text-amber-400 w-[13%]">Chưa Có Chuyến</th>
+                  <th className="px-1.5 py-2.5 text-center text-orange-600 w-[13%]">Ưu Tiên / Trễ</th>
+                  <th className="px-1.5 py-2.5 text-center text-rose-600 w-[11%]">Quá Hạn &gt;48h</th>
+                  <th className="px-1.5 py-2.5 text-center text-red-600 w-[11%]">&gt;120h Khẩn Cấp</th>
                   <th className="px-1.5 py-2.5 text-center w-[10%]">Đánh Giá SLA</th>
                 </tr>
               </thead>
