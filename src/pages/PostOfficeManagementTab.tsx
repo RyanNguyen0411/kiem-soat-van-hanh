@@ -9,6 +9,7 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Clock, 
+  Calendar,
   Search, 
   Plus, 
   Trash2, 
@@ -139,10 +140,83 @@ export const PostOfficeManagementTab: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // State bộ lọc bảng kê nhật ký
-  const [auditFilterPo, setAuditFilterPo] = useState<string>('all');
+  // State bộ lọc bảng kê nhật ký: Tick chọn Bưu Cục & Tick chọn Ngày
+  const [selectedPos, setSelectedPos] = useState<string[]>(() => OFFICIAL_POST_OFFICES.map(p => p.shortName));
+  const [isPoDropdownOpen, setIsPoDropdownOpen] = useState<boolean>(false);
+
+  // Danh sách các ngày có dữ liệu từ nhật ký audits
+  const availableDates = useMemo(() => {
+    const datesMap = new Map<string, number>();
+    audits.forEach(a => {
+      const dt = formatVietnamDateTime(a.timestamp);
+      datesMap.set(dt.dateStr, (datesMap.get(dt.dateStr) || 0) + 1);
+    });
+    return Array.from(datesMap.keys()).sort((a, b) => {
+      const [d1, m1, y1] = a.split('/').map(Number);
+      const [d2, m2, y2] = b.split('/').map(Number);
+      return new Date(y2, m2 - 1, d2).getTime() - new Date(y1, m1 - 1, d1).getTime();
+    });
+  }, [audits]);
+
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState<boolean>(false);
+
+  // Mặc định chọn tất cả các ngày có sẵn khi khởi tạo hoặc có dữ liệu mới
+  useEffect(() => {
+    if (availableDates.length > 0 && selectedDates.length === 0) {
+      setSelectedDates(availableDates);
+    }
+  }, [availableDates]);
+
   const [auditFilterStatus, setAuditFilterStatus] = useState<string>('all');
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
+
+  // Phân trang & giới hạn tối đa 20 dòng trên mỗi khung nhìn cuộn
+  const [auditPage, setAuditPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+
+  // Handlers Tick Chọn Bưu Cục
+  const handleTogglePo = (poShort: string) => {
+    setSelectedPos(prev => {
+      const next = prev.includes(poShort) ? prev.filter(p => p !== poShort) : [...prev, poShort];
+      return next;
+    });
+    setAuditPage(1);
+  };
+  const handleSelectAllPos = () => {
+    setSelectedPos(OFFICIAL_POST_OFFICES.map(p => p.shortName));
+    setAuditPage(1);
+  };
+  const handleDeselectAllPos = () => {
+    setSelectedPos([]);
+    setAuditPage(1);
+  };
+
+  // Handlers Tick Chọn Ngày
+  const handleToggleDate = (dateStr: string) => {
+    setSelectedDates(prev => {
+      const next = prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr];
+      return next;
+    });
+    setAuditPage(1);
+  };
+  const handleSelectAllDates = () => {
+    setSelectedDates(availableDates);
+    setAuditPage(1);
+  };
+  const handleSelectToday = () => {
+    const today = formatVietnamDateTime(Date.now()).dateStr;
+    if (availableDates.includes(today)) {
+      setSelectedDates([today]);
+    } else if (availableDates.length > 0) {
+      setSelectedDates([availableDates[0]]);
+    }
+    setAuditPage(1);
+  };
+  const handleDeselectAllDates = () => {
+    setSelectedDates([]);
+    setAuditPage(1);
+  };
 
   // State Modal đổi mật khẩu
   const [pwdModalUser, setPwdModalUser] = useState<PostOfficeAccount | null>(null);
@@ -325,15 +399,56 @@ export const PostOfficeManagementTab: React.FC = () => {
     });
   }, [audits]);
 
-  // Danh sách nhật ký đã lọc
+  // Thống kê số lượng lượt đăng nhập theo từng bưu cục
+  const poAuditCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    OFFICIAL_POST_OFFICES.forEach(p => { counts[p.shortName] = 0; });
+    audits.forEach(a => {
+      OFFICIAL_POST_OFFICES.forEach(p => {
+        if (a.postOffice.includes(p.shortName) || a.postOfficeCode === p.code) {
+          counts[p.shortName] = (counts[p.shortName] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [audits]);
+
+  // Thống kê số lượng lượt đăng nhập theo từng ngày
+  const dateAuditCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    audits.forEach(a => {
+      const dt = formatVietnamDateTime(a.timestamp);
+      counts[dt.dateStr] = (counts[dt.dateStr] || 0) + 1;
+    });
+    return counts;
+  }, [audits]);
+
+  // Danh sách nhật ký đã lọc theo tick chọn Bưu Cục, tick chọn Ngày, Trạng thái & Từ khóa
   const filteredAudits = useMemo(() => {
     return audits.filter(item => {
-      if (auditFilterPo !== 'all' && !item.postOffice.includes(auditFilterPo) && item.postOfficeCode !== auditFilterPo) {
-        return false;
+      // 1. Lọc theo Tick Chọn Bưu Cục
+      if (selectedPos.length < OFFICIAL_POST_OFFICES.length) {
+        if (selectedPos.length === 0) return false;
+        const matchPo = selectedPos.some(poShort => 
+          item.postOffice.includes(poShort) || 
+          OFFICIAL_POST_OFFICES.find(p => p.shortName === poShort)?.code === item.postOfficeCode
+        );
+        if (!matchPo) return false;
       }
+
+      // 2. Lọc theo Tick Chọn Ngày
+      const itemVn = formatVietnamDateTime(item.timestamp);
+      if (selectedDates.length < availableDates.length) {
+        if (selectedDates.length === 0) return false;
+        if (!selectedDates.includes(itemVn.dateStr)) return false;
+      }
+
+      // 3. Lọc theo Trạng thái
       if (auditFilterStatus !== 'all' && item.status !== auditFilterStatus) {
         return false;
       }
+
+      // 4. Lọc theo Từ khóa tìm kiếm
       if (auditSearchQuery.trim()) {
         const q = auditSearchQuery.toLowerCase().trim();
         const match = 
@@ -345,7 +460,15 @@ export const PostOfficeManagementTab: React.FC = () => {
       }
       return true;
     });
-  }, [audits, auditFilterPo, auditFilterStatus, auditSearchQuery]);
+  }, [audits, selectedPos, selectedDates, availableDates, auditFilterStatus, auditSearchQuery]);
+
+  // Tính toán phân trang và giới hạn hiển thị tối đa 20 dòng / bảng
+  const totalAuditPages = Math.ceil(filteredAudits.length / pageSize) || 1;
+  const paginatedAudits = useMemo(() => {
+    if (pageSize >= 9999) return filteredAudits;
+    const start = (auditPage - 1) * pageSize;
+    return filteredAudits.slice(start, start + pageSize);
+  }, [filteredAudits, auditPage, pageSize]);
 
   // Danh sách user nhân viên phục vụ giám sát trạng thái trực tuyến (Xanh / Đỏ)
   const staffUsersToMonitor = useMemo(() => {
@@ -742,13 +865,41 @@ export const PostOfficeManagementTab: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10.5px] border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4 text-center">Bưu Cục Quản Lý</th>
-                <th className="py-3 px-4 text-center">User Đăng Nhập</th>
-                <th className="py-3 px-4 text-center">Mật Khẩu Hiện Tại</th>
-                <th className="py-3 px-4 text-center">Trạng Thái</th>
-                <th className="py-3 px-4 text-center">Số Lần Sai</th>
-                <th className="py-3 px-4 text-center">Số Tab Được Cấp</th>
-                <th className="py-3 px-4 text-center">Thao Tác Của AM</th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Bưu Cục Quản Lý</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>User Đăng Nhập</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Mật Khẩu Hiện Tại</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Trạng Thái</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Số Lần Sai</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Số Tab Được Cấp</span>
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Thao Tác Của AM</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -1293,57 +1444,262 @@ export const PostOfficeManagementTab: React.FC = () => {
 
       {/* 7. BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP THEO TỪNG MỐC THỜI GIAN */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-800 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-400" />
-                <span>BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP CỦA NHÂN VIÊN THEO MỐC THỜI GIAN</span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                Lịch sử truy cập hệ thống thời gian thực theo chuẩn múi giờ Việt Nam (Hà Nội, UTC +07:00)
-              </p>
+        <div className="p-4 sm:p-5 border-b border-slate-800 space-y-4">
+          {/* TIÊU ĐỀ BẢNG CĂN GIỮA TUYỆT ĐỐI */}
+          <div className="text-center w-full flex flex-col items-center justify-center border-b border-slate-800/60 pb-3">
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center justify-center gap-2 text-center">
+              <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="tracking-wide">BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP CỦA NHÂN VIÊN THEO MỐC THỜI GIAN</span>
+            </h3>
+            <p className="text-xs text-slate-400 text-center mt-1">
+              Lịch sử truy cập hệ thống thời gian thực theo chuẩn múi giờ Việt Nam (Hà Nội, UTC +07:00)
+            </p>
+          </div>
+
+          {/* DÒNG ĐỒNG BỘ REALTIME VÀ THÔNG SỐ */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2 text-emerald-400 font-semibold px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-500/30 w-fit">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Tự động đồng bộ Realtime (3s) • {formatVietnamDateTime(lastSyncTime).timeStr} (UTC+07:00)</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-500/30">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Tự động đồng bộ Realtime (3s) • {formatVietnamDateTime(lastSyncTime).timeStr} (UTC+07:00)</span>
-              </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
                 onClick={refreshAuditsRealtime}
                 disabled={isSyncingRealtime}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
                 title="Làm mới bảng kê thời gian thực"
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncingRealtime ? 'animate-spin' : ''}`} />
                 <span>Làm Mới</span>
               </button>
-              <div className="text-xs text-slate-400">
+
+              <button
+                type="button"
+                onClick={handleExportAuditsCSV}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs transition-colors cursor-pointer"
+                title="Xuất danh sách đã lọc ra file CSV"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Xuất CSV</span>
+              </button>
+
+              <div className="text-xs text-slate-400 pl-1">
                 Hiển thị: <strong className="text-emerald-400 font-bold">{filteredAudits.length}</strong> / {audits.length} lượt
               </div>
             </div>
           </div>
 
-          {/* Bộ lọc bảng kê */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-            {/* Lọc Bưu Cục */}
-            <select
-              value={auditFilterPo}
-              onChange={e => setAuditFilterPo(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500"
-            >
-              <option value="all">Tất cả Bưu cục ({OFFICIAL_POST_OFFICES.length})</option>
-              {OFFICIAL_POST_OFFICES.map(p => (
-                <option key={p.code} value={p.shortName}>{p.name}</option>
-              ))}
-            </select>
+          {/* KHU VỰC BỘ LỌC TICK CHỌN BƯU CỤC, TICK CHỌN NGÀY & TÌM KIẾM */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs relative">
+            {/* 1. BỘ LỌC TICK CHỌN BƯU CỤC */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPoDropdownOpen(!isPoDropdownOpen);
+                  setIsDateDropdownOpen(false);
+                }}
+                className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  selectedPos.length === OFFICIAL_POST_OFFICES.length
+                    ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                    : selectedPos.length > 0
+                    ? 'bg-orange-950/50 border-orange-500/50 text-orange-300 ring-1 ring-orange-500/30'
+                    : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                }`}
+                title="Bấm để mở danh sách tick chọn bưu cục"
+              >
+                <Building2 className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <span>
+                  {selectedPos.length === OFFICIAL_POST_OFFICES.length
+                    ? `Tất cả Bưu cục (${OFFICIAL_POST_OFFICES.length})`
+                    : selectedPos.length === 0
+                    ? 'Chưa chọn Bưu cục'
+                    : `Đã chọn ${selectedPos.length}/${OFFICIAL_POST_OFFICES.length} BC`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isPoDropdownOpen ? 'rotate-180 text-orange-400' : 'text-slate-400'}`} />
+              </button>
 
-            {/* Lọc Trạng thái */}
+              {/* Popover Menu Tick chọn Bưu Cục */}
+              {isPoDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setIsPoDropdownOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1.5 z-40 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 space-y-2 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-orange-400" />
+                        <span>Tick Chọn Bưu Cục</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[10.5px]">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllPos}
+                          className="text-orange-400 hover:underline font-semibold cursor-pointer"
+                        >
+                          Tất cả
+                        </button>
+                        <span className="text-slate-600">&bull;</span>
+                        <button
+                          type="button"
+                          onClick={handleDeselectAllPos}
+                          className="text-slate-400 hover:text-slate-200 cursor-pointer"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 max-h-48 overflow-y-auto scrollbar-thin">
+                      {OFFICIAL_POST_OFFICES.map(po => {
+                        const isChecked = selectedPos.includes(po.shortName);
+                        const count = poAuditCounts[po.shortName] || 0;
+                        return (
+                          <label
+                            key={po.code}
+                            className={`flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                              isChecked ? 'bg-orange-950/40 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleTogglePo(po.shortName)}
+                                className="w-3.5 h-3.5 rounded border-slate-700 text-orange-500 focus:ring-orange-400 focus:ring-offset-0 bg-slate-800 cursor-pointer"
+                              />
+                              <span>{po.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                              count > 0 ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-600'
+                            }`}>
+                              {count}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 2. BỘ LỌC TICK CHỌN NGÀY */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDateDropdownOpen(!isDateDropdownOpen);
+                  setIsPoDropdownOpen(false);
+                }}
+                className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  selectedDates.length === availableDates.length
+                    ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                    : selectedDates.length > 0
+                    ? 'bg-emerald-950/50 border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/30'
+                    : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                }`}
+                title="Bấm để mở danh sách tick chọn ngày"
+              >
+                <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>
+                  {selectedDates.length === availableDates.length
+                    ? `Tất cả ngày (${availableDates.length})`
+                    : selectedDates.length === 0
+                    ? 'Chưa chọn Ngày'
+                    : `Đã chọn ${selectedDates.length}/${availableDates.length} ngày`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDateDropdownOpen ? 'rotate-180 text-emerald-400' : 'text-slate-400'}`} />
+              </button>
+
+              {/* Popover Menu Tick chọn Ngày */}
+              {isDateDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setIsDateDropdownOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1.5 z-40 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 space-y-2 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Tick Chọn Ngày</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[10.5px]">
+                        <button
+                          type="button"
+                          onClick={handleSelectToday}
+                          className="text-emerald-400 hover:underline font-semibold cursor-pointer"
+                          title="Chỉ chọn ngày hôm nay"
+                        >
+                          Hôm nay
+                        </button>
+                        <span className="text-slate-600">&bull;</span>
+                        <button
+                          type="button"
+                          onClick={handleSelectAllDates}
+                          className="text-slate-300 hover:underline font-semibold cursor-pointer"
+                        >
+                          Tất cả
+                        </button>
+                        <span className="text-slate-600">&bull;</span>
+                        <button
+                          type="button"
+                          onClick={handleDeselectAllDates}
+                          className="text-slate-400 hover:text-slate-200 cursor-pointer"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 max-h-48 overflow-y-auto scrollbar-thin">
+                      {availableDates.map(dateStr => {
+                        const isChecked = selectedDates.includes(dateStr);
+                        const count = dateAuditCounts[dateStr] || 0;
+                        const todayStr = formatVietnamDateTime(Date.now()).dateStr;
+                        const isToday = dateStr === todayStr;
+
+                        return (
+                          <label
+                            key={dateStr}
+                            className={`flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                              isChecked ? 'bg-emerald-950/40 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleDate(dateStr)}
+                                className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-400 focus:ring-offset-0 bg-slate-800 cursor-pointer"
+                              />
+                              <span className="font-mono">{dateStr}</span>
+                              {isToday && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-sans font-bold">
+                                  Hôm nay
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                              count > 0 ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-600'
+                            }`}>
+                              {count} lượt
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 3. LỌC TRẠNG THÁI */}
             <select
               value={auditFilterStatus}
-              onChange={e => setAuditFilterStatus(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500"
+              onChange={e => {
+                setAuditFilterStatus(e.target.value);
+                setAuditPage(1);
+              }}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
             >
               <option value="all">Tất cả Trạng thái</option>
               <option value="SUCCESS">Thành công</option>
@@ -1351,43 +1707,130 @@ export const PostOfficeManagementTab: React.FC = () => {
               <option value="LOCKED_MAX_ATTEMPTS">Bị khóa (Quá 5 lần)</option>
             </select>
 
-            {/* Tìm kiếm */}
+            {/* 4. TÌM KIẾM TỪ KHÓA */}
             <div className="relative flex-1 min-w-[200px]">
               <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
               <input
                 type="text"
                 placeholder="Tìm theo User, Bưu cục, IP..."
                 value={auditSearchQuery}
-                onChange={e => setAuditSearchQuery(e.target.value)}
+                onChange={e => {
+                  setAuditSearchQuery(e.target.value);
+                  setAuditPage(1);
+                }}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs"
               />
             </div>
+
+            {/* Nút đặt lại bộ lọc */}
+            {(selectedPos.length < OFFICIAL_POST_OFFICES.length || selectedDates.length < availableDates.length || auditFilterStatus !== 'all' || auditSearchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPos(OFFICIAL_POST_OFFICES.map(p => p.shortName));
+                  setSelectedDates(availableDates);
+                  setAuditFilterStatus('all');
+                  setAuditSearchQuery('');
+                  setAuditPage(1);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                title="Đặt lại bộ lọc về mặc định"
+              >
+                <RotateCcw className="w-3 h-3 text-orange-400" />
+                <span>Đặt lại</span>
+              </button>
+            )}
           </div>
+
+          {/* DẢI TAG CHIP HIỂN THỊ NHANH CÁC BƯU CỤC & NGÀY ĐANG TICK CHỌN */}
+          {(selectedPos.length < OFFICIAL_POST_OFFICES.length || selectedDates.length < availableDates.length) && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] border-t border-slate-800/40">
+              <span className="text-slate-500 font-medium">Đang lọc:</span>
+              {selectedPos.length < OFFICIAL_POST_OFFICES.length && (
+                selectedPos.map(poShort => (
+                  <span key={poShort} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-950/40 text-orange-300 border border-orange-500/30 font-semibold">
+                    <span>{poShort}</span>
+                    <button type="button" onClick={() => handleTogglePo(poShort)} className="hover:text-white cursor-pointer" title="Bỏ lọc bưu cục này">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              )}
+              {selectedDates.length < availableDates.length && (
+                selectedDates.map(d => (
+                  <span key={d} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 font-mono font-semibold">
+                    <span>{d}</span>
+                    <button type="button" onClick={() => handleToggleDate(d)} className="hover:text-white cursor-pointer" title="Bỏ lọc ngày này">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPos(OFFICIAL_POST_OFFICES.map(p => p.shortName));
+                  setSelectedDates(availableDates);
+                }}
+                className="text-orange-400 hover:underline text-[11px] font-semibold ml-1 cursor-pointer"
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Danh sách bảng kê chi tiết */}
-        <div className="overflow-x-auto max-h-[460px] scrollbar-thin">
+        {/* DANH SÁCH BẢNG KÊ: HIỂN THỊ TỐI ĐA 20 DÒNG, CỐ ĐỊNH TIÊU ĐỀ, CUỘN TRANG BẰNG THANH CUỘN */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[720px] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 border-t border-slate-800">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10.5px] sticky top-0 z-10 border-b border-slate-800 font-bold">
+            <thead className="bg-slate-950 text-slate-300 uppercase tracking-wider text-[10.5px] sticky top-0 z-20 border-b border-slate-800 font-bold shadow-md">
               <tr>
-                <th className="py-2.5 px-4 text-center">Thời Gian (Giờ VN)</th>
-                <th className="py-2.5 px-4 text-center">Bưu Cục</th>
-                <th className="py-2.5 px-4 text-center">User</th>
-                <th className="py-2.5 px-4 text-center">Trạng Thái</th>
-                <th className="py-2.5 px-4 text-center">Thiết Bị / Nền Tảng</th>
-                <th className="py-2.5 px-4 text-center">IP Mạng</th>
-                <th className="py-2.5 px-4 text-center">Ghi Chú Chi Tiết</th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Thời Gian (Giờ VN)</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Bưu Cục</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>User</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Trạng Thái</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Thiết Bị / Nền Tảng</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>IP Mạng</span>
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">
+                  <div className="flex items-center justify-center text-center w-full">
+                    <span>Ghi Chú Chi Tiết</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filteredAudits.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-slate-500">
-                    Không tìm thấy lượt đăng nhập nào phù hợp với bộ lọc.
+                    Không tìm thấy lượt đăng nhập nào phù hợp với bộ lọc bưu cục và ngày đã chọn.
                   </td>
                 </tr>
               ) : (
-                filteredAudits.map(item => {
+                paginatedAudits.map(item => {
                   const isOnline = Boolean(userStatusMap[item.username]?.isOnline);
                   const lastSeenAt = userStatusMap[item.username]?.lastSeenAt || item.lastSeenAt;
                   const isLatestUserRecord = filteredAudits.find(a => a.username === item.username)?.id === item.id;
@@ -1474,6 +1917,78 @@ export const PostOfficeManagementTab: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* THANH PHÂN TRANG VÀ ĐIỀU KHIỂN SỐ DÒNG HIỂN THỊ */}
+        <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Hiển thị tối đa <strong className="text-white font-bold">{pageSize >= 9999 ? 'Tất cả' : `${pageSize} dòng`}</strong> / bảng
+              {filteredAudits.length > 0 && (
+                <> (Dòng <strong>{(auditPage - 1) * pageSize + 1}</strong> - <strong>{Math.min(auditPage * pageSize, filteredAudits.length)}</strong> trên tổng số <strong className="text-emerald-400 font-bold">{filteredAudits.length}</strong> lượt)</>
+              )}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-500">Giới hạn:</span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setAuditPage(1);
+                }}
+                className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-slate-200 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+              >
+                <option value={20}>20 dòng / trang</option>
+                <option value={50}>50 dòng / trang</option>
+                <option value={100}>100 dòng / trang</option>
+                <option value={9999}>Tất cả (Cuộn tự do)</option>
+              </select>
+            </div>
+          </div>
+
+          {totalAuditPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setAuditPage(1)}
+                disabled={auditPage === 1}
+                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                title="Trang đầu"
+              >
+                « Đầu
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                disabled={auditPage === 1}
+                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                title="Trang trước"
+              >
+                ‹ Trước
+              </button>
+              <span className="px-3 py-1 font-mono text-xs font-bold text-slate-200 bg-slate-900 border border-slate-700 rounded">
+                Trang {auditPage} / {totalAuditPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAuditPage(p => Math.min(totalAuditPages, p + 1))}
+                disabled={auditPage === totalAuditPages}
+                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                title="Trang tiếp"
+              >
+                Tiếp ›
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuditPage(totalAuditPages)}
+                disabled={auditPage === totalAuditPages}
+                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                title="Trang cuối"
+              >
+                Cuối »
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
