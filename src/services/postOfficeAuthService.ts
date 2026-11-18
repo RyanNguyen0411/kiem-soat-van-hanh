@@ -9,6 +9,7 @@
  */
 
 import type { TabType } from '../types/dashboard';
+import { formatVietnamDateTime } from '../utils/vietnamTime';
 
 export interface PostOfficeAccount {
   id: string;
@@ -31,6 +32,8 @@ export interface LoginAuditRecord {
   timestamp: number;
   dateStr: string; // DD/MM/YYYY
   timeStr: string; // HH:mm:ss
+  lastSeenAt?: number;
+  lastSeenStr?: string;
   username: string;
   postOffice: string;
   postOfficeCode: string;
@@ -262,19 +265,6 @@ function getInitialAccounts(): PostOfficeAccount[] {
 // Khởi tạo nhật ký đăng nhập mẫu thực tế để AM Huy xem ngay biểu đồ & bảng kê
 function getInitialAuditLogs(): LoginAuditRecord[] {
   const now = Date.now();
-  const formatTime = (ts: number) => {
-    const d = new Date(ts);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
-    return {
-      dateStr: `${day}/${month}/${year}`,
-      timeStr: `${hours}:${minutes}:${seconds}`
-    };
-  };
 
   const sampleUsers = [
     { username: '3071323', po: '(LAN) Rạch Kiến', code: '22206000' },
@@ -287,16 +277,16 @@ function getInitialAuditLogs(): LoginAuditRecord[] {
   ];
 
   const logs: LoginAuditRecord[] = [];
-  // Tạo dữ liệu mô phỏng trong 7 ngày qua
+  // Tạo dữ liệu mô phỏng trong 7 ngày qua theo chuẩn Múi giờ Việt Nam (UTC+07:00)
   for (let i = 0; i < 28; i++) {
     const pastMs = now - (i * 5.5 * 3600 * 1000);
     const u = sampleUsers[i % sampleUsers.length];
-    const { dateStr, timeStr } = formatTime(pastMs);
+    const vnTime = formatVietnamDateTime(pastMs);
     logs.push({
       id: `audit_${pastMs}_${i}`,
       timestamp: pastMs,
-      dateStr,
-      timeStr,
+      dateStr: vnTime.dateStr,
+      timeStr: vnTime.timeStr,
       username: u.username,
       postOffice: u.po,
       postOfficeCode: u.code,
@@ -380,24 +370,20 @@ export function getLoginAudits(): LoginAuditRecord[] {
 }
 
 /**
- * Ghi nhận một lượt đăng nhập mới
+ * Ghi nhận một lượt đăng nhập mới (Chuẩn Múi Giờ Việt Nam Hà Nội, UTC +07:00)
  */
 export function recordLoginAudit(record: Omit<LoginAuditRecord, 'id' | 'timestamp' | 'dateStr' | 'timeStr'>): void {
   try {
     const now = Date.now();
-    const d = new Date(now);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
+    const vnTime = formatVietnamDateTime(now);
 
     const newRecord: LoginAuditRecord = {
       id: `audit_${now}_${Math.random().toString(36).slice(2, 7)}`,
       timestamp: now,
-      dateStr: `${day}/${month}/${year}`,
-      timeStr: `${hours}:${minutes}:${seconds}`,
+      dateStr: vnTime.dateStr,
+      timeStr: vnTime.timeStr,
+      lastSeenAt: now,
+      lastSeenStr: vnTime.fullStr,
       ...record
     };
 

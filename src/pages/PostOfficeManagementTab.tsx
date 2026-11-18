@@ -65,6 +65,7 @@ import {
   type StaffNoticeConfig
 } from '../services/staffNoticeService';
 import { StaffNoticeModal } from '../components/auth/StaffNoticeModal';
+import { formatVietnamDateTime, formatVietnamTimeAgo } from '../utils/vietnamTime';
 import type { TabType } from '../types/dashboard';
 
 export const PostOfficeManagementTab: React.FC = () => {
@@ -74,6 +75,7 @@ export const PostOfficeManagementTab: React.FC = () => {
   // State giám sát online/offline & Realtime audit từ serverless
   const [userStatusMap, setUserStatusMap] = useState<Record<string, UserOnlineStatus>>({});
   const [isSyncingRealtime, setIsSyncingRealtime] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(() => Date.now());
   const [selectedUserDetail, setSelectedUserDetail] = useState<{
     username: string;
     postOffice: string;
@@ -96,15 +98,16 @@ export const PostOfficeManagementTab: React.FC = () => {
       if (res?.userStatusMap) {
         setUserStatusMap(res.userStatusMap);
       }
+      setLastSyncTime(Date.now());
     } finally {
       setIsSyncingRealtime(false);
     }
   }, []);
 
-  // Tự động polling realtime mỗi 5 giây
+  // Tự động polling realtime mỗi 3 giây để cập nhật liên tục
   useEffect(() => {
     refreshAuditsRealtime();
-    const interval = setInterval(refreshAuditsRealtime, 5000);
+    const interval = setInterval(refreshAuditsRealtime, 3000);
     return () => clearInterval(interval);
   }, [refreshAuditsRealtime]);
 
@@ -351,14 +354,33 @@ export const PostOfficeManagementTab: React.FC = () => {
       const userAudits = audits.filter(a => a.username === acc.username);
       const latestAudit = userAudits[0];
       const isOnline = Boolean(status?.isOnline);
-      const lastLoginStr = status?.lastLoginStr || (latestAudit ? `${latestAudit.timeStr} ngày ${latestAudit.dateStr}` : 'Chưa có ghi nhận');
-      const lastSeenStr = status?.lastSeenStr || (isOnline ? 'Đang mở dashboard' : 'Chưa có tín hiệu');
+
+      // Chuẩn hóa thời gian theo múi giờ Việt Nam (Hà Nội, UTC +07:00)
+      const loginVn = status?.lastLoginAt 
+        ? formatVietnamDateTime(status.lastLoginAt)
+        : (latestAudit ? formatVietnamDateTime(latestAudit.timestamp) : null);
+
+      const lastSeenVn = status?.lastSeenAt
+        ? formatVietnamDateTime(status.lastSeenAt)
+        : (latestAudit?.lastSeenAt ? formatVietnamDateTime(latestAudit.lastSeenAt) : null);
+
+      const lastLoginStr = loginVn 
+        ? `${loginVn.timeStr} ngày ${loginVn.dateStr}` 
+        : (status?.lastLoginStr || 'Chưa có ghi nhận');
+
+      const lastSeenStr = lastSeenVn 
+        ? `${lastSeenVn.timeStr} ngày ${lastSeenVn.dateStr}` 
+        : (isOnline ? 'Vừa mới (Đang mở dashboard)' : 'Chưa có tín hiệu');
 
       return {
         ...acc,
         isOnline,
         lastLoginStr,
         lastSeenStr,
+        lastLoginTime: loginVn?.timeStr,
+        lastLoginDate: loginVn?.dateStr,
+        lastSeenTime: lastSeenVn?.timeStr,
+        lastSeenAgo: formatVietnamTimeAgo(lastSeenVn?.timestamp || status?.lastSeenAt),
         device: status?.device || latestAudit?.device || 'Desktop (Windows/Chrome)',
         ip: status?.ip || latestAudit?.ipAddress || '113.161.78.10'
       };
@@ -382,13 +404,21 @@ export const PostOfficeManagementTab: React.FC = () => {
     const isOnline = Boolean(statusInfo?.isOnline);
     const acc = accounts.find(a => a.username === username);
 
+    const loginVn = statusInfo?.lastLoginAt 
+      ? formatVietnamDateTime(statusInfo.lastLoginAt)
+      : (latestAudit ? formatVietnamDateTime(latestAudit.timestamp) : null);
+
+    const lastSeenVn = statusInfo?.lastSeenAt 
+      ? formatVietnamDateTime(statusInfo.lastSeenAt)
+      : (latestAudit?.lastSeenAt ? formatVietnamDateTime(latestAudit.lastSeenAt) : null);
+
     setSelectedUserDetail({
       username,
       postOffice: postOffice || acc?.postOffice || 'Long An',
       displayName: displayName || acc?.displayName || `Nhân Viên (${username})`,
       isOnline,
-      lastLoginStr: statusInfo?.lastLoginStr || (latestAudit ? `${latestAudit.timeStr} ngày ${latestAudit.dateStr}` : 'Chưa có ghi nhận đăng nhập'),
-      lastSeenStr: statusInfo?.lastSeenStr || (isOnline ? 'Vừa mới (Đang mở dashboard)' : 'Ngoại tuyến'),
+      lastLoginStr: loginVn ? `${loginVn.timeStr} ngày ${loginVn.dateStr} (Giờ VN - UTC+07:00)` : 'Chưa có ghi nhận đăng nhập',
+      lastSeenStr: lastSeenVn ? `${lastSeenVn.timeStr} ngày ${lastSeenVn.dateStr} (${formatVietnamTimeAgo(lastSeenVn.timestamp)})` : (isOnline ? 'Vừa mới (Đang mở dashboard)' : 'Ngoại tuyến'),
       device: statusInfo?.device || latestAudit?.device || 'Desktop (Windows/Chrome)',
       ip: statusInfo?.ip || latestAudit?.ipAddress || '113.161.78.10'
     });
@@ -489,20 +519,23 @@ export const PostOfficeManagementTab: React.FC = () => {
     }
   };
 
-  // Xuất file CSV nhật ký đăng nhập
+  // Xuất file CSV nhật ký đăng nhập (Chuẩn Múi Giờ Việt Nam Hanoi, UTC+07:00)
   const handleExportAuditsCSV = () => {
-    const headers = ['Thời Gian', 'Ngày', 'Bưu Cục', 'Mã BC', 'Tài Khoản', 'Trạng Thái', 'Thiết Bị', 'IP Mạng', 'Ghi Chú'];
-    const rows = filteredAudits.map(a => [
-      a.timeStr,
-      a.dateStr,
-      `"${a.postOffice}"`,
-      a.postOfficeCode,
-      a.username,
-      a.status === 'SUCCESS' ? 'Thành công' : a.status === 'FAILED_PASSWORD' ? 'Sai mật khẩu' : 'Đã bị khóa',
-      `"${a.device || 'N/A'}"`,
-      a.ipAddress || 'N/A',
-      `"${a.note || ''}"`
-    ]);
+    const headers = ['Thời Gian (Giờ VN)', 'Ngày (Giờ VN)', 'Bưu Cục', 'Mã BC', 'Tài Khoản', 'Trạng Thái', 'Thiết Bị', 'IP Mạng', 'Ghi Chú'];
+    const rows = filteredAudits.map(a => {
+      const vn = formatVietnamDateTime(a.timestamp);
+      return [
+        vn.timeStr,
+        vn.dateStr,
+        `"${a.postOffice}"`,
+        a.postOfficeCode,
+        a.username,
+        a.status === 'SUCCESS' ? 'Thành công' : a.status === 'FAILED_PASSWORD' ? 'Sai mật khẩu' : 'Đã bị khóa',
+        `"${a.device || 'N/A'}"`,
+        a.ipAddress || 'N/A',
+        `"${a.note || ''}"`
+      ];
+    });
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1238,13 +1271,19 @@ export const PostOfficeManagementTab: React.FC = () => {
                   <div className="text-[10px] text-slate-400 truncate">{staff.displayName}</div>
                 </div>
 
-                <div className="pt-1.5 border-t border-slate-800/80">
-                  <div className={`text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${isOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <div className="pt-1.5 border-t border-slate-800/80 space-y-0.5">
+                  <div className={`text-[9.5px] font-bold uppercase tracking-wider flex items-center justify-between gap-1 ${isOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
                     <span>{isOnline ? '🟢 ĐANG CẬP NHẬT' : '🔴 CHƯA ĐĂNG NHẬP'}</span>
+                    {isOnline && <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">Live</span>}
                   </div>
-                  <div className="text-[9.5px] text-slate-400 font-mono truncate mt-0.5">
-                    {staff.lastLoginStr ? staff.lastLoginStr.split(' ngày ')[0] : 'Chưa vào'}
+                  <div className="text-[9.5px] text-slate-300 font-mono truncate">
+                    Vào: <strong className="text-white">{staff.lastLoginTime || 'Chưa vào'}</strong>
                   </div>
+                  {isOnline && staff.lastSeenTime && (
+                    <div className="text-[9px] text-emerald-400 font-mono truncate">
+                      Cập nhật: {staff.lastSeenTime}
+                    </div>
+                  )}
                 </div>
               </button>
             );
@@ -1262,13 +1301,13 @@ export const PostOfficeManagementTab: React.FC = () => {
                 <span>BẢNG KÊ CHI TIẾT LƯỢT ĐĂNG NHẬP CỦA NHÂN VIÊN THEO MỐC THỜI GIAN</span>
               </h3>
               <p className="text-xs text-slate-400">
-                Lịch sử truy cập hệ thống thời gian thực của nhân viên 5 bưu cục Long An
+                Lịch sử truy cập hệ thống thời gian thực theo chuẩn múi giờ Việt Nam (Hà Nội, UTC +07:00)
               </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-500/30">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Tự động đồng bộ Realtime (5s)</span>
+                <span>Tự động đồng bộ Realtime (3s) • {formatVietnamDateTime(lastSyncTime).timeStr} (UTC+07:00)</span>
               </div>
               <button
                 type="button"
@@ -1329,9 +1368,9 @@ export const PostOfficeManagementTab: React.FC = () => {
         {/* Danh sách bảng kê chi tiết */}
         <div className="overflow-x-auto max-h-[460px] scrollbar-thin">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10.5px] sticky top-0 z-10 border-b border-slate-800">
+            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10.5px] sticky top-0 z-10 border-b border-slate-800 font-bold">
               <tr>
-                <th className="py-2.5 px-4 text-center">Thời Gian</th>
+                <th className="py-2.5 px-4 text-center">Thời Gian (Giờ VN)</th>
                 <th className="py-2.5 px-4 text-center">Bưu Cục</th>
                 <th className="py-2.5 px-4 text-center">User</th>
                 <th className="py-2.5 px-4 text-center">Trạng Thái</th>
@@ -1350,18 +1389,33 @@ export const PostOfficeManagementTab: React.FC = () => {
               ) : (
                 filteredAudits.map(item => {
                   const isOnline = Boolean(userStatusMap[item.username]?.isOnline);
+                  const lastSeenAt = userStatusMap[item.username]?.lastSeenAt || item.lastSeenAt;
+                  const isLatestUserRecord = filteredAudits.find(a => a.username === item.username)?.id === item.id;
+                  // Luôn format chính xác 100% qua chuẩn múi giờ Việt Nam (Hà Nội, UTC +07:00)
+                  const formattedTime = formatVietnamDateTime(item.timestamp);
+
                   return (
                     <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2.5 px-4 whitespace-nowrap">
-                        <div className="font-mono font-bold text-white">{item.timeStr}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">{item.dateStr}</div>
+                      <td className="py-2.5 px-4 whitespace-nowrap text-center">
+                        <div className="font-mono font-bold text-white flex items-center justify-center gap-1.5">
+                          <span>{formattedTime.timeStr}</span>
+                          {isOnline && isLatestUserRecord && (
+                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#10b981]" title="Đang mở dashboard thao tác liên tục" />
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">{formattedTime.dateStr}</div>
+                        {isOnline && isLatestUserRecord && lastSeenAt && (
+                          <div className="text-[9px] font-bold text-emerald-400 font-mono mt-0.5 tracking-tight">
+                            Cập nhật: {formatVietnamDateTime(lastSeenAt).timeStr} ({formatVietnamTimeAgo(lastSeenAt)})
+                          </div>
+                        )}
                       </td>
 
-                      <td className="py-2.5 px-4 font-semibold text-slate-200 whitespace-nowrap">
+                      <td className="py-2.5 px-4 font-semibold text-slate-200 whitespace-nowrap text-left">
                         {item.postOffice}
                       </td>
 
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className="py-2.5 px-4 whitespace-nowrap text-center">
                         <button
                           type="button"
                           onClick={() => handleOpenUserDetail(item.username, item.postOffice)}
@@ -1384,7 +1438,7 @@ export const PostOfficeManagementTab: React.FC = () => {
                         </button>
                       </td>
 
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className="py-2.5 px-4 whitespace-nowrap text-center">
                         {item.status === 'SUCCESS' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                             <CheckCircle2 className="w-3 h-3" />
@@ -1403,15 +1457,15 @@ export const PostOfficeManagementTab: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
+                      <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px] text-left">
                         {item.device || 'Trình duyệt Web'}
                       </td>
 
-                      <td className="py-2.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
+                      <td className="py-2.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap text-center">
                         {item.ipAddress || '127.0.0.1'}
                       </td>
 
-                      <td className="py-2.5 px-4 text-slate-400 text-[11px]">
+                      <td className="py-2.5 px-4 text-slate-400 text-[11px] text-left">
                         {item.note || 'N/A'}
                       </td>
                     </tr>
@@ -1710,24 +1764,27 @@ export const PostOfficeManagementTab: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      selectedUserAudits.slice(0, 5).map(a => (
-                        <tr key={a.id} className="hover:bg-slate-900/60">
-                          <td className="py-2 px-3 font-mono font-bold text-white whitespace-nowrap">
-                            {a.timeStr} <span className="text-[10px] text-slate-500 font-normal">{a.dateStr}</span>
-                          </td>
-                          <td className="py-2 px-3">
-                            {a.status === 'SUCCESS' ? (
-                              <span className="text-emerald-400 font-bold">Thành Công</span>
-                            ) : a.status === 'LOCKED_MAX_ATTEMPTS' ? (
-                              <span className="text-rose-400 font-bold">Bị Khóa</span>
-                            ) : (
-                              <span className="text-amber-400 font-bold">Sai Mật Khẩu</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3 text-slate-400 truncate max-w-[150px]">{a.device || 'N/A'}</td>
-                          <td className="py-2 px-3 font-mono text-slate-400">{a.ipAddress || 'N/A'}</td>
-                        </tr>
-                      ))
+                      selectedUserAudits.slice(0, 5).map(a => {
+                        const vnA = formatVietnamDateTime(a.timestamp);
+                        return (
+                          <tr key={a.id} className="hover:bg-slate-900/60">
+                            <td className="py-2 px-3 font-mono font-bold text-white whitespace-nowrap text-center">
+                              {vnA.timeStr} <span className="text-[10px] text-slate-400 font-normal">{vnA.dateStr}</span>
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              {a.status === 'SUCCESS' ? (
+                                <span className="text-emerald-400 font-bold">Thành Công</span>
+                              ) : a.status === 'LOCKED_MAX_ATTEMPTS' ? (
+                                <span className="text-rose-400 font-bold">Bị Khóa</span>
+                              ) : (
+                                <span className="text-amber-400 font-bold">Sai Mật Khẩu</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-slate-400 truncate max-w-[150px] text-left">{a.device || 'N/A'}</td>
+                            <td className="py-2 px-3 font-mono text-slate-400 text-center">{a.ipAddress || '127.0.0.1'}</td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

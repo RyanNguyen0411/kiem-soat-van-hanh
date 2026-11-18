@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => stopHeartbeat();
   }, []);
 
-  // Gửi heartbeat duy trì trạng thái online / đang cập nhật cho nhân viên bưu cục (mỗi 30s)
+  // Gửi heartbeat duy trì trạng thái online / đang cập nhật cho nhân viên bưu cục (mỗi 10s cập nhật liên tục)
   useEffect(() => {
     if (!isAuthenticated || !currentUser?.username) return;
 
@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const heartbeatTimer = setInterval(() => {
       sendStaffHeartbeat(currentUser.username, currentUser.assignedPostOffice);
-    }, 30000);
+    }, 10000);
 
     return () => clearInterval(heartbeatTimer);
   }, [isAuthenticated, currentUser]);

@@ -10,8 +10,11 @@ export interface LoginAuditRecord {
   timestamp: number;
   dateStr: string;
   timeStr: string;
+  lastSeenAt?: number;
+  lastSeenStr?: string;
   device: string;
   ip: string;
+  ipAddress?: string;
   note: string;
 }
 
@@ -47,13 +50,43 @@ const OFFICIAL_STAFF_USERS = [
 ];
 
 function formatDateTime(ts: number): { dateStr: string; timeStr: string; fullStr: string } {
-  const d = new Date(ts);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const seconds = String(d.getSeconds()).padStart(2, '0');
+  // Chuẩn hóa 100% theo Múi Giờ Việt Nam (Hà Nội, UTC +07:00)
+  try {
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(new Date(ts));
+    const p: Record<string, string> = {};
+    for (const part of parts) {
+      p[part.type] = part.value;
+    }
+
+    if (p.day && p.month && p.year && p.hour && p.minute && p.second) {
+      const dateStr = `${p.day}/${p.month}/${p.year}`;
+      const timeStr = `${p.hour}:${p.minute}:${p.second}`;
+      const fullStr = `${timeStr} ngày ${dateStr}`;
+      return { dateStr, timeStr, fullStr };
+    }
+  } catch {
+    // Fallback if Intl fails
+  }
+
+  // Fallback an toàn tuyệt đối: Timestamp UTC + 7 giờ
+  const vnDate = new Date(ts + 7 * 60 * 60 * 1000);
+  const day = String(vnDate.getUTCDate()).padStart(2, '0');
+  const month = String(vnDate.getUTCMonth() + 1).padStart(2, '0');
+  const year = String(vnDate.getUTCFullYear());
+  const hours = String(vnDate.getUTCHours()).padStart(2, '0');
+  const minutes = String(vnDate.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(vnDate.getUTCSeconds()).padStart(2, '0');
   return {
     dateStr: `${day}/${month}/${year}`,
     timeStr: `${hours}:${minutes}:${seconds}`,
@@ -342,6 +375,13 @@ export default async function handler(
           globalUserStatusMap[username].lastSeenStr = dt.fullStr;
           if (device) globalUserStatusMap[username].device = device;
           if (ip) globalUserStatusMap[username].ip = ip;
+        }
+
+        // Cập nhật mốc thời gian hoạt động liên tục cho bản ghi audit mới nhất của user
+        const latestAudit = globalAudits.find(a => a.username === username && a.status === 'SUCCESS');
+        if (latestAudit) {
+          latestAudit.lastSeenAt = now;
+          latestAudit.lastSeenStr = dt.fullStr;
         }
       }
 
