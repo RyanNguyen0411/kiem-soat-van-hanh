@@ -380,3 +380,49 @@ main .bg-slate-800 select {
   line-height: initial !important;
   letter-spacing: normal !important;
 }
+
+/* 5. TỐI ƯU HIỂN THỊ CHỮ TRONG BIỂU ĐỒ TOP 10 BƯU TÁ (CHỐNG TRÀN CHỮ, GỌN GÀNG) */
+.top10-employee-chart text,
+.top10-employee-chart .recharts-text,
+.top10-employee-chart .recharts-label,
+.top10-employee-tick text {
+  font-size: inherit !important;
+  letter-spacing: normal !important;
+}
+
+.top10-employee-chart .recharts-text.recharts-label,
+.top10-bar-num {
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+}
+
+.top10-employee-chart .recharts-cartesian-axis-tick text {
+  font-size: 9.5px !important;
+}
+
+.top10-employee-name-first {
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  fill: #64748B !important;
+}
+
+.dark .top10-employee-name-first {
+  fill: #94A3B8 !important;
+}
+
+.top10-employee-name-main {
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  fill: #0F172A !important;
+}
+
+.dark .top10-employee-name-main {
+  fill: #F8FAFC !important;
+}
+
+.top10-employee-bc {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  fill: #EA580C !important;
+}
+

@@ -13,6 +13,8 @@ import {
   Layers, 
   Search, 
   BarChart3, 
+  BarChart2,
+  Table,
   Maximize2, 
   Minimize2, 
   Activity,
@@ -205,6 +207,8 @@ export const GtcEmployeeTab: React.FC = () => {
   // Trạng thái thu gọn / mở rộng các khối để tối ưu diện tích và góc nhìn tổng quan
   const [isOverviewCollapsed, setIsOverviewCollapsed] = useState<boolean>(false);
   const [isAdviceCollapsed, setIsAdviceCollapsed] = useState<boolean>(false);
+  // Chế độ xem biểu đồ hoặc bảng kê cho khối Top 10 Bưu Tá Dẫn Đầu
+  const [top10ViewMode, setTop10ViewMode] = useState<'chart' | 'table'>('chart');
 
   const handleResetImpactFilter = () => {
     setImpactFilterMonth('current');
@@ -2011,127 +2015,272 @@ export const GtcEmployeeTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 10 Employees Chart */}
+      {/* Top 10 Employees Chart & Table Section */}
       <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
           <div>
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Top 10 Bưu Tá Dẫn Đầu Sản Lượng Giao Thành Công
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <span>Top 10 Bưu Tá Dẫn Đầu Sản Lượng Giao Thành Công</span>
+              <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                Khu vực Long An
+              </span>
             </h3>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               Hiển thị số liệu trực tiếp trên đầu cột; In đậm tên bưu tá và hiển thị tên bưu cục trực thuộc phía dưới
             </p>
           </div>
-        </div>
-        <div className="h-80 w-full">
-          {employeeRankings.length === 0 ? (
-            <ChartEmptyState 
-              title="Không có dữ liệu bưu tá" 
-              subtitle="Không tìm thấy nhân viên nào phù hợp với bộ lọc bưu cục hoặc sản lượng" 
-              heightClass="h-80" 
-            />
-          ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart 
-              data={employeeRankings.slice(0, 10)}
-              margin={{ top: 25, right: 20, bottom: 40, left: 10 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
-              <XAxis 
-                dataKey="tenNV" 
-                interval={0} 
-                height={55} 
-                tick={(props: any) => {
-                  const { x, y, payload } = props;
-                  const emp = employeeRankings.slice(0, 10).find(e => e.tenNV === payload.value) 
-                    || employeeRankings.slice(0, 10)[payload.index];
-                  const shortBc = emp?.buuCuc ? emp.buuCuc.replace('(LAN) ', '').trim() : '';
 
-                  return (
-                    <g transform={`translate(${x},${y})`}>
-                      <text 
-                        x={0} 
-                        y={0} 
-                        dy={14} 
-                        textAnchor="middle" 
-                        fill="currentColor"
-                        className="fill-slate-900 dark:fill-slate-100 font-extrabold text-[11px]"
-                      >
-                        {payload.value}
-                      </text>
-                      <text 
-                        x={0} 
-                        y={0} 
-                        dy={28} 
-                        textAnchor="middle" 
-                        fill="#EA580C"
-                        className="font-bold text-[10px]"
-                      >
-                        {shortBc}
-                      </text>
-                    </g>
-                  );
-                }} 
-                axisLine={{ stroke: '#94A3B8' }}
-              />
-              <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
-              <Tooltip 
-                content={({ active, payload }) => {
-                  if (!active || !payload || !payload.length) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div className="bg-white dark:bg-slate-800 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 text-xs space-y-1">
-                      <div className="font-extrabold text-slate-900 dark:text-white">{d.tenNV} ({d.maNV})</div>
-                      <div className="text-orange-600 font-semibold text-[11px]">{d.buuCuc}</div>
-                      <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300">
-                        <span>Đơn GTC:</span>
-                        <strong className="text-emerald-600 font-bold">{d.tongDonGTC.toLocaleString('vi-VN')} đơn</strong>
-                      </div>
-                      <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300">
-                        <span>Tổng đơn:</span>
-                        <strong>{d.tongDon.toLocaleString('vi-VN')} đơn</strong>
-                      </div>
-                      <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300">
-                        <span>% GTC:</span>
-                        <strong className="text-orange-600 font-bold">{d.gtcRate}%</strong>
-                      </div>
-                    </div>
-                  );
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-              <Bar 
-                yAxisId="left" 
-                dataKey="tongDonGTC" 
-                name="Đơn GTC" 
-                fill="#10B981" 
-                radius={[4, 4, 0, 0]}
-                label={{ 
-                  position: 'top', 
-                  fill: '#059669', 
-                  fontSize: 10, 
-                  fontWeight: 800, 
-                  formatter: (val: any) => val ? Number(val).toLocaleString('vi-VN') : '' 
-                }}
-              />
-              <Bar 
-                yAxisId="left" 
-                dataKey="tongDon" 
-                name="Tổng đơn" 
-                fill="#94A3B8" 
-                radius={[4, 4, 0, 0]}
-                label={{ 
-                  position: 'top', 
-                  fill: '#64748B', 
-                  fontSize: 9, 
-                  fontWeight: 700, 
-                  formatter: (val: any) => val ? Number(val).toLocaleString('vi-VN') : '' 
-                }}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-          )}
+          {/* Nút chuyển đổi nhanh chế độ xem Biểu Đồ / Bảng Kê */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/90 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700/80 text-xs self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setTop10ViewMode('chart')}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                top10ViewMode === 'chart'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs border border-slate-200/60 dark:border-slate-700'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+              }`}
+              title="Xem dưới dạng Biểu đồ cột trực quan"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>Biểu Đồ Cột</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTop10ViewMode('table')}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                top10ViewMode === 'table'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs border border-slate-200/60 dark:border-slate-700'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+              }`}
+              title="Xem dưới dạng Bảng kê chi tiết 10 bưu tá"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Bảng Kê Top 10</span>
+            </button>
+          </div>
         </div>
+
+        {/* Chế độ 1: BIỂU ĐỒ CỘT (Đã thu nhỏ kích thước chữ và trình bày tên 2 dòng + Bưu cục) */}
+        {top10ViewMode === 'chart' ? (
+          <div className="h-84 w-full top10-employee-chart">
+            {employeeRankings.length === 0 ? (
+              <ChartEmptyState 
+                title="Không có dữ liệu bưu tá" 
+                subtitle="Không tìm thấy nhân viên nào phù hợp với bộ lọc bưu cục hoặc sản lượng" 
+                heightClass="h-84" 
+              />
+            ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={employeeRankings.slice(0, 10)}
+                margin={{ top: 25, right: 15, bottom: 48, left: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
+                <XAxis 
+                  dataKey="tenNV" 
+                  interval={0} 
+                  height={62} 
+                  tick={(props: any) => {
+                    const { x, y, payload, index } = props;
+                    const idx = typeof index === 'number' ? index : (payload?.index ?? 0);
+                    const emp = employeeRankings.slice(0, 10).find(e => e.tenNV === payload.value) 
+                      || employeeRankings.slice(0, 10)[idx];
+                    const rank = idx + 1;
+                    const shortBc = emp?.buuCuc ? emp.buuCuc.replace('(LAN) ', '').trim() : '';
+
+                    // Tách tên nhân viên thông minh: Họ & Đệm (dòng 1) và Tên Chính (dòng 2) để chống tràn chữ
+                    const nameParts = (payload.value || '').trim().split(/\s+/);
+                    let firstPart = '';
+                    let mainName = payload.value || '';
+                    if (nameParts.length >= 2) {
+                      const mid = nameParts.length === 2 ? 1 : nameParts.length === 3 ? 2 : Math.ceil(nameParts.length / 2);
+                      firstPart = nameParts.slice(0, mid).join(' ');
+                      mainName = nameParts.slice(mid).join(' ');
+                    }
+
+                    return (
+                      <g transform={`translate(${x},${y})`} className="top10-employee-tick cursor-pointer">
+                        {/* Dòng 1: Thứ hạng & Họ đệm (kích thước tinh gọn 9.5px) */}
+                        <text 
+                          x={0} 
+                          y={0} 
+                          dy={12} 
+                          textAnchor="middle" 
+                          fill="currentColor"
+                          className="top10-employee-name-first fill-slate-500 dark:fill-slate-400 font-semibold"
+                          style={{ fontSize: '9.5px', fontWeight: 600 }}
+                        >
+                          {`#${rank} ${firstPart}`}
+                        </text>
+
+                        {/* Dòng 2: Tên chính in đậm nổi bật (kích thước 10.5px) */}
+                        <text 
+                          x={0} 
+                          y={0} 
+                          dy={25} 
+                          textAnchor="middle" 
+                          fill="currentColor"
+                          className="top10-employee-name-main fill-slate-900 dark:fill-slate-100 font-extrabold"
+                          style={{ fontSize: '10.5px', fontWeight: 800 }}
+                        >
+                          {mainName}
+                        </text>
+
+                        {/* Dòng 3: Tên bưu cục trực thuộc màu cam nhận diện (kích thước 9px) */}
+                        <text 
+                          x={0} 
+                          y={0} 
+                          dy={38} 
+                          textAnchor="middle" 
+                          fill="#EA580C"
+                          className="top10-employee-bc font-bold"
+                          style={{ fontSize: '9px', fontWeight: 700 }}
+                        >
+                          {shortBc}
+                        </text>
+                      </g>
+                    );
+                  }} 
+                  axisLine={{ stroke: '#94A3B8' }}
+                />
+                <YAxis yAxisId="left" tick={{ fontSize: 9.5 }} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const d = payload[0].payload;
+                    return (
+                      <div className="bg-white dark:bg-slate-800 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                        <div className="font-extrabold text-slate-900 dark:text-white flex items-center justify-between gap-3">
+                          <span>{d.tenNV}</span>
+                          <span className="font-mono text-[11px] text-slate-400">({d.maNV})</span>
+                        </div>
+                        <div className="text-orange-600 dark:text-orange-400 font-semibold text-[11px]">{d.buuCuc}</div>
+                        <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                          <span>Đơn GTC:</span>
+                          <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{d.tongDonGTC.toLocaleString('vi-VN')} đơn</strong>
+                        </div>
+                        <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300">
+                          <span>Tổng đơn:</span>
+                          <strong>{d.tongDon.toLocaleString('vi-VN')} đơn</strong>
+                        </div>
+                        <div className="flex justify-between gap-4 text-slate-600 dark:text-slate-300">
+                          <span>% GTC:</span>
+                          <strong className="text-orange-600 font-bold">{d.gtcRate}%</strong>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                <Bar 
+                  yAxisId="left" 
+                  dataKey="tongDonGTC" 
+                  name="Đơn GTC" 
+                  fill="#10B981" 
+                  radius={[4, 4, 0, 0]}
+                  label={(props: any) => {
+                    const { x, y, width, value } = props;
+                    if (!value) return null;
+                    return (
+                      <text 
+                        x={x + width / 2} 
+                        y={y - 5} 
+                        textAnchor="middle" 
+                        fill="#059669"
+                        className="top10-bar-num font-extrabold"
+                        style={{ fontSize: '9.5px', fontWeight: 800 }}
+                      >
+                        {Number(value).toLocaleString('vi-VN')}
+                      </text>
+                    );
+                  }}
+                />
+                <Bar 
+                  yAxisId="left" 
+                  dataKey="tongDon" 
+                  name="Tổng đơn" 
+                  fill="#94A3B8" 
+                  radius={[4, 4, 0, 0]}
+                  label={(props: any) => {
+                    const { x, y, width, value } = props;
+                    if (!value) return null;
+                    return (
+                      <text 
+                        x={x + width / 2} 
+                        y={y - 5} 
+                        textAnchor="middle" 
+                        fill="#64748B"
+                        className="top10-bar-num font-bold"
+                        style={{ fontSize: '9px', fontWeight: 700 }}
+                      >
+                        {Number(value).toLocaleString('vi-VN')}
+                      </text>
+                    );
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            )}
+          </div>
+        ) : (
+          /* Chế độ 2: BẢNG KÊ CHI TIẾT TOP 10 (Chuẩn format dashboard: Tiêu đề giữa, Số giữa, Text trái) */
+          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-[10.5px] border-b border-slate-200 dark:border-slate-800 font-bold">
+                <tr>
+                  <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">Thứ Hạng</th>
+                  <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">Mã NV</th>
+                  <th className="py-2.5 px-4 text-center !text-center whitespace-nowrap">Họ Và Tên Bưu Tá</th>
+                  <th className="py-2.5 px-4 text-center !text-center whitespace-nowrap">Bưu Cục Quản Lý</th>
+                  <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">Đơn GTC</th>
+                  <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">Tổng Đơn Phân Bổ</th>
+                  <th className="py-2.5 px-3 text-center !text-center whitespace-nowrap">Tỷ Lệ % GTC</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {employeeRankings.slice(0, 10).map((emp, idx) => (
+                  <tr key={emp.maNV} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                    <td className="py-2 px-3 text-center whitespace-nowrap font-bold">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
+                        idx === 0 ? 'bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40' :
+                        idx === 1 ? 'bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40' :
+                        idx === 2 ? 'bg-amber-700/20 text-amber-700 dark:text-amber-500 border border-amber-600/40' :
+                        'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}>
+                        #{idx + 1}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {emp.maNV}
+                    </td>
+                    <td className="py-2 px-4 text-left font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      {emp.tenNV}
+                    </td>
+                    <td className="py-2 px-4 text-left font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                      {emp.buuCuc}
+                    </td>
+                    <td className="py-2 px-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      {emp.tongDonGTC.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      {emp.tongDon.toLocaleString('vi-VN')}
+                    </td>
+                    <td className="py-2 px-3 text-center font-mono font-extrabold whitespace-nowrap">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                        emp.gtcRate >= 85 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                        emp.gtcRate >= 75 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                        'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                      }`}>
+                        {emp.gtcRate}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
